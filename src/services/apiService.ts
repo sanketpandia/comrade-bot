@@ -4,6 +4,7 @@ import { MetaInfo } from "../types/DiscordInteraction";
 import { generateMetaHeaders } from "../helpers/utils";
 import { UnauthorizedError } from "../helpers/UnauthorizedException";
 import { PermissionDeniedError } from "../helpers/PermissionDeniedException";
+import { NotFoundError } from "../helpers/NotFoundException";
 
 const API_URL = process.env.API_URL ?? "http://localhost:8080";
 
@@ -235,7 +236,7 @@ export class ApiService {
 
     static async getUserDetails(meta: MetaInfo): Promise<UserDetailsData> {
         try {
-            const res = await fetch(`${API_URL}/api/v1/user/details`, {
+            const res = await fetch(`${API_URL}/api/v1/user/status`, {
                 method: "GET",
                 headers: generateMetaHeaders(meta),
             });
@@ -243,6 +244,10 @@ export class ApiService {
             if (res.status === 401) {
                 const message = await res.text();
                 throw new UnauthorizedError(message || "Unauthorized");
+            }
+
+            if(res.status === 404) {
+                throw new NotFoundError("User not found");
             }
 
             if (!res.ok) {
