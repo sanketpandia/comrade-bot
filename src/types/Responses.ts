@@ -76,15 +76,27 @@ export type FlightHistoryRecord = {
   };
   
 export interface LiveFlightRecord {
+  flight_id: string;
   callsign: string;
   username: string;
-  aircraft: string;
-  livery: string;
+  session_name: string;
+  latitude: number;
+  longitude: number;
   altitude: number;
   speed: number;
+  track: number;
+  vertical_speed: number;
+  aircraft_name: string;
+  livery_name: string;
+  phase: string;
+  takeoff_time: string;
   origin: string;
   destination: string;
-  lastReport: string;
+  last_updated: string;
+  last_report: string;
+  last_flight_plan_fetch: string;
+  max_altitude?: number;
+  max_speed?: number;
 }
 
 export interface VARole {

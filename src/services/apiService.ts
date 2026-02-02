@@ -183,9 +183,9 @@ export class ApiService {
         }
     }
 
-    static async getLiveFlights(meta: MetaInfo): Promise<LiveFlightRecord[]> {
+    static async getLiveFlights(meta: MetaInfo): Promise<{ flights: LiveFlightRecord[], responseTime?: string }> {
         try {
-            const res = await fetch(`${API_URL}/api/v1/va/live`, {
+            const res = await fetch(`${API_URL}/api/v1/flights/va`, {
                 method: "GET",
                 headers: generateMetaHeaders(meta),
             });
@@ -198,13 +198,24 @@ export class ApiService {
                 throw new Error(`Failed to fetch live flights: ${res.status} ${res.statusText}`);
             }
 
-            const response: ApiResponse<LiveFlightRecord[]> = await res.json() as ApiResponse<LiveFlightRecord[]>;
+            const response = await res.json() as {
+                status: string;
+                message?: string;
+                response_time?: string;
+                data?: LiveFlightRecord[];
+                result?: LiveFlightRecord[];
+            };
 
-            if (!response.result) {
+            // Handle both 'data' and 'result' fields for compatibility
+            const flights = response.data || response.result;
+            if (!flights) {
                 throw new Error("No data received in API response");
             }
 
-            return response.result;
+            return {
+                flights,
+                responseTime: response.response_time
+            };
 
         } catch (err) {
             console.error("[ApiService.getLiveFlights]", err);
