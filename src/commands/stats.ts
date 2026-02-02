@@ -47,7 +47,7 @@ export async function execute(interaction: DiscordInteraction) {
         try {
             // Try to get pilot stats
             const statsResponse = await ApiService.getPilotStats(metaInfo);
-            const statsData = statsResponse.data;
+            const statsData = statsResponse.result;
 
             if (!statsData) {
                 throw new Error("No stats data received");
@@ -164,7 +164,7 @@ export async function execute(interaction: DiscordInteraction) {
                     color: 0x0099ff,
                     timestamp: new Date().toISOString(),
                     footer: {
-                        text: `${statsData.metadata.va_name || "Virtual Airline"} • Response time: ${statsResponse.response_time}`
+                        text: `${statsData.metadata.va_name || "Virtual Airline"} • Response time: ${statsResponse.responseTimeMs}ms`
                     }
                 }]
             });

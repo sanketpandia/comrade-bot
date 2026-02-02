@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import { HealthApiResponse, InitRegistrationResponse, ApiResponse, FlightHistoryPage, InitServerResponse, LiveFlightRecord, UserDetailsData, PilotStatsData, PirepConfigResponse, PirepSubmitResponse, PirepSubmitRequest } from "../types/Responses";
+import { HealthApiResponse, InitRegistrationResponse, ApiResponse, FlightHistoryPage, InitServerResponse, LiveFlightRecord, UserDetailsData, PilotStatsData, PirepConfigResponse, PirepSubmitResponse, PirepSubmitRequest, RegistrationResult, MembershipJoinResult, InitServerResult } from "../types/Responses";
 import { MetaInfo } from "../types/DiscordInteraction";
 import { generateMetaHeaders } from "../helpers/utils";
 import { UnauthorizedError } from "../helpers/UnauthorizedException";
@@ -7,8 +7,6 @@ import { PermissionDeniedError } from "../helpers/PermissionDeniedException";
 import { NotFoundError } from "../helpers/NotFoundException";
 
 const API_URL = process.env.API_URL ?? "http://localhost:8080";
-
-type InitServerResult = ApiResponse<InitServerResponse>;
 
 export class ApiService {
     static async getHealth(metainfo: MetaInfo): Promise<HealthApiResponse> {
@@ -31,21 +29,15 @@ export class ApiService {
     static async initiateRegistration(
         meta: MetaInfo,
         ifcId: string,
-        lastFlight: string,
-        callsign?: string
-    ): Promise<InitRegistrationResponse> {
+        lastFlight: string
+    ): Promise<RegistrationResult> {
         try {
-            const payload: any = {
+            const payload = {
                 ifc_id: ifcId,
                 last_flight: lastFlight
             };
 
-            // Add callsign if provided (for VA servers)
-            if (callsign) {
-                payload.callsign = callsign;
-            }
-
-            const res = await fetch(`${API_URL}/api/v1/user/register/init`, {
+            const res = await fetch(`${API_URL}/api/v1/pilots/register`, {
                 method: "POST",
                 headers: {
                     ...generateMetaHeaders(meta),
@@ -64,15 +56,30 @@ export class ApiService {
                 throw new PermissionDeniedError(body.message || "Forbidden");
             }
 
+            if (res.status === 409) {
+                const body = await res.json() as any;
+                throw new Error(body.error?.message || "User already registered");
+            }
+
+            if (res.status === 404) {
+                const body = await res.json() as any;
+                throw new Error(body.error?.message || "IFC user not found");
+            }
+
+            if (res.status === 400) {
+                const body = await res.json() as any;
+                throw new Error(body.error?.message || "Flight validation failed");
+            }
+
             if (!res.ok) {
                 throw new Error(`Failed to fetch initRegistration: ${res.status} ${res.statusText}`);
             }
-            const response: ApiResponse<InitRegistrationResponse> = await res.json() as ApiResponse<InitRegistrationResponse>;
+            const response: ApiResponse<RegistrationResult> = await res.json() as ApiResponse<RegistrationResult>;
 
-            if (!response.data) {
+            if (!response.result) {
                 throw new Error("No data received in API response");
             }
-            return response.data;
+            return response.result;
         } catch (err) {
             console.error("[ApiService.initRegistation]", err);
             throw err
@@ -86,8 +93,7 @@ export class ApiService {
         code: string,
         name: string,
         callsignPrefix: string,
-        callsignSuffix: string,
-        iconURL?: string
+        callsignSuffix: string
     ): Promise<InitServerResult> {
         try {
             const res = await fetch(`${API_URL}/api/v1/server/init`, {
@@ -95,10 +101,9 @@ export class ApiService {
                 headers: generateMetaHeaders(meta),
                 body: JSON.stringify({
                     va_code: code,
-                    name,
+                    va_name: name,
                     callsign_prefix: callsignPrefix,
-                    callsign_suffix: callsignSuffix,
-                    ...(iconURL && { icon_url: iconURL })
+                    callsign_suffix: callsignSuffix
                 }),
             });
 
@@ -112,14 +117,29 @@ export class ApiService {
                 throw new PermissionDeniedError(body.message || "Forbidden");
             }
 
-            // Always try to read the JSON body (success or error)
-            const body: InitServerResult = await res.json() as InitServerResult;
+            if (res.status === 400) {
+                const body = await res.json() as any;
+                const errorMsg = body.error?.message || body.message || "You must register as a user before initializing a server";
+                throw new Error(errorMsg);
+            }
 
-            /*          ─── decide at the CALL-SITE ───
-               - If res.ok === true  → body.status should be true.
-               - If res.ok === false → body.status is false and body.data.steps
-                                       tells which stage failed.                */
-            return body;
+            if (res.status === 409) {
+                const body = await res.json() as any;
+                const errorMsg = body.error?.message || body.message || "This Discord server is already registered as a VA";
+                throw new Error(errorMsg);
+            }
+
+            if (!res.ok) {
+                throw new Error(`Failed to initialize server: ${res.status} ${res.statusText}`);
+            }
+
+            const response: ApiResponse<InitServerResult> = await res.json() as ApiResponse<InitServerResult>;
+
+            if (!response.result) {
+                throw new Error("No data received in API response");
+            }
+
+            return response.result;
         } catch (err) {
             // network/CORS/JSON issues
             console.error("[ApiService.initiateServerRegistration]", err);
@@ -146,14 +166,14 @@ export class ApiService {
 
             const response: ApiResponse<FlightHistoryPage> = await res.json() as ApiResponse<FlightHistoryPage>;
 
-            if (!response.data) {
+            if (!response.result) {
                 throw new Error("No data received in API response");
             }
 
-            // Include the response_time from the API response
+            // Include the responseTimeMs from the API response
             return {
-                ...response.data,
-                response_time: response.response_time
+                ...response.result,
+                response_time: response.responseTimeMs?.toString() || "0"
             };
 
 
@@ -180,11 +200,11 @@ export class ApiService {
 
             const response: ApiResponse<LiveFlightRecord[]> = await res.json() as ApiResponse<LiveFlightRecord[]>;
 
-            if (!response.data) {
+            if (!response.result) {
                 throw new Error("No data received in API response");
             }
 
-            return response.data;
+            return response.result;
 
         } catch (err) {
             console.error("[ApiService.getLiveFlights]", err);
@@ -241,6 +261,8 @@ export class ApiService {
                 headers: generateMetaHeaders(meta),
             });
 
+            console.log(res)
+
             if (res.status === 401) {
                 const message = await res.text();
                 throw new UnauthorizedError(message || "Unauthorized");
@@ -256,11 +278,11 @@ export class ApiService {
 
             const response: ApiResponse<UserDetailsData> = await res.json() as ApiResponse<UserDetailsData>;
 
-            if (!response.data) {
+            if (!response.result) {
                 throw new Error("No data received in API response");
             }
 
-            return response.data;
+            return response.result;
         } catch (err) {
             console.error("[ApiService.getUserDetails]", err);
             throw err;
@@ -289,7 +311,7 @@ export class ApiService {
             }
 
             const response: ApiResponse<{ is_god: boolean }> = await res.json() as ApiResponse<{ is_god: boolean }>;
-            return response.data?.is_god || false;
+            return response.result?.is_god || false;
         } catch (err) {
             console.error("[ApiService.verifyGodMode]", err);
             return false;
@@ -327,7 +349,7 @@ export class ApiService {
 
             const response: ApiResponse<any> = await res.json() as ApiResponse<any>;
 
-            if (!response.data) {
+            if (!response.result) {
                 throw new Error("No data received in API response");
             }
 
@@ -356,7 +378,7 @@ export class ApiService {
 
             const response: ApiResponse<PilotStatsData> = await res.json() as ApiResponse<PilotStatsData>;
 
-            if (!response.data) {
+            if (!response.result) {
                 throw new Error("No data received in API response");
             }
 
@@ -398,7 +420,7 @@ export class ApiService {
 
             const response: PirepConfigResponse = await res.json() as PirepConfigResponse;
 
-            if (!response.data) {
+            if (!response.result) {
                 throw new Error("No data received in API response");
             }
 
@@ -473,13 +495,80 @@ export class ApiService {
 
             const response: ApiResponse<{ url: string; expires_in: number }> = await res.json() as ApiResponse<{ url: string; expires_in: number }>;
 
-            if (!response.data) {
+            if (!response.result) {
                 throw new Error("No data received in API response");
             }
 
             return response;
         } catch (err) {
             console.error("[ApiService.generateDashboardLink]", err);
+            throw err;
+        }
+    }
+
+    /**
+     * Join a virtual airline as a member with a callsign
+     * Requires the user to be registered first (will error with USER_NOT_FOUND if not)
+     */
+    static async joinMembership(meta: MetaInfo, callsign: string): Promise<MembershipJoinResult> {
+        try {
+            const res = await fetch(`${API_URL}/api/v1/memberships/join`, {
+                method: "POST",
+                headers: {
+                    ...generateMetaHeaders(meta),
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ callsign })
+            });
+
+            if (res.status === 401) {
+                const message = await res.text();
+                throw new UnauthorizedError(message || "Unauthorized");
+            }
+
+            if (res.status === 403) {
+                const body = await res.json() as ApiResponse<any>;
+                throw new PermissionDeniedError(body.message || "Forbidden");
+            }
+
+            // Handle specific error codes
+            if (res.status === 409) {
+                const body = await res.json() as any;
+                const errorMsg = body.error?.message || body.message;
+                if (errorMsg?.includes("already a member") || errorMsg?.includes("ALREADY_MEMBER")) {
+                    throw new Error("ALREADY_MEMBER: You are already a member of this VA");
+                }
+                if (errorMsg?.includes("callsign") || errorMsg?.includes("CALLSIGN_TAKEN")) {
+                    throw new Error("CALLSIGN_TAKEN: This callsign is already taken");
+                }
+                throw new Error(errorMsg || "Conflict error");
+            }
+
+            if (res.status === 404) {
+                const body = await res.json() as any;
+                const errorMsg = body.error?.message || body.message;
+                if (errorMsg?.includes("VA not found") || errorMsg?.includes("VA_NOT_FOUND")) {
+                    throw new Error("VA_NOT_FOUND: Virtual airline not found");
+                }
+                if (errorMsg?.includes("User not found") || errorMsg?.includes("USER_NOT_FOUND")) {
+                    throw new Error("USER_NOT_FOUND: User not found. Please register first using /register");
+                }
+                throw new Error(errorMsg || "Not found");
+            }
+
+            if (!res.ok) {
+                throw new Error(`Failed to join membership: ${res.status} ${res.statusText}`);
+            }
+
+            const response: ApiResponse<MembershipJoinResult> = await res.json() as ApiResponse<MembershipJoinResult>;
+
+            if (!response.result) {
+                throw new Error("No data received in API response");
+            }
+
+            return response.result;
+        } catch (err) {
+            console.error("[ApiService.joinMembership]", err);
             throw err;
         }
     }

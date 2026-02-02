@@ -6,4 +6,6 @@ export const CUSTOM_IDS = {
     SYNC_USER_MODAL: "sync_user_modal",
     PIREP_MODAL: "pirepModal",
     PIREP_MODE_PREFIX: "mode_", // Buttons like: mode_classic, mode_career_mode, etc.
+    MEMBERSHIP_JOIN_BUTTON: "membership_join_proceed",
+    MEMBERSHIP_JOIN_MODAL: "membershipJoinModal",
 }

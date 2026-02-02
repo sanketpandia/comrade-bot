@@ -90,6 +90,11 @@ export class InteractionRouter {
                 await SyncUserModalHandler.execute(wrapped);
                 break;
 
+            case CUSTOM_IDS.MEMBERSHIP_JOIN_MODAL:
+                const MembershipJoinHandler = await import("../commands/membershipJoinModalHandler");
+                await MembershipJoinHandler.execute(wrapped);
+                break;
+
             default:
                 // Check if it's a PIREP modal with encoded mode_id (format: pirepModal_modeId)
                 if (interaction.customId.startsWith(CUSTOM_IDS.PIREP_MODAL)) {
@@ -142,6 +147,13 @@ export class InteractionRouter {
         // Handle register link button (for users who need to link to VA)
         if (interaction.customId === "register_link") {
             await handleRegisterLink(wrapped);
+            return;
+        }
+
+        // Handle membership join proceed button
+        if (interaction.customId === CUSTOM_IDS.MEMBERSHIP_JOIN_BUTTON) {
+            const { handleMembershipJoinProceed } = await import("../commands/membershipJoinButtonHandler");
+            await handleMembershipJoinProceed(wrapped);
             return;
         }
 

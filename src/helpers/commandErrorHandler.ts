@@ -11,6 +11,9 @@ export const ErrorMessages = {
     UNAUTHORIZED: (message: string) => `❌ **Authorization Failed**\n${message}`,
     PERMISSION_DENIED: (message: string) => `🔒 **Permission Denied**\n${message}`,
     VALIDATION_ERROR: (field: string, requirement: string) => `❌ Invalid ${field}. ${requirement}`,
+    USER_ALREADY_REGISTERED: "❌ **Already Registered**\nThis IFC account is already registered. Use `/status` to view your details.",
+    IFC_USER_NOT_FOUND: "❌ **IFC User Not Found**\nThe provided IFC username was not found. Please check your spelling and try again.",
+    FLIGHT_MISMATCH: "❌ **Flight Verification Failed**\nThe flight route you provided doesn't match your most recent flight. Please verify your last flight in the Infinite Flight app and try again.",
 } as const;
 
 /**
@@ -50,6 +53,33 @@ export class CommandErrorHandler {
         if (error instanceof PermissionDeniedError) {
             await interaction.reply({
                 content: ErrorMessages.PERMISSION_DENIED(error.message),
+                ephemeral: true
+            });
+            return;
+        }
+
+        // Handle specific registration errors
+        const errorMessage = error instanceof Error ? error.message.toLowerCase() : '';
+
+        if (errorMessage.includes('already registered')) {
+            await interaction.reply({
+                content: ErrorMessages.USER_ALREADY_REGISTERED,
+                ephemeral: true
+            });
+            return;
+        }
+
+        if (errorMessage.includes('user not found') || errorMessage.includes('ifc user not found')) {
+            await interaction.reply({
+                content: ErrorMessages.IFC_USER_NOT_FOUND,
+                ephemeral: true
+            });
+            return;
+        }
+
+        if (errorMessage.includes('flight') && (errorMessage.includes('mismatch') || errorMessage.includes('verification failed'))) {
+            await interaction.reply({
+                content: ErrorMessages.FLIGHT_MISMATCH,
                 ephemeral: true
             });
             return;

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, SlashCommandOptionsOnlyBuilder } from "discord.js";
+import { SlashCommandBuilder, SlashCommandOptionsOnlyBuilder, SlashCommandSubcommandsOnlyBuilder } from "discord.js";
 
 // Import all command data
 import { data as statusCmd } from "../commands/status";
@@ -12,13 +12,14 @@ import { data as statsCmd } from "../commands/stats";
 import { data as logCmd } from "../commands/log";
 import { data as helpCmd } from "../commands/help";
 import { data as dashboardCmd } from "../commands/dashboard";
+import { data as membershipCmd } from "../commands/membership";
 
 /**
  * Command registry
  * Centralized list of all bot commands
- * Supports both SlashCommandBuilder and SlashCommandOptionsOnlyBuilder (commands with options)
+ * Supports SlashCommandBuilder, SlashCommandOptionsOnlyBuilder, and SlashCommandSubcommandsOnlyBuilder
  */
-export const COMMANDS: (SlashCommandBuilder | SlashCommandOptionsOnlyBuilder)[] = [
+export const COMMANDS: (SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder)[] = [
     statusCmd,
     registerCmd,
     logbookCmd,
@@ -29,7 +30,8 @@ export const COMMANDS: (SlashCommandBuilder | SlashCommandOptionsOnlyBuilder)[] 
     statsCmd,
     logCmd,
     helpCmd,
-    dashboardCmd
+    dashboardCmd,
+    membershipCmd
 ];
 
 /**

@@ -6,7 +6,6 @@ import {
 } from "discord.js";
 import { CUSTOM_IDS } from "../configs/constants";
 import { DiscordInteraction } from "../types/DiscordInteraction";
-import { ApiService } from "../services/apiService";
 
 /**
  * Handles the "Proceed with Registration" button for new users
@@ -15,29 +14,6 @@ import { ApiService } from "../services/apiService";
 export async function handleRegisterNew(interaction: DiscordInteraction) {
     const buttonInteraction = interaction.getButtonInteraction();
     if (!buttonInteraction) return;
-
-    // Check if this server is a registered VA
-    // We do this by calling getUserDetails - if it returns data OR a specific user error,
-    // it means the server is registered. If it's an auth/server error, server is not a VA.
-    let isVAServer = false;
-    try {
-        await ApiService.getUserDetails(interaction.getMetaInfo());
-        // If call succeeds, server is definitely a VA (user might or might not be registered)
-        isVAServer = true;
-    } catch (error: any) {
-        // Check error message/status to differentiate between:
-        // - User not found (server is VA, but user not registered) -> still VA server
-        // - Server auth failure (server is not a VA) -> not VA server
-        const errorMessage = error?.message?.toLowerCase() || "";
-        const isUserNotFoundError =
-            errorMessage.includes("user") ||
-            errorMessage.includes("not found") ||
-            errorMessage.includes("404");
-
-        // If it's a user-related error, server is still a VA
-        // If it's an auth/server error (401, 403, server not found), server is not a VA
-        isVAServer = isUserNotFoundError;
-    }
 
     // Build modal fields
     const ifcIdInput = new TextInputBuilder()
@@ -62,28 +38,10 @@ export async function handleRegisterNew(interaction: DiscordInteraction) {
         .setCustomId(CUSTOM_IDS.REGISTER_MODAL)
         .setTitle("Register to Comrade Bot");
 
-    const components: ActionRowBuilder<TextInputBuilder>[] = [
+    modal.addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(ifcIdInput),
-        new ActionRowBuilder<TextInputBuilder>().addComponents(lastFlightInput),
-    ];
-
-    // Add callsign field if this is a VA server
-    if (isVAServer) {
-        const callsignInput = new TextInputBuilder()
-            .setCustomId("callsign")
-            .setLabel("Callsign Number (Optional, 1-5 digits)")
-            .setStyle(TextInputStyle.Short)
-            .setPlaceholder("001")
-            .setRequired(false)
-            .setMinLength(1)
-            .setMaxLength(5);
-
-        components.push(
-            new ActionRowBuilder<TextInputBuilder>().addComponents(callsignInput)
-        );
-    }
-
-    modal.addComponents(...components);
+        new ActionRowBuilder<TextInputBuilder>().addComponents(lastFlightInput)
+    );
 
     await buttonInteraction.showModal(modal);
 }

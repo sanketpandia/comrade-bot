@@ -24,10 +24,6 @@ export async function execute(interaction: DiscordInteraction) {
     const callsignPrefix = _interaction.fields.getTextInputValue("callsignPrefix")?.trim() || "";
     const callsignSuffix = _interaction.fields.getTextInputValue("callsignSuffix")?.trim() || "";
 
-    // Fetch Discord server icon
-    const guild = _interaction.guild;
-    const iconURL = guild?.iconURL({ extension: 'png', size: 256 }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-
     // Validate VA code
     if (!await CommandErrorHandler.validateInput(
         interaction, vaCode, "VA code", ValidationPatterns.VA_CODE, 3, 5
@@ -61,28 +57,28 @@ export async function execute(interaction: DiscordInteraction) {
             vaCode,
             vaName,
             callsignPrefix,
-            callsignSuffix,
-            iconURL
+            callsignSuffix
         );
 
-        // Check if response contains data
-        if (!response?.data) {
-            // If response has a message but no data, it's an error response
-            if (response?.message) {
-                await interaction.reply({
-                    content: `❌ **Server Registration Failed**\n${response.message}`,
-                    ephemeral: true
-                });
-                return;
-            }
+        // Validate response
+        if (!response) {
             await CommandErrorHandler.handleEmptyResponse(interaction);
             return;
         }
 
         // Send success response
-        await interaction.reply(
-            MessageFormatters.makeRegistrationString(response.data)
-        );
+        if (response.success) {
+            await interaction.reply({
+                content: `✅ **Server Initialization Successful!**\n\n${response.message}\n\n**VA Code:** ${response.va_code}\n**VA ID:** ${response.va_id}\n\nYour Virtual Airline is now set up and ready to use!`,
+                ephemeral: true
+            });
+        } else {
+            // Initialization failed
+            await interaction.reply({
+                content: `❌ **Server Initialization Failed**\n\n${response.message}`,
+                ephemeral: true
+            });
+        }
 
     } catch (error) {
         await CommandErrorHandler.handleApiError(interaction, error, "Server Init");

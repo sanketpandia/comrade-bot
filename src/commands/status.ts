@@ -23,40 +23,65 @@ export async function execute(interaction: DiscordInteraction) {
     let color: number;
     let timestamp: string;
 
+    const metaInfo = interaction.getMetaInfo();
+    let userData: any = null;
+    let healthData: any = null;
+    let userError: string | null = null;
+    let healthError: string | null = null;
+
+    // Try to get user details
     try {
-        const metaInfo = interaction.getMetaInfo();
+        userData = await ApiService.getUserDetails(metaInfo);
+    } catch (err: any) {
+        console.error("[status command] getUserDetails error:", err);
+        if (err instanceof NotFoundError) {
+            userError = `❌ You are not registered to the bot: \n${String(err)}`;
+        } else {
+            userError = `❌ Error fetching user details: \n${String(err)}`;
+        }
+    }
 
-        // Get user details and health data
-        const userData = await ApiService.getUserDetails(metaInfo);
-        const healthData = await ApiService.getHealth(metaInfo);
+    // Try to get health data
+    try {
+        healthData = await ApiService.getHealth(metaInfo);
+    } catch (err: any) {
+        console.error("[status command] getHealth error:", err);
+        healthError = `❌ Error fetching health data: \n${String(err)}`;
+    }
 
-        // Format messages
+    // Build response based on what data we have
+    if (!userData && !healthData) {
+        // Both failed
+        title = "Error";
+        description = userError || healthError || "❌ An error occurred";
+        color = 0xff0000;
+    } else if (!userData) {
+        // Only user data failed
+        title = "Partial Status Report";
+        description = (userError || "") + "\n\n" + MessageFormatters.generateHealthString(healthData);
+        color = 0xff9900;
+    } else if (!healthData) {
+        // Only health data failed
+        title = "Partial Status Report";
+        const formattedMessage = MessageFormatters.generateUserDetailsString(
+            userData,
+            metaInfo.discordId
+        );
+        description = (healthError || "") + "\n\n" + formattedMessage;
+        color = userData.current_va.is_member ? 0x00ff00 : 0xff9900;
+    } else {
+        // Both succeeded
         const healthMessage = MessageFormatters.generateHealthString(healthData);
         const formattedMessage = MessageFormatters.generateUserDetailsString(
             userData,
             metaInfo.discordId
         );
-
-        // Set success response
         title = "Status Report";
         description = healthMessage + "\n" + formattedMessage;
         color = userData.current_va.is_member ? 0x00ff00 : 0xff9900;
-        timestamp = new Date().toISOString();
-
-    } catch (err: any) {
-        console.error("[status command]", err);
-
-        // Set error response based on error type
-        if (err instanceof NotFoundError) {
-            title = "Not found";
-            description = `❌ You are not registered to the bot: \n${String(err)}`;
-        } else {
-            title = "Error";
-            description = `❌ An error occurred: \n${String(err)}`;
-        }
-        color = 0xff0000;
-        timestamp = new Date().toISOString();
     }
+
+    timestamp = new Date().toISOString();
 
     // Single editReply with computed values
     try {

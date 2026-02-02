@@ -24,6 +24,13 @@ export interface InitServerResponse {
   steps: RegistrationStep[];
 }
 
+export interface InitServerResult {
+  success: boolean;
+  message: string;
+  va_code: string;
+  va_id: string;
+}
+
 type RegistrationStep = {
     name: string;
     status: boolean;
@@ -32,10 +39,18 @@ type RegistrationStep = {
 
 export type ApiResponse<T> = {
     status: string;
-    message: string;
-    response_time: string;
-    data?: T;
+    message?: string;
+    responseTimeMs?: number;
+    result?: T;
 };
+
+export interface RegistrationResult {
+    success: boolean;
+    message: string;
+    is_va_registered: boolean;
+}
+
+export type RegistrationApiResponse = ApiResponse<RegistrationResult>;
 
 export type FlightHistoryRecord = {
     origin: string;
@@ -203,3 +218,14 @@ export interface PirepSubmitData {
 }
 
 export type PirepSubmitResponse = ApiResponse<PirepSubmitData>;
+
+export interface MembershipJoinResult {
+  success: boolean;
+  message: string;
+  user_id: string;
+  va_id: string;
+  callsign: string;
+  role: string;
+}
+
+export type MembershipJoinResponse = ApiResponse<MembershipJoinResult>;
