@@ -43,6 +43,7 @@ export async function handleLiveFlights(
   let flights: LiveFlightRecord[] = [];
   let responseTimeMs: number | undefined;
   let apiResponseTime: string | undefined;
+  let signedLink: string | undefined;
 
   try {
     const startTime = Date.now();
@@ -50,6 +51,7 @@ export async function handleLiveFlights(
     responseTimeMs = Date.now() - startTime;
     flights = result.flights;
     apiResponseTime = result.responseTime;
+    signedLink = result.signedLink;
   } catch (err: any) {
     console.error("[handleLiveFlights] Error fetching flights:", err);
 
@@ -141,6 +143,15 @@ export async function handleLiveFlights(
         .setCustomId(`live_next_${currentPage + 1}`)
         .setLabel("Next")
         .setStyle(ButtonStyle.Primary),
+    );
+  }
+  // Add "See Map" button if signed link is available
+  if (signedLink) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setLabel("See Map")
+        .setStyle(ButtonStyle.Link)
+        .setURL(signedLink),
     );
   }
 
