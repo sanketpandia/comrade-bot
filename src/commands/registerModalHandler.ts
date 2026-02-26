@@ -1,7 +1,6 @@
 import { ApiService } from "../services/apiService";
 import { DiscordInteraction } from "../types/DiscordInteraction";
 import { CUSTOM_IDS } from "../configs/constants";
-import { MessageFormatters } from "../helpers/messageFormatter";
 import { CommandErrorHandler, ValidationPatterns } from "../helpers/commandErrorHandler";
 
 export const data = {
@@ -41,23 +40,6 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
     const ifcId = _interaction.fields.getTextInputValue('ifcId').trim();
     const lastFlight = _interaction.fields.getTextInputValue('lastFlight').trim().toUpperCase();
 
-    // Optional callsign field (only present if server is VA)
-    let callsign: string | undefined;
-    try {
-        callsign = _interaction.fields.getTextInputValue('callsign')?.trim();
-        // Validate callsign if provided
-        if (callsign && !/^\d{1,5}$/.test(callsign)) {
-            await interaction.reply({
-                content: "❌ **Validation Error**\nCallsign must be 1-5 digits only.",
-                ephemeral: true
-            });
-            return;
-        }
-    } catch {
-        // Callsign field not present (non-VA server)
-        callsign = undefined;
-    }
-
     // Validate IFC ID
     if (!await CommandErrorHandler.validateInput(
         interaction, ifcId, "IFC ID", ValidationPatterns.IFC_USERNAME, 3, 30
@@ -71,16 +53,14 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
     // Log execution
     CommandErrorHandler.logExecution("Registration", _interaction.user.id, _interaction.guildId, {
         ifcId,
-        lastFlight,
-        callsign: callsign || "none"
+        lastFlight
     });
 
     try {
         const response = await ApiService.initiateRegistration(
             interaction.getMetaInfo(),
             ifcId,
-            lastFlight,
-            callsign
+            lastFlight
         );
 
         // Validate response
@@ -90,9 +70,28 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
         }
 
         // Send success response
-        await interaction.reply(
-            MessageFormatters.makeRegistrationString(response)
-        );
+        if (response.success) {
+            let message = `✅ **Registration Successful!**\n\n${response.message}\n\n`;
+
+            if (response.is_va_registered) {
+                // User is registered to this VA server
+                message += "📌 **Next Step:**\nYou're registered to Comrade Bot. Use `/membership join` to link yourself to this Virtual Airline.";
+            } else {
+                // User registered to bot but not a VA member
+                message += "You are successfully setup for using this bot!";
+            }
+
+            await interaction.reply({
+                content: message,
+                ephemeral: true
+            });
+        } else {
+            // Registration failed
+            await interaction.reply({
+                content: `❌ **Registration Failed**\n\n${response.message}`,
+                ephemeral: true
+            });
+        }
 
     } catch (error) {
         await CommandErrorHandler.handleApiError(interaction, error, "Registration");

@@ -11,6 +11,7 @@ import { handleRegisterNew, handleRegisterLink } from "../commands/registerButto
 import { ConfigurePilotRoleHandler } from "../commands/ConfigurePilotRoleHandler";
 import { SyncUserModalHandler } from "../commands/SyncUserHandler";
 import { handleFlightHistory } from "../commands/logbookHandler";
+import { handleLiveFlights } from "../commands/liveHandler";
 import { logModeSelectionHandler } from "../commands/logModeSelectionHandler";
 import { commandMap } from "../configs/commandMap";
 
@@ -90,6 +91,11 @@ export class InteractionRouter {
                 await SyncUserModalHandler.execute(wrapped);
                 break;
 
+            case CUSTOM_IDS.MEMBERSHIP_JOIN_MODAL:
+                const MembershipJoinHandler = await import("../commands/membershipJoinModalHandler");
+                await MembershipJoinHandler.execute(wrapped);
+                break;
+
             default:
                 // Check if it's a PIREP modal with encoded mode_id (format: pirepModal_modeId)
                 if (interaction.customId.startsWith(CUSTOM_IDS.PIREP_MODAL)) {
@@ -145,6 +151,13 @@ export class InteractionRouter {
             return;
         }
 
+        // Handle membership join proceed button
+        if (interaction.customId === CUSTOM_IDS.MEMBERSHIP_JOIN_BUTTON) {
+            const { handleMembershipJoinProceed } = await import("../commands/membershipJoinButtonHandler");
+            await handleMembershipJoinProceed(wrapped);
+            return;
+        }
+
         // Handle PIREP mode selection buttons
         if (interaction.customId.startsWith(CUSTOM_IDS.PIREP_MODE_PREFIX)) {
             await logModeSelectionHandler(wrapped);
@@ -153,6 +166,14 @@ export class InteractionRouter {
 
         // Parse button custom ID: {prefix}_{action}_{param1}_{param2}
         const [prefix, action, ...params] = interaction.customId.split("_");
+
+        // Live flights pagination
+        if (prefix === "live" && (action === "prev" || action === "next")) {
+            const [pageStr] = params;
+            const page = parseInt(pageStr, 10);
+            await handleLiveFlights(wrapped, page);
+            return;
+        }
 
         // Flight history pagination
         if (prefix === "flights" && (action === "prev" || action === "next")) {

@@ -9,6 +9,7 @@ import * as stats from "../commands/stats";
 import * as log from "../commands/log";
 import * as help from "../commands/help";
 import * as dashboard from "../commands/dashboard";
+import * as membership from "../commands/membership";
 import { DiscordInteraction } from "../types/DiscordInteraction";
 
 export type CommandHandler = {
@@ -26,5 +27,6 @@ export const commandMap: Record<string, CommandHandler> = {
     stats,
     log,
     help,
-    dashboard
+    dashboard,
+    membership
 }

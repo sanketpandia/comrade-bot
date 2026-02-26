@@ -105,7 +105,7 @@ async function showNewUserRegistration(chatInput: any) {
     const infoEmbed = new EmbedBuilder()
         .setColor(0x0099FF)
         .setTitle("✈️ User Registration")
-        .setDescription("Register with Comrade Bot using your Infinite Flight Community account.")
+        .setDescription("Register with Comrade Bot using your Infinite Flight Community account. If this server is a Virtual Airline, callsign linking will be available after registration.")
         .addFields(
             {
                 name: "📝 IFC Username",
@@ -116,12 +116,7 @@ async function showNewUserRegistration(chatInput: any) {
                 name: "🛫 Last Flight",
                 value: "Your most recent flight (origin-destination).\nFormat: `EGLL-KSEA` (4-letter ICAO codes)\n\nPick the highlighted flight from your Infinite Flight logbook (see image below).",
                 inline: false
-            },
-            {
-                name: "🔢 Callsign (Optional)",
-                value: "1-5 digits for the VA (if this server is a registered VA).\nExample: `001`, `123`",
-                inline: false
-            },
+            }
         )
         .setImage("attachment://register_logbook.png")
         .setFooter({ text: "Click 'Proceed' to continue" });

@@ -22,7 +22,7 @@ export async function execute(interaction: DiscordInteraction) {
             // Fetch PIREP configuration
             const pirepConfig = await ApiService.getPirepConfig(metaInfo);
 
-            if (!pirepConfig.data) {
+            if (!pirepConfig.result) {
                 await chat.editReply({
                     embeds: [{
                         title: "Error",
@@ -34,10 +34,10 @@ export async function execute(interaction: DiscordInteraction) {
                 return;
             }
 
-            const { user_info, available_modes } = pirepConfig.data;
+            const { user_info, available_modes } = pirepConfig.result;
 
             // Filter only valid modes
-            const validModes = available_modes.filter(mode => mode.status === "valid");
+            const validModes = available_modes.filter((mode: any) => mode.status === "valid");
 
             if (validModes.length === 0) {
                 await chat.editReply({
@@ -52,7 +52,7 @@ export async function execute(interaction: DiscordInteraction) {
             }
 
             // Create mode selection buttons
-            const modeButtons = validModes.map(mode =>
+            const modeButtons = validModes.map((mode: any) =>
                 new ButtonBuilder()
                     .setCustomId(`mode_${mode.mode_id}`)
                     .setLabel(mode.display_name)
@@ -69,7 +69,7 @@ export async function execute(interaction: DiscordInteraction) {
 
             // Build the description with flight info and available modes
             const modeList = validModes
-                .map(mode => `• **${mode.display_name}**`)
+                .map((mode: any) => `• **${mode.display_name}**`)
                 .join("\n");
 
             await chat.editReply({

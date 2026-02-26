@@ -4,7 +4,7 @@ import { FlightHistoryRecord, HealthApiResponse, InitRegistrationResponse, InitS
 export class MessageFormatters {
   static generateHealthString(data: HealthApiResponse): string {
     if (!data) return "No data.";
-    let msg = `**Status:** ${data.status.toUpperCase()}\n**Uptime:** ${data.uptime}\n\n**Services:**\n`;
+    let msg = `**Bot Status:**\n**Status:** ${data.status.toUpperCase()}\n**Uptime:** ${data.uptime}\n\n**Services:**\n`;
     for (const [svc, status] of Object.entries(data.services)) {
       msg += `- **${svc}**: ${status.status.toUpperCase()}`;
       if (status.details) msg += ` (${status.details})`;
@@ -108,7 +108,7 @@ export class MessageFormatters {
     });
 
     // Build the message
-    let msg = "";
+    let msg = "**User Status:**\n";
 
     // Registration status
     msg += `**Registration Status:** ${data.is_active ? "✅ Registered" : "❌ Not Active"}\n`;

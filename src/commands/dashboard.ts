@@ -19,7 +19,7 @@ async function execute(interaction: DiscordInteraction): Promise<void> {
         const response = await ApiService.generateDashboardLink(metaInfo);
 
         // Check if response is valid
-        if (!response || !response.data?.url) {
+        if (!response || !response.result?.url) {
             await interaction.editReply({
                 content: '❌ Could not generate dashboard link.\n' +
                         'Please ensure you are registered with the Virtual Airline.',
@@ -27,8 +27,8 @@ async function execute(interaction: DiscordInteraction): Promise<void> {
             return;
         }
 
-        const url = response.data.url;
-        const expiresIn = response.data.expires_in || 900; // seconds
+        const url = response.result.url;
+        const expiresIn = response.result.expires_in || 900; // seconds
         const expiresInMinutes = Math.floor(expiresIn / 60);
 
         // Send response with dashboard link
