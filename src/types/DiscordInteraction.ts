@@ -12,7 +12,7 @@ export class DiscordInteraction {
 
     constructor(interaction: AnyInteraction) {
         this.guildId = interaction.guildId;
-        this.userId = '507205090474459156';
+        this.userId = interaction.user.id;
         this._interaction = interaction;
         this.deferred = interaction.deferred;
         this.replied = interaction.replied;
