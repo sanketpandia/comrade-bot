@@ -130,7 +130,7 @@ async function handleLinkOnlyRegistration(interaction: DiscordInteraction) {
         );
 
         // Validate response
-        if (!response?.data) {
+        if (!response?.result) {
             await CommandErrorHandler.handleEmptyResponse(interaction);
             return;
         }
