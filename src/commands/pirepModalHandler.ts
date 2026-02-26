@@ -110,8 +110,8 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
             const metaInfo = wrapped.getMetaInfo();
             const submitResponse = await ApiService.submitPirep(metaInfo, pirepData);
 
-            // Check if submission was successful (data.success flag)
-            const responseData = submitResponse.data;
+            // Check if submission was successful (result.success flag)
+            const responseData = submitResponse.result;
             if (!responseData || !responseData.success) {
                 console.error("[handlePirepModal] Submit failed:", submitResponse);
 
@@ -149,7 +149,7 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
                         },
                         {
                             name: "Processing Time",
-                            value: submitResponse.response_time || "N/A",
+                            value: submitResponse.responseTimeMs ? `${submitResponse.responseTimeMs}ms` : "N/A",
                             inline: true
                         }
                     ]

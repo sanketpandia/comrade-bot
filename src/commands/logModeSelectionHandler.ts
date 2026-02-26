@@ -23,7 +23,7 @@ export async function logModeSelectionHandler(interaction: DiscordInteraction): 
         const pirepConfig = await ApiService.getPirepConfig(metaInfo);
 
         // Validate we have data
-        if (!pirepConfig.data) {
+        if (!pirepConfig.result) {
             console.error("[logModeSelectionHandler] No data in PIREP config response");
             await buttonInteraction.reply({
                 content: "❌ Failed to load PIREP configuration",
@@ -33,10 +33,10 @@ export async function logModeSelectionHandler(interaction: DiscordInteraction): 
         }
 
         // Extract user info from config
-        const userInfo = pirepConfig.data.user_info;
+        const userInfo = pirepConfig.result.user_info;
 
         // Find the selected mode
-        const selectedMode = pirepConfig.data.available_modes.find(m => m.mode_id === modeId);
+        const selectedMode = pirepConfig.result.available_modes.find((m: { mode_id: string }) => m.mode_id === modeId);
 
         if (!selectedMode) {
             console.error(`[logModeSelectionHandler] Selected mode ${modeId} not found`);
