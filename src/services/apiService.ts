@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import { HealthApiResponse, InitRegistrationResponse, ApiResponse, FlightHistoryPage, InitServerResponse, LiveFlightRecord, UserDetailsData, PilotStatsData, PirepConfigResponse, PirepSubmitResponse, PirepSubmitRequest, RegistrationResult, MembershipJoinResult, InitServerResult } from "../types/Responses";
+import { HealthApiResponse, InitRegistrationResponse, ApiResponse, FlightHistoryPage, InitServerResponse, LiveFlightRecord, UserDetailsData, PilotStatsData, PirepConfigResponse, PirepSubmitResponse, PirepSubmitRequest, RegistrationResult, MembershipJoinResult, InitServerResult, EventsResponse, EventResponse, EventLegResponse } from "../types/Responses";
 import { MetaInfo } from "../types/DiscordInteraction";
 import { generateMetaHeaders } from "../helpers/utils";
 import { UnauthorizedError } from "../helpers/UnauthorizedException";
@@ -596,6 +596,124 @@ export class ApiService {
             return response.result;
         } catch (err) {
             console.error("[ApiService.joinMembership]", err);
+            throw err;
+        }
+    }
+
+    /**
+     * Get all active events for the current VA
+     * Returns list of active events with their legs
+     */
+    static async getActiveEvents(meta: MetaInfo): Promise<EventsResponse> {
+        try {
+            const res = await fetch(`${API_URL}/api/v1/events?active_only=true`, {
+                method: "GET",
+                headers: generateMetaHeaders(meta),
+            });
+
+            if (res.status === 401) {
+                const message = await res.text();
+                throw new UnauthorizedError(message || "Unauthorized");
+            }
+
+            if (!res.ok) {
+                throw new Error(`Failed to fetch active events: ${res.status} ${res.statusText}`);
+            }
+
+            const response: EventsResponse = await res.json() as EventsResponse;
+
+            if (!response.result) {
+                throw new Error("No data received in API response");
+            }
+
+            return response;
+        } catch (err) {
+            console.error("[ApiService.getActiveEvents]", err);
+            throw err;
+        }
+    }
+
+    /**
+     * Get a specific event leg by leg number from an event
+     * Returns the leg matching the leg_number
+     */
+    static async getEventLegByNumber(meta: MetaInfo, eventId: string, legNumber: number): Promise<EventLegResponse> {
+        try {
+            const res = await fetch(`${API_URL}/api/v1/events/${eventId}/legs`, {
+                method: "GET",
+                headers: generateMetaHeaders(meta),
+            });
+
+            if (res.status === 401) {
+                const message = await res.text();
+                throw new UnauthorizedError(message || "Unauthorized");
+            }
+
+            if (!res.ok) {
+                throw new Error(`Failed to fetch event legs: ${res.status} ${res.statusText}`);
+            }
+
+            const response: ApiResponse<EventLegResponse[]> = await res.json() as ApiResponse<EventLegResponse[]>;
+
+            if (!response.result) {
+                throw new Error("No data received in API response");
+            }
+
+            const leg = response.result.find(l => l.leg_number === legNumber);
+            if (!leg) {
+                throw new Error(`Leg number ${legNumber} not found in event`);
+            }
+
+            return leg;
+        } catch (err) {
+            console.error("[ApiService.getEventLegByNumber]", err);
+            throw err;
+        }
+    }
+
+    /**
+     * Update the additional_data field for an event leg
+     * Accepts a Record<string, any> that will be merged with existing additional_data
+     */
+    static async updateEventLegAdditionalData(
+        meta: MetaInfo,
+        eventId: string,
+        legId: string,
+        additionalData: Record<string, any>
+    ): Promise<EventLegResponse> {
+        try {
+            const res = await fetch(`${API_URL}/api/v1/events/${eventId}/legs/${legId}/additional-data`, {
+                method: "PATCH",
+                headers: {
+                    ...generateMetaHeaders(meta),
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ additional_data: additionalData })
+            });
+
+            if (res.status === 401) {
+                const message = await res.text();
+                throw new UnauthorizedError(message || "Unauthorized");
+            }
+
+            if (res.status === 403) {
+                const body = await res.json() as ApiResponse<any>;
+                throw new PermissionDeniedError(body.message || "Forbidden");
+            }
+
+            if (!res.ok) {
+                throw new Error(`Failed to update leg additional data: ${res.status} ${res.statusText}`);
+            }
+
+            const response: ApiResponse<EventLegResponse> = await res.json() as ApiResponse<EventLegResponse>;
+
+            if (!response.result) {
+                throw new Error("No data received in API response");
+            }
+
+            return response.result;
+        } catch (err) {
+            console.error("[ApiService.updateEventLegAdditionalData]", err);
             throw err;
         }
     }
