@@ -13,6 +13,9 @@ import { data as logCmd } from "../commands/log";
 import { data as helpCmd } from "../commands/help";
 import { data as dashboardCmd } from "../commands/dashboard";
 import { data as membershipCmd } from "../commands/membership";
+import { data as eventsCmd } from "../commands/events";
+import { data as tourCmd } from "../commands/tour";
+import { data as event_legCmd } from "../commands/event_leg";
 
 /**
  * Command registry
@@ -31,7 +34,10 @@ export const COMMANDS: (SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | S
     logCmd,
     helpCmd,
     dashboardCmd,
-    membershipCmd
+    membershipCmd,
+    eventsCmd,
+    tourCmd,
+    event_legCmd
 ];
 
 /**

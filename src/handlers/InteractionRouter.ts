@@ -13,6 +13,7 @@ import { SyncUserModalHandler } from "../commands/SyncUserHandler";
 import { handleFlightHistory } from "../commands/logbookHandler";
 import { handleLiveFlights } from "../commands/liveHandler";
 import { logModeSelectionHandler } from "../commands/logModeSelectionHandler";
+import { handleTourFilePirep } from "../commands/tourButtonHandler";
 import { commandMap } from "../configs/commandMap";
 
 /**
@@ -161,6 +162,12 @@ export class InteractionRouter {
         // Handle PIREP mode selection buttons
         if (interaction.customId.startsWith(CUSTOM_IDS.PIREP_MODE_PREFIX)) {
             await logModeSelectionHandler(wrapped);
+            return;
+        }
+
+        // Handle tour File PIREP button
+        if (interaction.customId === "tour_file_pirep") {
+            await handleTourFilePirep(wrapped);
             return;
         }
 
