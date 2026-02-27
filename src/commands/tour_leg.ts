@@ -4,8 +4,8 @@ import { ApiService } from "../services/apiService";
 import { UnauthorizedError } from "../helpers/UnauthorizedException";
 
 export const data = new SlashCommandBuilder()
-    .setName("event_leg")
-    .setDescription("View details of a specific event leg")
+    .setName("tour_leg")
+    .setDescription("View details of a specific tour leg")
     .addIntegerOption(option =>
         option
             .setName("number")
@@ -243,7 +243,7 @@ export async function execute(interaction: DiscordInteraction) {
                 return;
             }
 
-            console.error("[event_leg command] Error fetching leg:", legErr);
+            console.error("[tour_leg command] Error fetching leg:", legErr);
             await chat.editReply({
                 embeds: [{
                     title: "Error",
@@ -254,7 +254,7 @@ export async function execute(interaction: DiscordInteraction) {
             });
         }
     } catch (err) {
-        console.error("[event_leg command]", err);
+        console.error("[tour_leg command]", err);
         try {
             const chat = interaction.getChatInputInteraction();
             if (chat) {
@@ -267,7 +267,7 @@ export async function execute(interaction: DiscordInteraction) {
                 });
             }
         } catch (replyErr) {
-            console.error("[event_leg command] Failed to send error message:", replyErr);
+            console.error("[tour_leg command] Failed to send error message:", replyErr);
         }
     }
 }

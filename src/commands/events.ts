@@ -105,7 +105,7 @@ export async function execute(interaction: DiscordInteraction) {
                     color: 0x0099ff,
                     timestamp: new Date().toISOString(),
                     footer: {
-                        text: `Use /tour for tour details • Use /event_leg <number> to view leg details • Response: ${eventsResponse.responseTimeMs || 0}ms`
+                        text: `Use /tour for tour details • Use /tour_leg <number> to view leg details • Response: ${eventsResponse.responseTimeMs || 0}ms`
                     }
                 }]
             });
