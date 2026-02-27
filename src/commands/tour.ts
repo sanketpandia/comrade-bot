@@ -23,7 +23,7 @@ export async function execute(interaction: DiscordInteraction) {
             const events = eventsResponse.result || [];
 
             // Find active multi-leg event (tour)
-            const tourEvent = events.find(event => (event.legs?.length || 0) > 1);
+            const tourEvent = events.find((event: any) => (event.legs?.length || 0) > 1);
 
             if (!tourEvent) {
                 await chat.editReply({

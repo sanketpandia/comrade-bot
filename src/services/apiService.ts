@@ -1,5 +1,23 @@
 import fetch from "node-fetch";
-import { HealthApiResponse, InitRegistrationResponse, ApiResponse, FlightHistoryPage, InitServerResponse, LiveFlightRecord, UserDetailsData, PilotStatsData, PirepConfigResponse, PirepSubmitResponse, PirepSubmitRequest, RegistrationResult, MembershipJoinResult, InitServerResult, EventsResponse, EventResponse, EventLegResponse } from "../types/Responses";
+import { 
+    HealthApiResponse, 
+    InitRegistrationResponse, 
+    ApiResponse, 
+    FlightHistoryPage, 
+    InitServerResponse, 
+    LiveFlightRecord, 
+    UserDetailsData, 
+    PilotStatsData, 
+    PirepConfigResponse, 
+    PirepSubmitResponse, 
+    PirepSubmitRequest, 
+    RegistrationResult, 
+    MembershipJoinResult, 
+    InitServerResult,
+    EventsResponse,
+    EventResponse,
+    EventLegResponse
+} from "../types/Responses";
 import { MetaInfo } from "../types/DiscordInteraction";
 import { generateMetaHeaders } from "../helpers/utils";
 import { UnauthorizedError } from "../helpers/UnauthorizedException";

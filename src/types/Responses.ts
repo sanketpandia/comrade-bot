@@ -241,3 +241,37 @@ export interface MembershipJoinResult {
 }
 
 export type MembershipJoinResponse = ApiResponse<MembershipJoinResult>;
+
+// Event Response Types
+export interface EventLegResponse {
+  id: string;
+  event_id: string;
+  leg_number: number;
+  origin: string;
+  destination: string;
+  route_at_id?: string;
+  description?: string;
+  thumbnail_url?: string;
+  additional_data?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  created_by_id?: string;
+  updated_by_id?: string;
+}
+
+export interface EventResponse {
+  id: string;
+  name: string;
+  description?: string;
+  status: string;
+  start_date?: string;
+  end_date?: string;
+  is_active: boolean;
+  legs?: EventLegResponse[];
+  created_at: string;
+  updated_at: string;
+  created_by_id?: string;
+  updated_by_id?: string;
+}
+
+export type EventsResponse = ApiResponse<EventResponse[]>;
