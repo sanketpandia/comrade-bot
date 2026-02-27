@@ -137,7 +137,7 @@ export async function execute(interaction: DiscordInteraction) {
                     color: 0x0099ff,
                     timestamp: new Date().toISOString(),
                     footer: {
-                        text: "Use /event_leg <number> to view detailed leg information"
+                        text: "Use /tour_leg <number> to view detailed leg information"
                     }
                 }],
                 components: [buttonRow]
