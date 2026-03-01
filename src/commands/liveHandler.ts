@@ -34,9 +34,9 @@ export async function handleLiveFlights(
 
   // ── 1) ACK once ────────────────────────────────
   if (fromSlash) {
-    await chat!.deferReply();
+    await chat!.deferReply({ ephemeral: true });
   } else {
-    await btn!.deferUpdate();
+    await btn!.deferReply({ ephemeral: true });
   }
 
   // ── 2) Fetch data ──────────────────────────────
@@ -63,7 +63,7 @@ export async function handleLiveFlights(
         timestamp: new Date().toISOString()
       };
       if (fromSlash) await chat!.editReply({ embeds: [errorEmbed] });
-      else await btn!.followUp({ embeds: [errorEmbed] });
+      else await btn!.followUp({ embeds: [errorEmbed], ephemeral: true });
       return;
     }
 
@@ -76,7 +76,7 @@ export async function handleLiveFlights(
         timestamp: new Date().toISOString()
       };
       if (fromSlash) await chat!.editReply({ embeds: [errorEmbed] });
-      else await btn!.followUp({ embeds: [errorEmbed] });
+      else await btn!.followUp({ embeds: [errorEmbed], ephemeral: true });
       return;
     }
 
@@ -88,7 +88,7 @@ export async function handleLiveFlights(
       timestamp: new Date().toISOString()
     };
     if (fromSlash) await chat!.editReply({ embeds: [errorEmbed] });
-    else await btn!.followUp({ embeds: [errorEmbed] });
+    else await btn!.followUp({ embeds: [errorEmbed], ephemeral: true });
     return;
   }
 
