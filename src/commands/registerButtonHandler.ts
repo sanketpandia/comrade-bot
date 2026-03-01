@@ -54,15 +54,15 @@ export async function handleRegisterLink(interaction: DiscordInteraction) {
     const buttonInteraction = interaction.getButtonInteraction();
     if (!buttonInteraction) return;
 
-    // Build modal with only callsign field
+    // Build modal with only callsign field (same as membership join)
     const callsignInput = new TextInputBuilder()
         .setCustomId("callsign")
-        .setLabel("Callsign Number (1-5 digits)")
+        .setLabel("Your Callsign")
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder("001")
+        .setPlaceholder("Enter your callsign exactly as registered")
         .setRequired(true)
         .setMinLength(1)
-        .setMaxLength(5);
+        .setMaxLength(50);
 
     const modal = new ModalBuilder()
         .setCustomId("register_link_modal")

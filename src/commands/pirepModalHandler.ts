@@ -1,6 +1,8 @@
 import { ApiService } from "../services/apiService";
 import { DiscordInteraction } from "../types/DiscordInteraction";
 import { CUSTOM_IDS } from "../configs/constants";
+import { UnauthorizedError } from "../helpers/UnauthorizedException";
+import { PermissionDeniedError } from "../helpers/PermissionDeniedException";
 
 export const data = {
     name: CUSTOM_IDS.PIREP_MODAL
@@ -73,16 +75,28 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
         if (cargoKg) summaryLines.push(`Cargo: ${cargoKg} kg`);
         if (passengers) summaryLines.push(`Passengers: ${passengers}`);
 
-        // Build PIREP submission data
-        const pirepData = {
+        // Build PIREP submission data (only include defined fields)
+        const pirepData: any = {
             mode: modeId,
-            route_id: routeId || undefined,
             flight_time: flightTime,
-            pilot_remarks: pilotRemarks,
-            fuel_kg: fuelKg,
-            cargo_kg: cargoKg,
-            passengers: passengers,
         };
+
+        // Only add optional fields if they are defined
+        if (routeId !== undefined && routeId !== null && routeId !== '') {
+            pirepData.route_id = routeId;
+        }
+        if (pilotRemarks !== undefined && pilotRemarks !== null && pilotRemarks !== '') {
+            pirepData.pilot_remarks = pilotRemarks;
+        }
+        if (fuelKg !== undefined && fuelKg !== null && !isNaN(fuelKg)) {
+            pirepData.fuel_kg = fuelKg;
+        }
+        if (cargoKg !== undefined && cargoKg !== null && !isNaN(cargoKg)) {
+            pirepData.cargo_kg = cargoKg;
+        }
+        if (passengers !== undefined && passengers !== null && !isNaN(passengers)) {
+            pirepData.passengers = passengers;
+        }
 
         // Log the collected data
         console.log("[handlePirepModal] Submitting PIREP Data:", pirepData);
@@ -110,21 +124,34 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
             const metaInfo = wrapped.getMetaInfo();
             const submitResponse = await ApiService.submitPirep(metaInfo, pirepData);
 
-            // Check if submission was successful (result.success flag)
-            const responseData = submitResponse.result;
-            if (!responseData || !responseData.success) {
+            // Check if submission was successful
+            // Backend returns either: {status: "success", result: {...}} or {status: "success", data: {...}}
+            const responseData = submitResponse.result || (submitResponse as any).data;
+            const isSuccess = submitResponse.status === "success" && 
+                             (responseData?.success !== false) && 
+                             (responseData !== undefined || submitResponse.status === "success");
+
+            if (!isSuccess) {
                 console.error("[handlePirepModal] Submit failed:", submitResponse);
 
                 // Extract error message from response, with multiple fallback options
-                const errorMessage =
+                let errorMessage =
                     responseData?.error_message ||
+                    responseData?.message ||
                     submitResponse.message ||
                     "Failed to process PIREP submission. Please try again.";
+
+                // Handle specific error types with user-friendly messages
+                if (responseData?.error === "FLIGHT_NOT_FOUND") {
+                    errorMessage = "❌ **Could not identify your flight.**\n\nPlease ensure you are currently in the game's server with your VA callsign.";
+                } else if (responseData?.error === "ROUTE_NOT_MATCHED") {
+                    errorMessage = "❌ **Your flight plan start and end do not denote a tour route.**\n\nPlease check that your flight plan matches one of the tour leg routes.";
+                }
 
                 await modalInteraction.editReply({
                     embeds: [{
                         title: "❌ PIREP Submission Failed",
-                        description: `Error: ${errorMessage}`,
+                        description: errorMessage,
                         color: 0xff0000,
                         timestamp: new Date().toISOString(),
                     }]
@@ -135,6 +162,9 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
             // Show success response
             console.log("[handlePirepModal] PIREP submitted successfully:", submitResponse);
 
+            // Extract PIREP ID from either result or data field
+            const pirepId = responseData?.pirep_id || (submitResponse as any).data?.pirep_id || "N/A";
+
             await modalInteraction.editReply({
                 embeds: [{
                     title: "✅ PIREP Submitted Successfully",
@@ -144,7 +174,7 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
                     fields: [
                         {
                             name: "PIREP ID",
-                            value: responseData.pirep_id || "N/A",
+                            value: pirepId,
                             inline: true
                         },
                         {
@@ -158,10 +188,34 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
         } catch (submitErr) {
             console.error("[handlePirepModal] Submit API call failed:", submitErr);
             try {
+                if (submitErr instanceof UnauthorizedError) {
+                    await modalInteraction.editReply({
+                        embeds: [{
+                            title: "🔒 Not Authorized",
+                            description: `❌ ${submitErr.message}`,
+                            color: 0xff0000,
+                            timestamp: new Date().toISOString(),
+                        }]
+                    });
+                    return;
+                }
+
+                if (submitErr instanceof PermissionDeniedError) {
+                    await modalInteraction.editReply({
+                        embeds: [{
+                            title: "⚠️ Registration Required",
+                            description: `❌ ${submitErr.message}\n\nPlease register your account using the \`/register\` command before submitting PIREPs.`,
+                            color: 0xff9900,
+                            timestamp: new Date().toISOString(),
+                        }]
+                    });
+                    return;
+                }
+
                 await modalInteraction.editReply({
                     embeds: [{
                         title: "❌ PIREP Submission Error",
-                        description: "Failed to submit PIREP to backend. Please try again later.",
+                        description: submitErr instanceof Error ? submitErr.message : "Failed to submit PIREP to backend. Please try again later.",
                         color: 0xff0000,
                         timestamp: new Date().toISOString(),
                     }]

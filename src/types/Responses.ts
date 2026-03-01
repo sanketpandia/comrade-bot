@@ -227,6 +227,7 @@ export interface PirepSubmitData {
   pirep_id?: string;
   error_type?: string;
   error_message?: string;
+  error?: string; // Error code like "FLIGHT_NOT_FOUND" or "ROUTE_NOT_MATCHED"
 }
 
 export type PirepSubmitResponse = ApiResponse<PirepSubmitData>;
@@ -243,7 +244,7 @@ export interface MembershipJoinResult {
 export type MembershipJoinResponse = ApiResponse<MembershipJoinResult>;
 
 // Event Response Types
-export interface EventLegResponse {
+export interface TourLegResponse {
   id: string;
   event_id: string;
   leg_number: number;
@@ -267,7 +268,7 @@ export interface EventResponse {
   start_date?: string;
   end_date?: string;
   is_active: boolean;
-  legs?: EventLegResponse[];
+  legs?: TourLegResponse[];
   created_at: string;
   updated_at: string;
   created_by_id?: string;

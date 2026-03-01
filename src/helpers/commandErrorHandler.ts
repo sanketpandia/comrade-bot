@@ -12,6 +12,7 @@ export const ErrorMessages = {
     PERMISSION_DENIED: (message: string) => `🔒 **Permission Denied**\n${message}`,
     VALIDATION_ERROR: (field: string, requirement: string) => `❌ Invalid ${field}. ${requirement}`,
     USER_ALREADY_REGISTERED: "❌ **Already Registered**\nThis IFC account is already registered. Use `/status` to view your details.",
+    IFC_ID_ALREADY_REGISTERED: "❌ **IFC ID Already Registered**\nThis IFC ID is already registered to another Discord account. Each IFC ID can only be linked to one Discord account. If you believe this is an error, please contact support.",
     IFC_USER_NOT_FOUND: "❌ **IFC User Not Found**\nThe provided IFC username was not found. Please check your spelling and try again.",
     FLIGHT_MISMATCH: "❌ **Flight Verification Failed**\nThe flight route you provided doesn't match your most recent flight. Please verify your last flight in the Infinite Flight app and try again.",
 } as const;
@@ -59,9 +60,20 @@ export class CommandErrorHandler {
         }
 
         // Handle specific registration errors
-        const errorMessage = error instanceof Error ? error.message.toLowerCase() : '';
+        const errorMessage = error instanceof Error ? error.message : '';
+        const errorMessageLower = errorMessage.toLowerCase();
 
-        if (errorMessage.includes('already registered')) {
+        // Check for IFC ID duplicate error first (more specific)
+        if (errorMessage.includes('IFC_ID_ALREADY_REGISTERED') || errorMessageLower.includes('ifc id is already registered')) {
+            await interaction.reply({
+                content: ErrorMessages.IFC_ID_ALREADY_REGISTERED,
+                ephemeral: true
+            });
+            return;
+        }
+
+        // Check for user already registered (Discord user already registered)
+        if (errorMessageLower.includes('already registered') && !errorMessageLower.includes('ifc id')) {
             await interaction.reply({
                 content: ErrorMessages.USER_ALREADY_REGISTERED,
                 ephemeral: true

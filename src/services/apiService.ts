@@ -16,7 +16,7 @@ import {
     InitServerResult,
     EventsResponse,
     EventResponse,
-    EventLegResponse
+    TourLegResponse
 } from "../types/Responses";
 import { MetaInfo } from "../types/DiscordInteraction";
 import { generateMetaHeaders } from "../helpers/utils";
@@ -76,7 +76,16 @@ export class ApiService {
 
             if (res.status === 409) {
                 const body = await res.json() as any;
-                throw new Error(body.error?.message || "User already registered");
+                const errorCode = body.error?.code || body.error?.error_code;
+                const errorMessage = body.error?.message || body.message;
+                
+                // Check if it's IFC ID duplicate error
+                if (errorCode === "IFC_ID_ALREADY_REGISTERED" || errorMessage?.includes("IFC ID is already registered")) {
+                    throw new Error("IFC_ID_ALREADY_REGISTERED: " + (errorMessage || "This IFC ID is already registered to another Discord account."));
+                }
+                
+                // Otherwise, it's the user already registered error
+                throw new Error(errorMessage || "User already registered");
             }
 
             if (res.status === 404) {
@@ -90,13 +99,34 @@ export class ApiService {
             }
 
             if (!res.ok) {
+                const errorText = await res.text();
+                console.error("[ApiService.initiateRegistration] Error response:", res.status, errorText);
                 throw new Error(`Failed to fetch initRegistration: ${res.status} ${res.statusText}`);
             }
-            const response: ApiResponse<RegistrationResult> = await res.json() as ApiResponse<RegistrationResult>;
+            
+            const responseText = await res.text();
+            console.log("[ApiService.initiateRegistration] Raw response:", responseText);
+            
+            let response: ApiResponse<RegistrationResult>;
+            try {
+                response = JSON.parse(responseText) as ApiResponse<RegistrationResult>;
+            } catch (jsonErr) {
+                console.error("[ApiService.initiateRegistration] JSON parse error:", jsonErr);
+                throw new Error("Failed to parse API response as JSON");
+            }
+
+            // Log response for debugging
+            console.log("[ApiService.initiateRegistration] Response:", JSON.stringify(response, null, 2));
+
+            if (!response) {
+                throw new Error("Empty response from API");
+            }
 
             if (!response.result) {
-                throw new Error("No data received in API response");
+                console.error("[ApiService.initiateRegistration] Response missing result field:", JSON.stringify(response, null, 2));
+                throw new Error("No data received in API response - result field is missing");
             }
+            
             return response.result;
         } catch (err) {
             console.error("[ApiService.initRegistation]", err);
@@ -496,9 +526,39 @@ export class ApiService {
                 throw new UnauthorizedError(message || "Unauthorized");
             }
 
+            if (res.status === 403) {
+                const body = await res.json() as any;
+                const errorMessage = body.error?.message || body.message || "Access denied";
+                throw new PermissionDeniedError(errorMessage);
+            }
+
             if (!res.ok) {
-                const errorResponse = await res.json() as PirepSubmitResponse;
-                return errorResponse;
+                // Try to parse error response
+                try {
+                    const errorResponse = await res.json() as any;
+                    // Extract error from nested result structure if present
+                    const result = errorResponse.result || {};
+                    // Return error response with proper structure
+                    return {
+                        status: errorResponse.status || "error",
+                        message: errorResponse.message || "PIREP submission failed",
+                        result: {
+                            success: false,
+                            error_message: result.error_message || errorResponse.message || "PIREP submission failed",
+                            error: result.error || errorResponse.error,
+                        } as any,
+                    } as PirepSubmitResponse;
+                } catch (parseErr) {
+                    // If JSON parsing fails, return generic error
+                    return {
+                        status: "error",
+                        message: `Failed to submit PIREP: ${res.status} ${res.statusText}`,
+                        result: {
+                            success: false,
+                            error_message: `HTTP ${res.status}: ${res.statusText}`,
+                        } as any,
+                    } as PirepSubmitResponse;
+                }
             }
 
             const response: PirepSubmitResponse = await res.json() as PirepSubmitResponse;
@@ -634,8 +694,22 @@ export class ApiService {
                 throw new UnauthorizedError(message || "Unauthorized");
             }
 
+            if (res.status === 403) {
+                const body = await res.json() as any;
+                const errorMessage = body.error?.message || body.message || "Access denied";
+                throw new PermissionDeniedError(errorMessage);
+            }
+
             if (!res.ok) {
-                throw new Error(`Failed to fetch active events: ${res.status} ${res.statusText}`);
+                // Try to parse error response
+                try {
+                    const body = await res.json() as any;
+                    const errorMessage = body.error?.message || body.message || `Failed to fetch active events: ${res.status} ${res.statusText}`;
+                    throw new Error(errorMessage);
+                } catch (parseErr) {
+                    // If parsing fails, use status text
+                    throw new Error(`Failed to fetch active events: ${res.status} ${res.statusText}`);
+                }
             }
 
             const response: EventsResponse = await res.json() as EventsResponse;
@@ -655,7 +729,7 @@ export class ApiService {
      * Get a specific event leg by leg number from an event
      * Returns the leg matching the leg_number
      */
-    static async getEventLegByNumber(meta: MetaInfo, eventId: string, legNumber: number): Promise<EventLegResponse> {
+    static async getEventLegByNumber(meta: MetaInfo, eventId: string, legNumber: number): Promise<TourLegResponse> {
         try {
             const res = await fetch(`${API_URL}/api/v1/events/${eventId}/legs`, {
                 method: "GET",
@@ -667,11 +741,25 @@ export class ApiService {
                 throw new UnauthorizedError(message || "Unauthorized");
             }
 
-            if (!res.ok) {
-                throw new Error(`Failed to fetch event legs: ${res.status} ${res.statusText}`);
+            if (res.status === 403) {
+                const body = await res.json() as any;
+                const errorMessage = body.error?.message || body.message || "Access denied";
+                throw new PermissionDeniedError(errorMessage);
             }
 
-            const response: ApiResponse<EventLegResponse[]> = await res.json() as ApiResponse<EventLegResponse[]>;
+            if (!res.ok) {
+                // Try to parse error response
+                try {
+                    const body = await res.json() as any;
+                    const errorMessage = body.error?.message || body.message || `Failed to fetch event legs: ${res.status} ${res.statusText}`;
+                    throw new Error(errorMessage);
+                } catch (parseErr) {
+                    // If parsing fails, use status text
+                    throw new Error(`Failed to fetch event legs: ${res.status} ${res.statusText}`);
+                }
+            }
+
+            const response: ApiResponse<TourLegResponse[]> = await res.json() as ApiResponse<TourLegResponse[]>;
 
             if (!response.result) {
                 throw new Error("No data received in API response");
@@ -698,7 +786,7 @@ export class ApiService {
         eventId: string,
         legId: string,
         additionalData: Record<string, any>
-    ): Promise<EventLegResponse> {
+    ): Promise<TourLegResponse> {
         try {
             const res = await fetch(`${API_URL}/api/v1/events/${eventId}/legs/${legId}/additional-data`, {
                 method: "PATCH",
@@ -723,7 +811,7 @@ export class ApiService {
                 throw new Error(`Failed to update leg additional data: ${res.status} ${res.statusText}`);
             }
 
-            const response: ApiResponse<EventLegResponse> = await res.json() as ApiResponse<EventLegResponse>;
+            const response: ApiResponse<TourLegResponse> = await res.json() as ApiResponse<TourLegResponse>;
 
             if (!response.result) {
                 throw new Error("No data received in API response");

@@ -1,33 +1,57 @@
+import {
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    ActionRowBuilder,
+    ModalActionRowComponentBuilder,
+    MessageFlags,
+} from "discord.js";
 import { DiscordInteraction } from "../types/DiscordInteraction";
+import { CUSTOM_IDS } from "../configs/constants";
 
 /**
  * Handle the "File PIREP" button click from the /tour command
- * This is a placeholder that shows a message directing users to use /log
+ * Shows a modal asking for flight time in hh:mm format
  */
 export async function handleTourFilePirep(interaction: DiscordInteraction): Promise<void> {
     const button = interaction.getButtonInteraction();
     if (!button) return;
 
     try {
-        // Show placeholder message directing to /log command
-        await button.reply({
-            embeds: [{
-                title: "File PIREP",
-                description: "To file a PIREP for the tour, use the `/log` command.\n\nThis will allow you to file a PIREP for your current flight.",
-                color: 0x0099ff,
-                timestamp: new Date().toISOString()
-            }],
-            ephemeral: true
-        });
+        // Create modal for flight time input
+        const modal = new ModalBuilder()
+            .setCustomId(`${CUSTOM_IDS.PIREP_MODAL}_tour`)
+            .setTitle("File Tour PIREP");
+
+        // Add flight time input field
+        const flightTimeField = new TextInputBuilder()
+            .setCustomId("flight_time")
+            .setLabel("Flight Time")
+            .setPlaceholder("HH:MM (e.g., 02:30)")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setMinLength(4)
+            .setMaxLength(5);
+
+        const flightTimeRow = new ActionRowBuilder<ModalActionRowComponentBuilder>()
+            .addComponents(flightTimeField);
+
+        modal.addComponents(flightTimeRow);
+
+        // Show the modal
+        await button.showModal(modal);
     } catch (err) {
-        console.error("[tourButtonHandler] Error handling File PIREP button:", err);
+        console.error("[tourButtonHandler] Error showing modal:", err);
         try {
-            await button.reply({
-                content: "⚠️ An error occurred. Please try using `/log` to file your PIREP.",
-                ephemeral: true
-            });
+            if (!button.replied && !button.deferred) {
+                await button.reply({
+                    content: "⚠️ An error occurred while opening the PIREP form. Please try again.",
+                    flags: MessageFlags.Ephemeral
+                });
+            }
         } catch (replyErr) {
-            console.error("[tourButtonHandler] Failed to send error message:", replyErr);
+            console.error("[tourButtonHandler] Failed to send  message:", replyErr);
         }
     }
+
 }
