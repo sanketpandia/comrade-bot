@@ -155,15 +155,14 @@ async function handleLinkOnlyRegistration(interaction: DiscordInteraction) {
         );
 
         // Validate response
-        if (!response?.result) {
+        if (!response) {
             await CommandErrorHandler.handleEmptyResponse(interaction);
             return;
         }
 
         // Send success response
-        const result = response.result;
         await interaction.reply({
-            content: `✅ **Successfully Linked to Virtual Airline!**\n\nYou're now linked with callsign **${result.callsign || callsign}**.\n\nUse \`/help\` to learn how to use Comrade Bot.`,
+            content: `✅ **Successfully Linked to Virtual Airline!**\n\nYou're now linked with callsign **${response.callsign || callsign}**.\n\nUse \`/help\` to learn how to use Comrade Bot.`,
             ephemeral: true
         });
 
