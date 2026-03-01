@@ -75,28 +75,30 @@ export async function execute(interaction: DiscordInteraction) {
                 const dateInfo: string[] = [];
                 if (tourEvent.start_date) {
                     const startDate = new Date(tourEvent.start_date);
-                    dateInfo.push(`📅 **Start:** ${startDate.toLocaleDateString("en-US", {
+                    dateInfo.push(`**Start:** ${startDate.toLocaleString("en-US", {
                         month: "short",
                         day: "numeric",
                         year: "numeric",
                         hour: "2-digit",
                         minute: "2-digit",
+                        hour12: false,
                         timeZone: "UTC"
-                    })} ZULU`);
+                    })}Z`);
                 }
                 if (tourEvent.end_date) {
                     const endDate = new Date(tourEvent.end_date);
-                    dateInfo.push(`📅 **End:** ${endDate.toLocaleDateString("en-US", {
+                    dateInfo.push(`**End:** ${endDate.toLocaleString("en-US", {
                         month: "short",
                         day: "numeric",
                         year: "numeric",
                         hour: "2-digit",
                         minute: "2-digit",
+                        hour12: false,
                         timeZone: "UTC"
-                    })} ZULU`);
+                    })}Z`);
                 }
                 fields.push({
-                    name: "📅 Dates (ZULU)",
+                    name: "Dates",
                     value: dateInfo.join("\n"),
                     inline: false
                 });
