@@ -114,7 +114,7 @@ export async function execute(interaction: DiscordInteraction) {
                 });
             }
 
-            // Add event dates from parent event
+            // Add event dates from parent event (displayed in ZULU time)
             if (tourEvent.start_date || tourEvent.end_date) {
                 const dateInfo: string[] = [];
                 if (tourEvent.start_date) {
@@ -124,8 +124,9 @@ export async function execute(interaction: DiscordInteraction) {
                         day: "numeric",
                         year: "numeric",
                         hour: "2-digit",
-                        minute: "2-digit"
-                    })}`);
+                        minute: "2-digit",
+                        timeZone: "UTC"
+                    })} ZULU`);
                 }
                 if (tourEvent.end_date) {
                     const endDate = new Date(tourEvent.end_date);
@@ -134,11 +135,12 @@ export async function execute(interaction: DiscordInteraction) {
                         day: "numeric",
                         year: "numeric",
                         hour: "2-digit",
-                        minute: "2-digit"
-                    })}`);
+                        minute: "2-digit",
+                        timeZone: "UTC"
+                    })} ZULU`);
                 }
                 fields.push({
-                    name: "📅 Event Dates",
+                    name: "📅 Event Dates (ZULU)",
                     value: dateInfo.join("\n"),
                     inline: false
                 });
