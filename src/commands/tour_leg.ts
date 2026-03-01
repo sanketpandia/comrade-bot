@@ -1,7 +1,8 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { DiscordInteraction } from "../types/DiscordInteraction";
 import { ApiService } from "../services/apiService";
 import { UnauthorizedError } from "../helpers/UnauthorizedException";
+import { PermissionDeniedError } from "../helpers/PermissionDeniedException";
 
 export const data = new SlashCommandBuilder()
     .setName("tour_leg")
@@ -144,7 +145,35 @@ export async function execute(interaction: DiscordInteraction) {
             }
 
             // Additional Data Section
+            // Check for Flight Plan to send separately after embed
+            let flightPlanText: string | null = null;
+            let flightPlanKey: string | null = null;
+            
             if (leg.additional_data && Object.keys(leg.additional_data).length > 0) {
+                // Check for Flight Plan or Plan in additional_data (case-insensitive, with variations)
+                const flightPlanKeyPatterns = ["flight plan", "plan", "flightplan", "flight_plan"];
+
+                for (const [key, value] of Object.entries(leg.additional_data)) {
+                    const keyLower = key.toLowerCase().trim();
+                    // Check if key matches any flight plan pattern
+                    const matchesPattern = flightPlanKeyPatterns.some(pattern => 
+                        keyLower === pattern || keyLower.includes(pattern)
+                    );
+                    
+                    if (matchesPattern && value != null && value !== "") {
+                        // Accept any truthy value (string, array, etc.)
+                        const planText = Array.isArray(value) 
+                            ? value.join("\n") 
+                            : String(value).trim();
+                        
+                        if (planText) {
+                            flightPlanText = planText;
+                            flightPlanKey = key;
+                            break;
+                        }
+                    }
+                }
+
                 // Filter out Airtable record IDs (but keep other useful IDs)
                 const filteredAdditionalData = Object.entries(leg.additional_data).filter(([key]) => {
                     const keyLower = key.toLowerCase();
@@ -227,16 +256,58 @@ export async function execute(interaction: DiscordInteraction) {
                 };
             }
 
+            // Create "File PIREP" button
+            const filePirepButton = new ButtonBuilder()
+                .setCustomId("tour_leg_file_pirep")
+                .setLabel("File PIREP")
+                .setStyle(ButtonStyle.Primary);
+
+            const buttonRow = new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(filePirepButton);
+
             await chat.editReply({
-                embeds: [embed]
+                embeds: [embed],
+                components: [buttonRow]
             });
+
+            // Send flight plan after embed (try DM first, then channel message)
+            if (flightPlanText && flightPlanKey) {
+                // Try to DM first
+                try {
+                    const user = chat.user;
+                    await user.send(flightPlanText);
+                } catch (dmErr) {
+                    console.error("[tour_leg command] Failed to send DM:", dmErr);
+                    // If DM failed, send as follow-up message in channel
+                    try {
+                        await chat.followUp({
+                            content: flightPlanText,
+                            ephemeral: false
+                        });
+                    } catch (followUpErr) {
+                        console.error("[tour_leg command] Failed to send follow-up message:", followUpErr);
+                    }
+                }
+            }
         } catch (legErr: any) {
             if (legErr instanceof UnauthorizedError) {
                 await chat.editReply({
                     embeds: [{
-                        title: "Not Authorized",
+                        title: "🔒 Not Authorized",
                         description: `❌ ${legErr.message}`,
                         color: 0xff0000,
+                        timestamp: new Date().toISOString()
+                    }]
+                });
+                return;
+            }
+
+            if (legErr instanceof PermissionDeniedError) {
+                await chat.editReply({
+                    embeds: [{
+                        title: "⚠️ Registration Required",
+                        description: `❌ ${legErr.message}\n\nPlease register your account using the \`/register\` command before accessing tour leg information.`,
+                        color: 0xff9900,
                         timestamp: new Date().toISOString()
                     }]
                 });
@@ -246,8 +317,8 @@ export async function execute(interaction: DiscordInteraction) {
             console.error("[tour_leg command] Error fetching leg:", legErr);
             await chat.editReply({
                 embeds: [{
-                    title: "Error",
-                    description: `❌ Unable to fetch leg details: ${legErr.message || 'Unknown error'}`,
+                    title: "❌ Error",
+                    description: `Unable to fetch leg details: ${legErr.message || 'Unknown error'}`,
                     color: 0xff0000,
                     timestamp: new Date().toISOString()
                 }]

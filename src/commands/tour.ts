@@ -2,6 +2,7 @@ import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } fro
 import { DiscordInteraction } from "../types/DiscordInteraction";
 import { ApiService } from "../services/apiService";
 import { UnauthorizedError } from "../helpers/UnauthorizedException";
+import { PermissionDeniedError } from "../helpers/PermissionDeniedException";
 
 export const data = new SlashCommandBuilder()
     .setName("tour")
@@ -149,6 +150,18 @@ export async function execute(interaction: DiscordInteraction) {
                         title: "🔒 Not Authorized",
                         description: `❌ ${tourErr.message}`,
                         color: 0xff0000,
+                        timestamp: new Date().toISOString()
+                    }]
+                });
+                return;
+            }
+
+            if (tourErr instanceof PermissionDeniedError) {
+                await chat.editReply({
+                    embeds: [{
+                        title: "⚠️ Registration Required",
+                        description: `❌ ${tourErr.message}\n\nPlease register your account using the \`/register\` command before accessing tour information.`,
+                        color: 0xff9900,
                         timestamp: new Date().toISOString()
                     }]
                 });

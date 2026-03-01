@@ -171,6 +171,12 @@ export class InteractionRouter {
             return;
         }
 
+        // Handle tour leg File PIREP button
+        if (interaction.customId === "tour_leg_file_pirep") {
+            await handleTourFilePirep(wrapped);
+            return;
+        }
+
         // Parse button custom ID: {prefix}_{action}_{param1}_{param2}
         const [prefix, action, ...params] = interaction.customId.split("_");
 

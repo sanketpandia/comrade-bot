@@ -1,3 +1,8 @@
+import {
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+} from "discord.js";
 import { ApiService } from "../services/apiService";
 import { DiscordInteraction } from "../types/DiscordInteraction";
 import { CUSTOM_IDS } from "../configs/constants";
@@ -65,26 +70,46 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
 
         // Validate response
         if (!response) {
+            console.error("[RegisterModal] Empty response received from API");
             await CommandErrorHandler.handleEmptyResponse(interaction);
             return;
         }
+
+        // Log response for debugging
+        console.log("[RegisterModal] Registration response:", JSON.stringify(response, null, 2));
 
         // Send success response
         if (response.success) {
             let message = `✅ **Registration Successful!**\n\n${response.message}\n\n`;
 
             if (response.is_va_registered) {
-                // User is registered to this VA server
-                message += "📌 **Next Step:**\nYou're registered to Comrade Bot. Use `/membership join` to link yourself to this Virtual Airline.";
+                // User is registered to this VA server - show button to link
+                message += "📌 **Next Step:**\nYou're registered to Comrade Bot. Click the button below to link yourself to this Virtual Airline.";
+
+                // Create "Link to VA" button
+                const linkButton = new ButtonBuilder()
+                    .setCustomId("register_link")
+                    .setLabel("Link to VA")
+                    .setStyle(ButtonStyle.Primary)
+                    .setEmoji("🔗");
+
+                const row = new ActionRowBuilder<ButtonBuilder>()
+                    .addComponents(linkButton);
+
+                await interaction.reply({
+                    content: message,
+                    components: [row],
+                    ephemeral: true
+                });
             } else {
                 // User registered to bot but not a VA member
                 message += "You are successfully setup for using this bot!";
-            }
 
-            await interaction.reply({
-                content: message,
-                ephemeral: true
-            });
+                await interaction.reply({
+                    content: message,
+                    ephemeral: true
+                });
+            }
         } else {
             // Registration failed
             await interaction.reply({
@@ -108,10 +133,10 @@ async function handleLinkOnlyRegistration(interaction: DiscordInteraction) {
     // Extract callsign
     const callsign = _interaction.fields.getTextInputValue('callsign').trim();
 
-    // Validate callsign format (1-5 digits)
-    if (!/^\d{1,5}$/.test(callsign)) {
+    // Basic validation - ensure not empty (same as membership join)
+    if (!callsign || callsign.length === 0) {
         await interaction.reply({
-            content: "❌ **Validation Error**\nCallsign must be 1-5 digits only.",
+            content: "❌ **Validation Error**\nCallsign cannot be empty.",
             ephemeral: true
         });
         return;
@@ -123,8 +148,8 @@ async function handleLinkOnlyRegistration(interaction: DiscordInteraction) {
     });
 
     try {
-        // Call registration API with only callsign (backend will detect existing user and link to VA)
-        const response = await ApiService.linkUserToVA(
+        // Call membership join API (same as /membership join) - validates callsign against Airtable
+        const response = await ApiService.joinMembership(
             interaction.getMetaInfo(),
             callsign
         );
@@ -136,8 +161,9 @@ async function handleLinkOnlyRegistration(interaction: DiscordInteraction) {
         }
 
         // Send success response
+        const result = response.result;
         await interaction.reply({
-            content: `✅ **Successfully Linked to Virtual Airline!**\n\nYou're now linked with callsign **${callsign}**.\n\nUse \`/help\` to learn how to use Comrade Bot.`,
+            content: `✅ **Successfully Linked to Virtual Airline!**\n\nYou're now linked with callsign **${result.callsign || callsign}**.\n\nUse \`/help\` to learn how to use Comrade Bot.`,
             ephemeral: true
         });
 
