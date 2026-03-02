@@ -20,4 +20,33 @@ export class DiscordResponses {
             embeds: [embed]
         });
     }
+
+    /**
+     * Formats a signed link message for Discord
+     * @param title - Title of the message (e.g., "📋 Logbook Viewer" or "🚀 Vizburo Dashboard Access")
+     * @param url - The signed link URL
+     * @param expiresIn - Expiration time in seconds
+     * @param description - Optional additional description (e.g., "Click the link below to view the logbook for **username**")
+     * @returns Formatted message content string
+     */
+    static formatSignedLinkMessage(
+        title: string,
+        url: string,
+        expiresIn: number,
+        description?: string
+    ): string {
+        const expiresInMinutes = Math.floor(expiresIn / 60);
+        let content = `${title}\n\n`;
+        
+        if (description) {
+            content += `${description}\n`;
+        }
+        
+        content += `Click the link below to access:\n` +
+                  `<${url}>\n\n` +
+                  `⏱️ This link expires in **${expiresInMinutes} minutes**\n` +
+                  `🔒 For security, this link can only be used once`;
+        
+        return content;
+    }
 }

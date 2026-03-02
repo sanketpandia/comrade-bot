@@ -612,6 +612,58 @@ export class ApiService {
     }
 
     /**
+     * Generate a signed link with redirect URL support
+     * @param meta - Meta information for API authentication
+     * @param redirectTo - URL to redirect to after authentication (can include query parameters)
+     * @param ttlMinutes - Time to live in minutes (default: 15)
+     * @returns Signed link URL and expiration info
+     */
+    static async generateSignedLink(
+        meta: MetaInfo,
+        redirectTo: string,
+        ttlMinutes?: number
+    ): Promise<ApiResponse<{ url: string; expires_in: number; redirect_to: string }>> {
+        try {
+            const res = await fetch(`${API_URL}/api/v1/signed-link`, {
+                method: "POST",
+                headers: {
+                    ...generateMetaHeaders(meta),
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    redirect_to: redirectTo,
+                    ttl_minutes: ttlMinutes || 15
+                })
+            });
+
+            if (res.status === 401) {
+                const message = await res.text();
+                throw new UnauthorizedError(message || "Unauthorized");
+            }
+
+            if (res.status === 403) {
+                const body = await res.json() as ApiResponse<any>;
+                throw new PermissionDeniedError(body.message || "Forbidden");
+            }
+
+            if (!res.ok) {
+                throw new Error(`Failed to generate signed link: ${res.status} ${res.statusText}`);
+            }
+
+            const response: ApiResponse<{ url: string; expires_in: number; redirect_to: string }> = await res.json() as ApiResponse<{ url: string; expires_in: number; redirect_to: string }>;
+
+            if (!response.result) {
+                throw new Error("No data received in API response");
+            }
+
+            return response;
+        } catch (err) {
+            console.error("[ApiService.generateSignedLink]", err);
+            throw err;
+        }
+    }
+
+    /**
      * Join a virtual airline as a member with a callsign
      * Requires the user to be registered first (will error with USER_NOT_FOUND if not)
      */

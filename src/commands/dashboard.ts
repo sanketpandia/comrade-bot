@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from 'discord.js';
 import { ApiService } from '../services/apiService';
 import { DiscordInteraction } from '../types/DiscordInteraction';
 import { CommandErrorHandler } from '../helpers/commandErrorHandler';
+import { DiscordResponses } from '../helpers/discordResponses';
 
 const data = new SlashCommandBuilder()
     .setName('dashboard')
@@ -29,16 +30,15 @@ async function execute(interaction: DiscordInteraction): Promise<void> {
 
         const url = response.result.url;
         const expiresIn = response.result.expires_in || 900; // seconds
-        const expiresInMinutes = Math.floor(expiresIn / 60);
 
-        // Send response with dashboard link
+        // Send response with dashboard link using reusable helper
         // Note: Discord doesn't support markdown links in message content, use angle brackets for clickable URLs
         await interaction.editReply({
-            content: `🚀 **Vizburo Dashboard Access**\n\n` +
-                    `Click the link below to access your flight dashboard:\n` +
-                    `<${url}>\n\n` +
-                    `⏱️ This link expires in **${expiresInMinutes} minutes**\n` +
-                    `🔒 For security, this link can only be used once`,
+            content: DiscordResponses.formatSignedLinkMessage(
+                "🚀 **Vizburo Dashboard Access**",
+                url,
+                expiresIn
+            )
         });
 
         // Log execution
