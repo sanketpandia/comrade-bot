@@ -13,8 +13,8 @@ export async function execute(interaction: DiscordInteraction) {
     if (!chat) return;
 
     try {
-        // Defer the reply since we're making API calls
-        await chat.deferReply();
+        // Defer the reply since we're making API calls (ephemeral)
+        await chat.deferReply({ ephemeral: true });
 
         const metaInfo = interaction.getMetaInfo();
 
@@ -125,6 +125,18 @@ export async function execute(interaction: DiscordInteraction) {
                 });
             }
 
+            // Generate signed link for dashboard
+            let dashboardLink: string | null = null;
+            try {
+                const signedLinkResponse = await ApiService.generateSignedLink(metaInfo, "/dashboard");
+                if (signedLinkResponse?.result?.url) {
+                    dashboardLink = signedLinkResponse.result.url;
+                }
+            } catch (linkErr) {
+                console.error("[tour command] Failed to generate signed link:", linkErr);
+                // Continue without the link button if generation fails
+            }
+
             // Create "File PIREP" button
             const filePirepButton = new ButtonBuilder()
                 .setCustomId("tour_file_pirep")
@@ -133,6 +145,15 @@ export async function execute(interaction: DiscordInteraction) {
 
             const buttonRow = new ActionRowBuilder<ButtonBuilder>()
                 .addComponents(filePirepButton);
+
+            // Add "Show Leaderboard" link button if signed link is available
+            if (dashboardLink) {
+                const leaderboardButton = new ButtonBuilder()
+                    .setLabel("Show Leaderboard")
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(dashboardLink);
+                buttonRow.addComponents(leaderboardButton);
+            }
 
             await chat.editReply({
                 embeds: [{
