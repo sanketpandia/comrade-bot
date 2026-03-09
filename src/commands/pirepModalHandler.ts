@@ -125,26 +125,24 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
             const submitResponse = await ApiService.submitPirep(metaInfo, pirepData);
 
             // Check if submission was successful
-            // Backend returns either: {status: "success", result: {...}} or {status: "success", data: {...}}
-            const responseData = submitResponse.result || (submitResponse as any).data;
-            const isSuccess = submitResponse.status === "success" && 
-                             (responseData?.success !== false) && 
-                             (responseData !== undefined || submitResponse.status === "success");
+            // Backend returns httpdto envelope: {status: "ok", result: {...}, responseTimeMs: 42}
+            // or error: {status: "error", error: {code, message}, responseTimeMs: 42}
+            const isSuccess = submitResponse.status === "ok" && submitResponse.result !== undefined;
 
             if (!isSuccess) {
                 console.error("[handlePirepModal] Submit failed:", submitResponse);
 
-                // Extract error message from response, with multiple fallback options
+                // Extract error message from httpdto error envelope
+                const errorCode = submitResponse.error?.code;
                 let errorMessage =
-                    responseData?.error_message ||
-                    responseData?.message ||
+                    submitResponse.error?.message ||
                     submitResponse.message ||
                     "Failed to process PIREP submission. Please try again.";
 
                 // Handle specific error types with user-friendly messages
-                if (responseData?.error === "FLIGHT_NOT_FOUND") {
+                if (errorCode === "FLIGHT_NOT_FOUND") {
                     errorMessage = "❌ **Could not identify your flight.**\n\nPlease ensure you are currently in the game's server with your VA callsign.";
-                } else if (responseData?.error === "ROUTE_NOT_MATCHED") {
+                } else if (errorCode === "ROUTE_NOT_MATCHED") {
                     errorMessage = "❌ **Your flight plan start and end do not denote a tour route.**\n\nPlease check that your flight plan matches one of the tour leg routes.";
                 }
 
@@ -162,8 +160,7 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
             // Show success response
             console.log("[handlePirepModal] PIREP submitted successfully:", submitResponse);
 
-            // Extract PIREP ID from either result or data field
-            const pirepId = responseData?.pirep_id || (submitResponse as any).data?.pirep_id || "N/A";
+            const pirepId = submitResponse.result?.pirep_id || "N/A";
 
             await modalInteraction.editReply({
                 embeds: [{

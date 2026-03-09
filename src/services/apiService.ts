@@ -533,30 +533,19 @@ export class ApiService {
             }
 
             if (!res.ok) {
-                // Try to parse error response
+                // Try to parse httpdto error envelope: {status:"error", error:{code, message}, responseTimeMs}
                 try {
-                    const errorResponse = await res.json() as any;
-                    // Extract error from nested result structure if present
-                    const result = errorResponse.result || {};
-                    // Return error response with proper structure
+                    const errorResponse: PirepSubmitResponse = await res.json() as PirepSubmitResponse;
                     return {
                         status: errorResponse.status || "error",
-                        message: errorResponse.message || "PIREP submission failed",
-                        result: {
-                            success: false,
-                            error_message: result.error_message || errorResponse.message || "PIREP submission failed",
-                            error: result.error || errorResponse.error,
-                        } as any,
+                        error: errorResponse.error || { code: "UNKNOWN", message: "PIREP submission failed" },
+                        responseTimeMs: errorResponse.responseTimeMs,
                     } as PirepSubmitResponse;
                 } catch (parseErr) {
                     // If JSON parsing fails, return generic error
                     return {
                         status: "error",
-                        message: `Failed to submit PIREP: ${res.status} ${res.statusText}`,
-                        result: {
-                            success: false,
-                            error_message: `HTTP ${res.status}: ${res.statusText}`,
-                        } as any,
+                        error: { code: "PARSE_ERROR", message: `HTTP ${res.status}: ${res.statusText}` },
                     } as PirepSubmitResponse;
                 }
             }

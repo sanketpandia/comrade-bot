@@ -42,6 +42,7 @@ export type ApiResponse<T> = {
     message?: string;
     responseTimeMs?: number;
     result?: T;
+    error?: { code: string; message: string };
 };
 
 export interface RegistrationResult {
@@ -222,12 +223,11 @@ export interface PirepSubmitRequest {
 }
 
 export interface PirepSubmitData {
-  success: boolean;
-  message: string;
-  pirep_id?: string;
-  error_type?: string;
-  error_message?: string;
-  error?: string; // Error code like "FLIGHT_NOT_FOUND" or "ROUTE_NOT_MATCHED"
+  pirep_id: string;
+  tour_id: string;
+  leg_id: string;
+  leg_number: number;
+  route: string;
 }
 
 export type PirepSubmitResponse = ApiResponse<PirepSubmitData>;
