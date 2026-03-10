@@ -3,30 +3,47 @@ import { DiscordInteraction } from "../types/DiscordInteraction";
 import { ApiService } from "../services/apiService";
 import { UnauthorizedError } from "../helpers/UnauthorizedException";
 
-// Helper: Convert seconds to human-readable time
-function formatSeconds(seconds: number): string {
-    if (seconds < 3600) {
-        const mins = Math.floor(seconds / 60);
-        return `${mins}m`;
+// Helper: Format HH:MM time string (already formatted from backend)
+function formatTimeString(timeValue: any): string {
+    if (typeof timeValue === 'string') {
+        // Already formatted as HH:MM from backend
+        return timeValue;
     }
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    if (typeof timeValue === 'number') {
+        // Fallback: convert seconds to HH:MM
+        const hours = Math.floor(timeValue / 3600);
+        const mins = Math.floor((timeValue % 3600) / 60);
+        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    }
+    return String(timeValue);
+}
+
+// Helper: Format array to show top 6 items
+function formatArray(arr: any[]): string {
+    if (!Array.isArray(arr) || arr.length === 0) {
+        return '';
+    }
+    const top6 = arr.slice(0, 6);
+    return top6.join(', ');
 }
 
 // Helper: Format a value with proper unit
 function formatValue(value: any, key?: string): string {
-    // Check if this is a time field in seconds
+    // Handle arrays - show top 3
+    if (Array.isArray(value)) {
+        return formatArray(value);
+    }
+    
+    // Handle time fields (already formatted as HH:MM from backend)
+    if (key && (key.includes('hours') || key.includes('time') || key.includes('duration'))) {
+        return formatTimeString(value);
+    }
+    
+    // Handle numbers
     if (typeof value === 'number') {
-        // Keys that likely contain time in seconds
-        const timeFields = ['flight_time', 'total_hours', 'total_cm_hours', 'required_hours_to_next'];
-        const isTimeField = key && timeFields.some(tf => key.toLowerCase().includes(tf));
-
-        if (isTimeField && value > 3600) {
-            return formatSeconds(value);
-        }
         return value.toLocaleString();
     }
+    
     return String(value);
 }
 
@@ -61,7 +78,12 @@ export async function execute(interaction: DiscordInteraction) {
                 const gameStatsFields: string[] = [];
                 const gs = statsData.game_stats;
 
-                if (gs.flight_time) gameStatsFields.push(`**Flight Time:** ${formatValue(gs.flight_time, 'flight_time')}`);
+                // Flight time is in seconds, convert to HH:MM format
+                if (gs.flight_time) {
+                    const hours = Math.floor(gs.flight_time / 3600);
+                    const mins = Math.floor((gs.flight_time % 3600) / 60);
+                    gameStatsFields.push(`**Flight Time:** ${hours}h ${mins}m`);
+                }
                 if (gs.online_flights) gameStatsFields.push(`**Online Flights:** ${gs.online_flights.toLocaleString()}`);
                 if (gs.landing_count) gameStatsFields.push(`**Landings:** ${gs.landing_count.toLocaleString()}`);
                 if (gs.xp) gameStatsFields.push(`**XP:** ${gs.xp.toLocaleString()}`);
@@ -70,8 +92,8 @@ export async function execute(interaction: DiscordInteraction) {
 
                 if (gameStatsFields.length > 0) {
                     fields.push({
-                        name: '🎮 Game Statistics',
-                        value: gameStatsFields.join('\n'),
+                        name: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+                        value: '**🎮 GAME STATISTICS**\n' + gameStatsFields.join('\n'),
                         inline: false
                     });
                 }
@@ -82,15 +104,32 @@ export async function execute(interaction: DiscordInteraction) {
                 const cmFields: string[] = [];
                 const cm = statsData.career_mode_data;
 
-                if (cm.airline && cm.aircraft) {
-                    cmFields.push(`**Airline:** ${cm.airline} (${cm.aircraft})`);
+                // Show aircraft and airline separately if available
+                if (cm.aircraft) cmFields.push(`**Aircraft:** ${cm.aircraft}`);
+                if (cm.airline) cmFields.push(`**Airline:** ${cm.airline}`);
+                
+                // Time fields (already formatted as HH:MM from backend)
+                if (cm.total_cm_hours) {
+                    cmFields.push(`**Total Hours:** ${formatValue(cm.total_cm_hours, 'total_cm_hours')}`);
                 }
-                if (cm.total_cm_hours) cmFields.push(`**Total Hours:** ${formatValue(cm.total_cm_hours, 'total_cm_hours')}`);
-                if (cm.required_hours_to_next) cmFields.push(`**To Next Level:** ${formatValue(cm.required_hours_to_next, 'required_hours_to_next')}`);
-                if (cm.last_career_mode_flight) cmFields.push(`**Last Flight:** ${cm.last_career_mode_flight}`);
-                if (cm.assigned_routes && Array.isArray(cm.assigned_routes) && cm.assigned_routes.length > 0) {
-                    cmFields.push(`**Routes Assigned:** ${cm.assigned_routes.length}`);
+                if (cm.required_hours_to_next) {
+                    cmFields.push(`**To Next Level:** ${formatValue(cm.required_hours_to_next, 'required_hours_to_next')}`);
                 }
+                
+                // Last flown route - show prominently
+                if (cm.last_career_mode_flight) {
+                    cmFields.push(`**Last Flown Route:** ${cm.last_career_mode_flight}`);
+                }
+                
+                // Assigned routes - show top 6
+                if (cm.assigned_routes) {
+                    if (Array.isArray(cm.assigned_routes) && cm.assigned_routes.length > 0) {
+                        const routesDisplay = formatArray(cm.assigned_routes);
+                        cmFields.push(`**Routes Assigned:** ${routesDisplay}${cm.assigned_routes.length > 6 ? ` (${cm.assigned_routes.length} total)` : ''}`);
+                    }
+                }
+                
+                // Last activity
                 if (cm.last_activity_cm) {
                     const lastActivity = new Date(cm.last_activity_cm);
                     cmFields.push(`**Last Activity:** ${lastActivity.toLocaleString("en-US", {
@@ -101,11 +140,23 @@ export async function execute(interaction: DiscordInteraction) {
                         timeZone: "UTC"
                     })} UTC`);
                 }
+                
+                // Additional fields from career mode
+                if (cm.additional_fields && typeof cm.additional_fields === 'object') {
+                    const af = cm.additional_fields;
+                    // Show any other relevant fields
+                    Object.keys(af).forEach(key => {
+                        if (key !== 'callsign' && af[key] !== null && af[key] !== undefined) {
+                            const val = Array.isArray(af[key]) ? formatArray(af[key]) : af[key];
+                            cmFields.push(`**${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:** ${val}`);
+                        }
+                    });
+                }
 
                 if (cmFields.length > 0) {
                     fields.push({
-                        name: '✈️ Career Mode',
-                        value: cmFields.join('\n'),
+                        name: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+                        value: '**✈️ CAREER MODE STATISTICS**\n' + cmFields.join('\n'),
                         inline: false
                     });
                 }
@@ -116,22 +167,40 @@ export async function execute(interaction: DiscordInteraction) {
                 const providerFields: string[] = [];
                 const pd = statsData.provider_data;
 
+                // Standard fields
                 if (pd.join_date) providerFields.push(`**Join Date:** ${pd.join_date}`);
                 if (pd.last_activity) providerFields.push(`**Last Activity:** ${pd.last_activity}`);
                 if (pd.region) providerFields.push(`**Region:** ${pd.region}`);
+                if (pd.rank) providerFields.push(`**Rank:** ${pd.rank}`);
+                if (pd.status) providerFields.push(`**Status:** ${pd.status}`);
+                
+                // Flight hours (time field, already formatted)
+                if (pd.flight_hours) {
+                    providerFields.push(`**Flight Hours:** ${formatValue(pd.flight_hours, 'flight_hours')}`);
+                }
+                
+                // Total flights
+                if (pd.total_flights) {
+                    providerFields.push(`**Total Flights:** ${pd.total_flights.toLocaleString()}`);
+                }
 
                 // Handle additional fields from provider_data
                 if (pd.additional_fields && typeof pd.additional_fields === 'object') {
                     const af = pd.additional_fields;
-                    if (af.callsign) providerFields.push(`**Callsign:** ${af.callsign}`);
-                    if (af.category) providerFields.push(`**Category:** ${af.category}`);
-                    if (af.cm_status) providerFields.push(`**CM Status:** ${af.cm_status}`);
+                    // Show all additional fields (excluding ones already shown)
+                    const shownKeys = ['callsign', 'category', 'cm_status', 'rank', 'status', 'region', 'join_date', 'last_activity', 'flight_hours', 'total_flights'];
+                    Object.keys(af).forEach(key => {
+                        if (!shownKeys.includes(key.toLowerCase()) && af[key] !== null && af[key] !== undefined) {
+                            const val = Array.isArray(af[key]) ? formatArray(af[key]) : formatValue(af[key], key);
+                            providerFields.push(`**${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:** ${val}`);
+                        }
+                    });
                 }
 
                 if (providerFields.length > 0) {
                     fields.push({
-                        name: '📋 Provider Information',
-                        value: providerFields.join('\n'),
+                        name: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+                        value: '**📋 VA STATISTICS**\n' + providerFields.join('\n'),
                         inline: false
                     });
                 }
