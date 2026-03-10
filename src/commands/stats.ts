@@ -29,14 +29,19 @@ function formatArray(arr: any[]): string {
 
 // Helper: Format a value with proper unit
 function formatValue(value: any, key?: string): string {
-    // Handle arrays - show top 3
+    // Handle arrays - show top 6
     if (Array.isArray(value)) {
         return formatArray(value);
     }
     
-    // Handle time fields (already formatted as HH:MM from backend)
+    // Handle time fields - check if it's a number (seconds) or already formatted string
     if (key && (key.includes('hours') || key.includes('time') || key.includes('duration'))) {
-        return formatTimeString(value);
+        // If it's a number, assume it's seconds and format it
+        if (typeof value === 'number') {
+            return formatTimeString(value);
+        }
+        // If it's already a string (HH:MM format), return as is
+        return String(value);
     }
     
     // Handle numbers
@@ -167,20 +172,30 @@ export async function execute(interaction: DiscordInteraction) {
                 const providerFields: string[] = [];
                 const pd = statsData.provider_data;
 
-                // Standard fields
-                if (pd.join_date) providerFields.push(`**Join Date:** ${pd.join_date}`);
-                if (pd.last_activity) providerFields.push(`**Last Activity:** ${pd.last_activity}`);
-                if (pd.region) providerFields.push(`**Region:** ${pd.region}`);
-                if (pd.rank) providerFields.push(`**Rank:** ${pd.rank}`);
-                if (pd.status) providerFields.push(`**Status:** ${pd.status}`);
+                // Standard fields - check for existence explicitly
+                if (pd.join_date !== undefined && pd.join_date !== null) {
+                    providerFields.push(`**Join Date:** ${pd.join_date}`);
+                }
+                if (pd.last_activity !== undefined && pd.last_activity !== null) {
+                    providerFields.push(`**Last Activity:** ${pd.last_activity}`);
+                }
+                if (pd.region !== undefined && pd.region !== null) {
+                    providerFields.push(`**Region:** ${pd.region}`);
+                }
+                if (pd.rank !== undefined && pd.rank !== null) {
+                    providerFields.push(`**Rank:** ${pd.rank}`);
+                }
+                if (pd.status !== undefined && pd.status !== null) {
+                    providerFields.push(`**Status:** ${pd.status}`);
+                }
                 
-                // Flight hours (time field, already formatted)
-                if (pd.flight_hours) {
+                // Flight hours - handle both formatted strings and raw numbers (seconds)
+                if (pd.flight_hours !== undefined && pd.flight_hours !== null) {
                     providerFields.push(`**Flight Hours:** ${formatValue(pd.flight_hours, 'flight_hours')}`);
                 }
                 
                 // Total flights
-                if (pd.total_flights) {
+                if (pd.total_flights !== undefined && pd.total_flights !== null) {
                     providerFields.push(`**Total Flights:** ${pd.total_flights.toLocaleString()}`);
                 }
 
@@ -188,11 +203,15 @@ export async function execute(interaction: DiscordInteraction) {
                 if (pd.additional_fields && typeof pd.additional_fields === 'object') {
                     const af = pd.additional_fields;
                     // Show all additional fields (excluding ones already shown)
-                    const shownKeys = ['callsign', 'category', 'cm_status', 'rank', 'status', 'region', 'join_date', 'last_activity', 'flight_hours', 'total_flights'];
+                    // Use case-insensitive comparison for shownKeys
+                    const shownKeysLower = ['callsign', 'category', 'cm_status', 'rank', 'status', 'region', 'join_date', 'last_activity', 'flight_hours', 'total_flights', 'if community id', 'ifc name'];
                     Object.keys(af).forEach(key => {
-                        if (!shownKeys.includes(key.toLowerCase()) && af[key] !== null && af[key] !== undefined) {
+                        const keyLower = key.toLowerCase();
+                        if (!shownKeysLower.includes(keyLower) && af[key] !== null && af[key] !== undefined && af[key] !== '') {
                             const val = Array.isArray(af[key]) ? formatArray(af[key]) : formatValue(af[key], key);
-                            providerFields.push(`**${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:** ${val}`);
+                            // Format the key nicely for display
+                            const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                            providerFields.push(`**${displayKey}:** ${val}`);
                         }
                     });
                 }
