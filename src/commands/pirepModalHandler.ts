@@ -134,21 +134,78 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
 
                 // Extract error message from httpdto error envelope
                 const errorCode = submitResponse.error?.code;
-                let errorMessage =
-                    submitResponse.error?.message ||
-                    submitResponse.message ||
-                    "Failed to process PIREP submission. Please try again.";
-
+                const backendMessage = submitResponse.error?.message || submitResponse.message;
+                
                 // Handle specific error types with user-friendly messages
-                if (errorCode === "FLIGHT_NOT_FOUND") {
-                    errorMessage = "❌ **Could not identify your flight.**\n\nPlease ensure you are currently in the game's server with your VA callsign.";
-                } else if (errorCode === "ROUTE_NOT_MATCHED") {
-                    errorMessage = "❌ **Your flight plan start and end do not denote a tour route.**\n\nPlease check that your flight plan matches one of the tour leg routes.";
+                let errorMessage: string;
+                let errorTitle = "❌ PIREP Submission Failed";
+
+                switch (errorCode) {
+                    case "FLIGHT_NOT_FOUND":
+                        errorMessage = "❌ **Could not identify your flight.**\n\nPlease ensure you are currently in the game's server with your VA callsign.";
+                        break;
+                    case "ROUTE_NOT_MATCHED":
+                        errorMessage = "❌ **Your flight plan start and end do not denote a tour route.**\n\nPlease check that your flight plan matches one of the tour leg routes.";
+                        break;
+                    case "NO_FLIGHTS":
+                        errorMessage = "❌ **No live flights found.**\n\nPlease ensure you are currently flying in the game's server with your VA callsign.";
+                        break;
+                    case "FLIGHTS_FETCH_ERROR":
+                        errorMessage = "❌ **Failed to fetch live flights.**\n\nThere was an error retrieving flight data. Please try again in a moment.";
+                        break;
+                    case "NO_ROUTE":
+                        errorMessage = "❌ **Flight has no route information.**\n\nYour flight plan must include origin and destination airports.";
+                        break;
+                    case "VA_NOT_FOUND":
+                        errorMessage = "❌ **Virtual airline not found.**\n\nPlease ensure you are registered with a virtual airline.";
+                        break;
+                    case "USER_NOT_FOUND":
+                        errorMessage = "❌ **User not found.**\n\nPlease register your account using the `/register` command.";
+                        break;
+                    case "NO_COMMUNITY_ID":
+                        errorMessage = "❌ **Missing Infinite Flight Community ID.**\n\nPlease ensure your account is properly linked with your Infinite Flight community profile.";
+                        break;
+                    case "NO_ACTIVE_TOUR":
+                        errorMessage = "❌ **No active tour found.**\n\nThere is no active world tour event for your virtual airline.";
+                        break;
+                    case "TOUR_LOOKUP_ERROR":
+                        errorMessage = "❌ **Failed to retrieve tour information.**\n\nThere was an error looking up the active tour. Please try again.";
+                        break;
+                    case "NO_CREDENTIALS":
+                        errorMessage = "❌ **Airtable credentials not configured.**\n\nYour virtual airline administrator needs to configure Airtable credentials in the datasource settings.";
+                        errorTitle = "⚠️ Configuration Required";
+                        break;
+                    case "NO_SCHEMA":
+                        errorMessage = "❌ **PIREP schema not configured.**\n\nYour virtual airline administrator needs to configure the PIREP schema in the datasource settings.";
+                        errorTitle = "⚠️ Configuration Required";
+                        break;
+                    case "CONFIG_ERROR":
+                        errorMessage = "❌ **Configuration error.**\n\nThere was an error reading the Airtable configuration. Please contact your virtual airline administrator.";
+                        break;
+                    case "SCHEMA_ERROR":
+                        errorMessage = "❌ **Schema processing error.**\n\nThere was an error processing the PIREP schema. Please contact your virtual airline administrator.";
+                        break;
+                    case "AIRTABLE_ERROR":
+                        errorMessage = "❌ **Failed to submit to Airtable.**\n\nThere was an error submitting your PIREP to Airtable. Please try again or contact support.";
+                        break;
+                    case "BAD_REQUEST":
+                        errorMessage = backendMessage || "❌ **Invalid request.**\n\nPlease check your input and try again.";
+                        break;
+                    case "PARSE_ERROR":
+                        errorMessage = "❌ **Response parsing error.**\n\nThere was an error processing the server response. Please try again.";
+                        break;
+                    default:
+                        // Use backend message if available, otherwise generic message
+                        errorMessage = backendMessage || "❌ **Failed to process PIREP submission.**\n\nPlease try again. If the problem persists, contact support.";
+                        if (errorCode) {
+                            errorMessage += `\n\nError Code: ${errorCode}`;
+                        }
+                        break;
                 }
 
                 await modalInteraction.editReply({
                     embeds: [{
-                        title: "❌ PIREP Submission Failed",
+                        title: errorTitle,
                         description: errorMessage,
                         color: 0xff0000,
                         timestamp: new Date().toISOString(),
@@ -160,7 +217,59 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
             // Show success response
             console.log("[handlePirepModal] PIREP submitted successfully:", submitResponse);
 
-            const pirepId = submitResponse.result?.pirep_id || "N/A";
+            const result = submitResponse.result;
+            const pirepId = result?.pirep_id || "N/A";
+            const aircraft = result?.aircraft || "N/A";
+            const livery = result?.livery || "N/A";
+            const flightTime = result?.flight_time || "N/A";
+            const routeName = result?.route_name || "N/A";
+
+            // Build fields array with the response data
+            const fields = [
+                {
+                    name: "PIREP ID",
+                    value: pirepId,
+                    inline: true
+                }
+            ];
+
+            // Add tour-specific fields if available (for tour mode)
+            if (aircraft !== "N/A" || livery !== "N/A" || flightTime !== "N/A" || routeName !== "N/A") {
+                if (aircraft !== "N/A") {
+                    fields.push({
+                        name: "Aircraft",
+                        value: aircraft,
+                        inline: true
+                    });
+                }
+                if (livery !== "N/A") {
+                    fields.push({
+                        name: "Livery",
+                        value: livery,
+                        inline: true
+                    });
+                }
+                if (flightTime !== "N/A") {
+                    fields.push({
+                        name: "Flight Time",
+                        value: flightTime,
+                        inline: true
+                    });
+                }
+                if (routeName !== "N/A") {
+                    fields.push({
+                        name: "Route",
+                        value: routeName,
+                        inline: true
+                    });
+                }
+            }
+
+            fields.push({
+                name: "Processing Time",
+                value: submitResponse.responseTimeMs ? `${submitResponse.responseTimeMs}ms` : "N/A",
+                inline: true
+            });
 
             await modalInteraction.editReply({
                 embeds: [{
@@ -168,18 +277,7 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
                     description: summaryLines.join("\n"),
                     color: 0x00ff00,
                     timestamp: new Date().toISOString(),
-                    fields: [
-                        {
-                            name: "PIREP ID",
-                            value: pirepId,
-                            inline: true
-                        },
-                        {
-                            name: "Processing Time",
-                            value: submitResponse.responseTimeMs ? `${submitResponse.responseTimeMs}ms` : "N/A",
-                            inline: true
-                        }
-                    ]
+                    fields: fields
                 }]
             });
         } catch (submitErr) {
@@ -209,10 +307,27 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
                     return;
                 }
 
+                // Handle network errors and other exceptions
+                let errorMessage = "❌ **Failed to submit PIREP to backend.**\n\n";
+                if (submitErr instanceof Error) {
+                    const errMsg = submitErr.message.toLowerCase();
+                    if (errMsg.includes("fetch") || errMsg.includes("network") || errMsg.includes("connection")) {
+                        errorMessage += "**Network error:** Unable to connect to the server. Please check your internet connection and try again.";
+                    } else if (errMsg.includes("timeout")) {
+                        errorMessage += "**Request timeout:** The server took too long to respond. Please try again.";
+                    } else if (errMsg.includes("json") || errMsg.includes("parse")) {
+                        errorMessage += "**Response error:** The server returned an invalid response. Please try again.";
+                    } else {
+                        errorMessage += `**Error:** ${submitErr.message}`;
+                    }
+                } else {
+                    errorMessage += "An unexpected error occurred. Please try again later.";
+                }
+
                 await modalInteraction.editReply({
                     embeds: [{
                         title: "❌ PIREP Submission Error",
-                        description: submitErr instanceof Error ? submitErr.message : "Failed to submit PIREP to backend. Please try again later.",
+                        description: errorMessage,
                         color: 0xff0000,
                         timestamp: new Date().toISOString(),
                     }]

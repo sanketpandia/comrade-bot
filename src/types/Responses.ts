@@ -224,10 +224,10 @@ export interface PirepSubmitRequest {
 
 export interface PirepSubmitData {
   pirep_id: string;
-  tour_id: string;
-  leg_id: string;
-  leg_number: number;
-  route: string;
+  aircraft?: string;
+  livery?: string;
+  flight_time?: string;
+  route_name?: string;
 }
 
 export type PirepSubmitResponse = ApiResponse<PirepSubmitData>;
