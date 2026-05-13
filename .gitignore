@@ -1,3 +1,14 @@
 node_modules
 dist
 .env
+
+# AI tooling artifacts
+CLAUDE.md
+.claude/
+.cursor/
+.dev-log/
+plans/
+memory/
+PLAN.md
+WORKLOG.md
+ARCHITECTURE_NOTES.md
