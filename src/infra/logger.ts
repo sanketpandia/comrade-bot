@@ -37,11 +37,12 @@ function shouldLog(level: LogLevel): boolean {
 }
 
 function normalizeKey(key: string): string {
-    return key.toLowerCase().replace(/_/g, "-");
+    return key.toLowerCase();
 }
 
 function sanitizeValue(key: string, value: unknown): unknown {
-    if (sensitiveKeys.has(normalizeKey(key))) {
+    const normalizedKey = normalizeKey(key);
+    if (sensitiveKeys.has(normalizedKey) || sensitiveKeys.has(normalizedKey.replace(/_/g, "-"))) {
         return "[REDACTED]";
     }
 
@@ -67,7 +68,7 @@ function sanitizeValue(key: string, value: unknown): unknown {
     return value;
 }
 
-function sanitizeFields(fields: LogFields): LogFields {
+export function sanitizeLogFields(fields: LogFields): LogFields {
     const sanitized: LogFields = {};
     for (const [key, value] of Object.entries(fields)) {
         sanitized[key] = sanitizeValue(key, value);
@@ -84,7 +85,7 @@ function write(level: LogLevel, event: string, fields: LogFields = {}): void {
         service: "comrade-bot",
         env: process.env.APP_ENV || process.env.NODE_ENV || "development",
         event,
-        ...sanitizeFields(fields),
+        ...sanitizeLogFields(fields),
     });
 
     if (level === "error") {
