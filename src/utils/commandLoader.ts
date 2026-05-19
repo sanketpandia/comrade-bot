@@ -5,7 +5,6 @@ import { data as statusCmd } from "../commands/status";
 import { data as logbookCmd } from "../commands/logbook";
 import { data as registerCmd } from "../commands/register";
 import { data as initServerCmd } from "../commands/initServer";
-import { data as pilotCmd } from "../commands/pilot";
 import { data as liveCmd } from "../commands/live";
 import { data as rolloutCmd } from "../commands/rollout";
 import { data as statsCmd } from "../commands/stats";
@@ -28,7 +27,6 @@ export const COMMANDS: (SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | S
     logbookCmd,
     initServerCmd,
     liveCmd,
-    pilotCmd,
     rolloutCmd,
     statsCmd,
     logCmd,
