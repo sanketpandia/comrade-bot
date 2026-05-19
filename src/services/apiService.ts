@@ -19,7 +19,7 @@ import {
     TourLegResponse
 } from "../types/Responses";
 import { MetaInfo } from "../types/DiscordInteraction";
-import { generateMetaHeaders } from "../helpers/utils";
+import { generateMetaHeaders, generateRegistrationMetaHeaders } from "../helpers/utils";
 import { UnauthorizedError } from "../helpers/UnauthorizedException";
 import { PermissionDeniedError } from "../helpers/PermissionDeniedException";
 import { NotFoundError } from "../helpers/NotFoundException";
@@ -58,7 +58,7 @@ export class ApiService {
             const res = await fetch(`${API_URL}/api/v1/pilots/register`, {
                 method: "POST",
                 headers: {
-                    ...generateMetaHeaders(meta),
+                    ...generateRegistrationMetaHeaders(meta),
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify(payload)
@@ -146,7 +146,7 @@ export class ApiService {
         try {
             const res = await fetch(`${API_URL}/api/v1/server/init`, {
                 method: "POST",
-                headers: generateMetaHeaders(meta),
+                headers: generateRegistrationMetaHeaders(meta),
                 body: JSON.stringify({
                     va_code: code,
                     va_name: name,
@@ -293,7 +293,7 @@ export class ApiService {
         try {
             const res = await fetch(`${API_URL}/api/v1/user/status`, {
                 method: "GET",
-                headers: generateMetaHeaders(meta),
+                headers: generateRegistrationMetaHeaders(meta),
             });
 
             console.log(res)
@@ -492,7 +492,7 @@ export class ApiService {
             const res = await fetch(`${API_URL}/api/v1/signed-link`, {
                 method: "POST",
                 headers: {
-                    ...generateMetaHeaders(meta),
+                    ...generateRegistrationMetaHeaders(meta),
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
@@ -537,7 +537,7 @@ export class ApiService {
             const res = await fetch(`${API_URL}/api/v1/memberships/join`, {
                 method: "POST",
                 headers: {
-                    ...generateMetaHeaders(meta),
+                    ...generateRegistrationMetaHeaders(meta),
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({ callsign })

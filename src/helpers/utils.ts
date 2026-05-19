@@ -10,3 +10,12 @@ export function generateMetaHeaders (metainfo: MetaInfo) {
         "Content-Type": "application/json"
     }
 }
+
+export function generateRegistrationMetaHeaders (metainfo: MetaInfo) {
+    return {
+        "X-Discord-User-Id": metainfo.userId,
+        "X-Discord-Server-Id": metainfo.discordId,
+        "X-API-Key": API_KEY,
+        "Content-Type": "application/json"
+    }
+}
