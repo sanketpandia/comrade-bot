@@ -13,6 +13,8 @@ import { handleLiveFlights } from "../commands/liveHandler";
 import { logModeSelectionHandler } from "../commands/logModeSelectionHandler";
 import { handleTourFilePirep } from "../commands/tourButtonHandler";
 import { commandMap } from "../configs/commandMap";
+import { logger, errorFields } from "../infra/logger";
+import { CommandResult, InteractionResult, metrics } from "../infra/metrics";
 
 type WrappedHandler = (interaction: DiscordInteraction) => Promise<void>;
 
@@ -49,9 +51,11 @@ export class InteractionRouter {
                 await this.handleButton(rawInteraction);
             } else if (rawInteraction.isChatInputCommand()) {
                 await this.handleCommand(rawInteraction);
+            } else {
+                metrics.recordInteraction("unknown", "ignored");
             }
         } catch (error) {
-            console.error("[InteractionRouter] Error:", error);
+            logger.error("interaction_route_failed", errorFields(error));
             await this.handleError(rawInteraction, error);
         }
     }
@@ -60,6 +64,7 @@ export class InteractionRouter {
      * Handle select menu interactions
      */
     private static async handleSelectMenu(_interaction: Interaction): Promise<void> {
+        metrics.recordInteraction("select_menu", "ignored");
         // No active select menu handlers — pilot role configuration removed.
     }
 
@@ -69,27 +74,43 @@ export class InteractionRouter {
     private static async handleModalSubmit(interaction: Interaction): Promise<void> {
         if (!interaction.isModalSubmit()) return;
 
+        const start = Date.now();
         const wrapped = new DiscordInteraction(interaction);
+        let result: InteractionResult = "success";
 
-        const handler = this.modalHandlers[interaction.customId];
-        if (handler) {
-            await handler(wrapped);
-            return;
+        try {
+            const handler = this.modalHandlers[interaction.customId];
+            if (handler) {
+                await handler(wrapped);
+                return;
+            }
+
+            if (interaction.customId === CUSTOM_IDS.MEMBERSHIP_JOIN_MODAL) {
+                const MembershipJoinHandler = await import("../commands/membershipJoinModalHandler");
+                await MembershipJoinHandler.execute(wrapped);
+                return;
+            }
+
+            // Check if it's a PIREP modal with encoded mode_id (format: pirepModal_modeId)
+            if (interaction.customId.startsWith(CUSTOM_IDS.PIREP_MODAL)) {
+                await PirepModalHandler.execute(wrapped);
+                return;
+            }
+
+            result = "ignored";
+            await this.handleDynamicModal(interaction, wrapped);
+        } catch (error) {
+            result = "error";
+            throw error;
+        } finally {
+            metrics.recordInteraction("modal_submit", result);
+            logger.info("interaction_completed", {
+                interaction_type: "modal_submit",
+                result,
+                guild_id: interaction.guildId || "DM",
+                duration_ms: Date.now() - start,
+            });
         }
-
-        if (interaction.customId === CUSTOM_IDS.MEMBERSHIP_JOIN_MODAL) {
-            const MembershipJoinHandler = await import("../commands/membershipJoinModalHandler");
-            await MembershipJoinHandler.execute(wrapped);
-            return;
-        }
-
-        // Check if it's a PIREP modal with encoded mode_id (format: pirepModal_modeId)
-        if (interaction.customId.startsWith(CUSTOM_IDS.PIREP_MODAL)) {
-            await PirepModalHandler.execute(wrapped);
-            return;
-        }
-
-        await this.handleDynamicModal(interaction, wrapped);
     }
 
     /**
@@ -109,43 +130,61 @@ export class InteractionRouter {
     private static async handleButton(interaction: Interaction): Promise<void> {
         if (!interaction.isButton()) return;
 
+        const start = Date.now();
         const wrapped = new DiscordInteraction(interaction);
+        let result: InteractionResult = "success";
 
-        const handler = this.buttonHandlers[interaction.customId];
-        if (handler) {
-            await handler(wrapped);
-            return;
-        }
+        try {
+            const handler = this.buttonHandlers[interaction.customId];
+            if (handler) {
+                await handler(wrapped);
+                return;
+            }
 
-        // Handle membership join proceed button
-        if (interaction.customId === CUSTOM_IDS.MEMBERSHIP_JOIN_BUTTON) {
-            const { handleMembershipJoinProceed } = await import("../commands/membershipJoinButtonHandler");
-            await handleMembershipJoinProceed(wrapped);
-            return;
-        }
+            // Handle membership join proceed button
+            if (interaction.customId === CUSTOM_IDS.MEMBERSHIP_JOIN_BUTTON) {
+                const { handleMembershipJoinProceed } = await import("../commands/membershipJoinButtonHandler");
+                await handleMembershipJoinProceed(wrapped);
+                return;
+            }
 
-        // Handle PIREP mode selection buttons
-        if (interaction.customId.startsWith(CUSTOM_IDS.PIREP_MODE_PREFIX)) {
-            await logModeSelectionHandler(wrapped);
-            return;
-        }
+            // Handle PIREP mode selection buttons
+            if (interaction.customId.startsWith(CUSTOM_IDS.PIREP_MODE_PREFIX)) {
+                await logModeSelectionHandler(wrapped);
+                return;
+            }
 
-        // Parse button custom ID: {prefix}_{action}_{param1}_{param2}
-        const [prefix, action, ...params] = interaction.customId.split("_");
+            // Parse button custom ID: {prefix}_{action}_{param1}_{param2}
+            const [prefix, action, ...params] = interaction.customId.split("_");
 
-        // Live flights pagination
-        if (prefix === "live" && (action === "prev" || action === "next")) {
-            const [pageStr] = params;
-            const page = parseInt(pageStr, 10);
-            await handleLiveFlights(wrapped, page);
-            return;
-        }
+            // Live flights pagination
+            if (prefix === "live" && (action === "prev" || action === "next")) {
+                const [pageStr] = params;
+                const page = parseInt(pageStr, 10);
+                await handleLiveFlights(wrapped, page);
+                return;
+            }
 
-        // Flight history pagination
-        if (prefix === "flights" && (action === "prev" || action === "next")) {
-            const [ifcId, pageStr] = params;
-            const page = parseInt(pageStr, 10);
-            await handleFlightHistory(wrapped, page, ifcId);
+            // Flight history pagination
+            if (prefix === "flights" && (action === "prev" || action === "next")) {
+                const [ifcId, pageStr] = params;
+                const page = parseInt(pageStr, 10);
+                await handleFlightHistory(wrapped, page, ifcId);
+                return;
+            }
+
+            result = "ignored";
+        } catch (error) {
+            result = "error";
+            throw error;
+        } finally {
+            metrics.recordInteraction("button", result);
+            logger.info("interaction_completed", {
+                interaction_type: "button",
+                result,
+                guild_id: interaction.guildId || "DM",
+                duration_ms: Date.now() - start,
+            });
         }
     }
 
@@ -155,16 +194,55 @@ export class InteractionRouter {
     private static async handleCommand(interaction: Interaction): Promise<void> {
         if (!interaction.isChatInputCommand()) return;
 
-        console.log(`[Command] ${interaction.commandName} (Guild: ${interaction.guildId || 'DM'})`);
+        const start = Date.now();
+        const interactionType = "chat_input_command";
+        let result: CommandResult = "success";
 
         const command = commandMap[interaction.commandName];
         if (!command) {
-            console.warn(`[Command] Unknown command: ${interaction.commandName}`);
+            result = "unknown_command";
+            metrics.recordCommand("unknown", result, interactionType, Date.now() - start);
+            metrics.recordInteraction(interactionType, result);
+            logger.warn("unknown_command", {
+                command: interaction.commandName,
+                interaction_type: interactionType,
+                guild_id: interaction.guildId || "DM",
+                result,
+            });
             return;
         }
 
         const wrapped = new DiscordInteraction(interaction);
-        await command.execute(wrapped);
+        logger.info("command_started", {
+            command: interaction.commandName,
+            interaction_type: interactionType,
+            guild_id: interaction.guildId || "DM",
+        });
+
+        try {
+            await command.execute(wrapped);
+        } catch (error) {
+            result = "error";
+            logger.error("command_failed", {
+                command: interaction.commandName,
+                interaction_type: interactionType,
+                guild_id: interaction.guildId || "DM",
+                result,
+                ...errorFields(error),
+            });
+            throw error;
+        } finally {
+            const durationMs = Date.now() - start;
+            metrics.recordCommand(interaction.commandName, result, interactionType, durationMs);
+            metrics.recordInteraction(interactionType, result === "success" ? "success" : "error");
+            logger.info("command_completed", {
+                command: interaction.commandName,
+                interaction_type: interactionType,
+                guild_id: interaction.guildId || "DM",
+                result,
+                duration_ms: durationMs,
+            });
+        }
     }
 
 
@@ -172,7 +250,7 @@ export class InteractionRouter {
      * Handle errors gracefully
      */
     private static async handleError(interaction: Interaction, error: unknown): Promise<void> {
-        console.error("[InteractionRouter] Error details:", error);
+        logger.error("interaction_error_reply", errorFields(error));
 
         const errorMessage = {
             content: "⚠️ An unexpected error occurred. Please try again later.",
@@ -188,7 +266,7 @@ export class InteractionRouter {
                 }
             }
         } catch (replyError) {
-            console.error("[InteractionRouter] Failed to send error message:", replyError);
+            logger.error("interaction_error_reply_failed", errorFields(replyError));
         }
     }
 }

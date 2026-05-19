@@ -1,6 +1,8 @@
 import { Client, GatewayIntentBits, Events } from "discord.js";
 import { InteractionRouter } from "../handlers/InteractionRouter";
 import { BotConfig } from "../configs/env";
+import { logger, errorFields } from "../infra/logger";
+import { metrics } from "../infra/metrics";
 
 /**
  * Bot client manager
@@ -25,16 +27,17 @@ export class BotClient {
     private setupEventHandlers(): void {
         // Bot ready event
         this.client.once(Events.ClientReady, async (client) => {
-            console.log(`✅ Bot logged in as ${client.user.tag}`);
+            metrics.recordDiscordEvent("ready", "success");
+            logger.info("discord_client_ready", { bot_tag: client.user.tag });
 
             // Wait a bit for guild cache to populate
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             const guildCount = client.guilds.cache.size;
-            console.log(`📊 Serving ${guildCount} guild${guildCount !== 1 ? 's' : ''}`);
+            logger.info("discord_guild_cache_ready", { guild_count: guildCount });
 
             if (guildCount === 0) {
-                console.warn("⚠️  No guilds found. Make sure the bot is invited to at least one server.");
+                logger.warn("discord_no_guilds_found");
             }
         });
 
@@ -45,17 +48,19 @@ export class BotClient {
 
         // Error handling
         this.client.on(Events.Error, (error) => {
-            console.error("[Discord Error]", error);
+            metrics.recordDiscordEvent("error", "error");
+            logger.error("discord_client_error", errorFields(error));
         });
 
         this.client.on(Events.Warn, (warning) => {
-            console.warn("[Discord Warning]", warning);
+            metrics.recordDiscordEvent("warn", "warning");
+            logger.warn("discord_client_warning", { warning });
         });
 
         // Debug events (optional - remove in production)
         if (process.env.DEBUG === "true") {
             this.client.on(Events.Debug, (info) => {
-                console.debug("[Discord Debug]", info);
+                logger.debug("discord_client_debug", { info });
             });
         }
     }
@@ -65,10 +70,10 @@ export class BotClient {
      */
     async start(): Promise<void> {
         try {
-            console.log("🚀 Starting bot...");
+            logger.info("bot_starting");
             await this.client.login(this.token);
         } catch (error) {
-            console.error("❌ Failed to start bot:", error);
+            logger.error("bot_start_failed", errorFields(error));
             throw error;
         }
     }
@@ -77,7 +82,7 @@ export class BotClient {
      * Stop the bot gracefully
      */
     async stop(): Promise<void> {
-        console.log("🛑 Stopping bot...");
+        logger.info("bot_stopping");
         this.client.destroy();
     }
 

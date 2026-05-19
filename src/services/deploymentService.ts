@@ -1,5 +1,6 @@
 import { REST, Routes } from "discord.js";
 import { getDeployableCommandNames, getDeployableCommandsJSON, validateCommands } from "../commands/registry";
+import { logger, errorFields } from "../infra/logger";
 
 export type DeploymentScope =
     | { type: "guild"; guildId: string }
@@ -37,11 +38,18 @@ export class CommandDeploymentService {
                 ? Routes.applicationGuildCommands(this.clientId, scope.guildId)
                 : Routes.applicationCommands(this.clientId);
 
-            console.log(`[CommandDeploymentService] Deploying ${commands.length} commands (${scope.type})`);
+            logger.info("command_deploy_started", {
+                scope: scope.type,
+                command_count: commands.length,
+            });
 
             const deployedCommands = await rest.put(route, { body: commands }) as any[];
 
-            console.log(`[CommandDeploymentService] Successfully deployed ${deployedCommands.length} commands (${scope.type})`);
+            logger.info("command_deploy_completed", {
+                scope: scope.type,
+                command_count: deployedCommands.length,
+                result: "success",
+            });
 
             return {
                 success: true,
@@ -56,7 +64,11 @@ export class CommandDeploymentService {
 
         } catch (error: any) {
             const message = error?.message || "Unknown deployment error";
-            console.error(`[CommandDeploymentService] Deployment failed (${scope.type}):`, message);
+            logger.error("command_deploy_failed", {
+                scope: scope.type,
+                result: "error",
+                ...errorFields(error),
+            });
 
             return {
                 success: false,

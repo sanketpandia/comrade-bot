@@ -1,6 +1,7 @@
 import * as dotenv from "dotenv";
 import { getDeployableCommandNames, validateCommands } from "./commands/registry";
 import { CommandDeploymentService, DeploymentScope } from "./services/deploymentService";
+import { logger, errorFields } from "./infra/logger";
 
 dotenv.config();
 
@@ -20,12 +21,12 @@ async function deployCommands() {
     const guildId = process.env.GUILD_ID;
 
     if (!clientId) {
-        console.error("❌ DISCORD_BOT_CLIENT_ID is not set");
+        logger.error("command_deploy_config_missing", { env_var: "DISCORD_BOT_CLIENT_ID" });
         process.exit(1);
     }
 
     if (!token) {
-        console.error("❌ DISCORD_BOT_TOKEN is not set");
+        logger.error("command_deploy_config_missing", { env_var: "DISCORD_BOT_TOKEN" });
         process.exit(1);
     }
 
@@ -37,8 +38,10 @@ async function deployCommands() {
         validateCommands();
         const commandNames = getDeployableCommandNames();
 
-        console.log(`\n📦 Deploying ${commandNames.length} slash commands...`);
-        console.log(`📋 Commands: ${commandNames.join(", ")}`);
+        logger.info("command_deploy_cli_started", {
+            command_count: commandNames.length,
+            commands: commandNames,
+        });
 
         // Determine deployment scope
         let scope: DeploymentScope;
@@ -47,22 +50,22 @@ async function deployCommands() {
         if (mode === "global") {
             scope = { type: "global" };
             scopeLabel = "Global (all servers)";
-            console.log("🌍 Mode: GLOBAL deployment");
+            logger.info("command_deploy_cli_scope_selected", { scope: "global" });
         } else if (mode === "local" || guildId) {
             if (!guildId) {
-                console.error("❌ GUILD_ID environment variable is required for local deployment");
+                logger.error("command_deploy_config_missing", { env_var: "GUILD_ID", scope: "guild" });
                 process.exit(1);
             }
             scope = { type: "guild", guildId };
             scopeLabel = `Guild: ${guildId}`;
-            console.log("🏠 Mode: LOCAL (guild-specific) deployment");
+            logger.info("command_deploy_cli_scope_selected", { scope: "guild", guild_id: guildId });
         } else {
             scope = { type: "global" };
             scopeLabel = "Global (all servers)";
-            console.log("🌍 Mode: GLOBAL deployment (default)");
+            logger.info("command_deploy_cli_scope_selected", { scope: "global", defaulted: true });
         }
 
-        console.log(`🎯 Scope: ${scopeLabel}`);
+        logger.info("command_deploy_cli_scope", { scope: scopeLabel });
 
         const service = new CommandDeploymentService({ clientId, token });
         const result = await service.deploy(scope);
@@ -71,16 +74,20 @@ async function deployCommands() {
             throw new Error(result.message);
         }
 
-        console.log(`\n✅ Successfully deployed ${result.commandCount} commands!`);
+        logger.info("command_deploy_cli_completed", {
+            result: "success",
+            command_count: result.commandCount,
+            scope: result.scope,
+        });
 
         if (mode === "global" || !guildId) {
-            console.log("⏳ Note: Global commands may take up to 1 hour to update across all servers");
+            logger.info("command_deploy_global_propagation_notice");
         } else {
-            console.log("⚡ Guild commands are available immediately!");
+            logger.info("command_deploy_guild_available_notice");
         }
 
     } catch (error) {
-        console.error("\n❌ Failed to deploy commands:", error);
+        logger.error("command_deploy_cli_failed", errorFields(error));
         process.exit(1);
     }
 }

@@ -1,6 +1,7 @@
 import { DiscordInteraction } from "../types/DiscordInteraction";
 import { UnauthorizedError } from "./UnauthorizedException";
 import { PermissionDeniedError } from "./PermissionDeniedException";
+import { logger, errorFields } from "../infra/logger";
 
 /**
  * Standard error messages for common scenarios
@@ -39,7 +40,10 @@ export class CommandErrorHandler {
         error: unknown,
         operation: string
     ): Promise<void> {
-        console.error(`[${operation} Error]`, error);
+        logger.error("command_api_error", {
+            operation,
+            ...errorFields(error),
+        });
 
         // Handle unauthorized errors (401)
         if (error instanceof UnauthorizedError) {
@@ -171,8 +175,13 @@ export class CommandErrorHandler {
         commandName: string,
         userId: string,
         guildId: string | null,
-        params: Record<string, any>
+        _params: Record<string, any>
     ): void {
-        console.log(`[${commandName}] User: ${userId}, Guild: ${guildId || 'DM'}, Params:`, params);
+        logger.info("command_execution_detail", {
+            command: commandName,
+            user_id: userId,
+            guild_id: guildId || "DM",
+            params: "[REDACTED]",
+        });
     }
 }

@@ -4,6 +4,7 @@ import {
     SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import { DiscordInteraction } from "../types/DiscordInteraction";
+import { logger } from "../infra/logger";
 
 import * as status from "./status";
 import * as register from "./register";
@@ -96,5 +97,8 @@ export function validateCommands(): void {
         }
     }
 
-    console.log(`✅ Validated ${commandRegistry.length} commands (${deployableCommandRegistry.length} deployable)`);
+    logger.info("commands_validated", {
+        command_count: commandRegistry.length,
+        deployable_command_count: deployableCommandRegistry.length,
+    });
 }

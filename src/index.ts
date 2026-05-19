@@ -1,6 +1,8 @@
 import * as dotenv from "dotenv";
 import { BotClient } from "./bot/BotClient";
 import { loadBotConfig } from "./configs/env";
+import { logger, errorFields } from "./infra/logger";
+import { MetricsServer } from "./infra/metricsServer";
 
 // Load environment variables
 dotenv.config();
@@ -10,31 +12,39 @@ dotenv.config();
  */
 async function main() {
     const config = loadBotConfig();
+    const metricsServer = new MetricsServer(config.metrics);
 
     // Initialize and start bot
     const bot = new BotClient(config);
 
+    await metricsServer.start();
+
     // Handle graceful shutdown
     process.on("SIGINT", async () => {
-        console.log("\n Received SIGINT signal");
+        logger.info("shutdown_signal_received", { signal: "SIGINT" });
         await bot.stop();
+        await metricsServer.stop();
         process.exit(0);
     });
 
     process.on("SIGTERM", async () => {
-        console.log("\n Received SIGTERM signal");
+        logger.info("shutdown_signal_received", { signal: "SIGTERM" });
         await bot.stop();
+        await metricsServer.stop();
         process.exit(0);
     });
 
     // Handle uncaught errors
     process.on("uncaughtException", (error) => {
-        console.error("Uncaught Exception:", error);
+        logger.error("uncaught_exception", errorFields(error));
         process.exit(1);
     });
 
     process.on("unhandledRejection", (reason, promise) => {
-        console.error("Unhandled Rejection at:", promise, "reason:", reason);
+        logger.error("unhandled_rejection", {
+            ...errorFields(reason),
+            promise: String(promise),
+        });
     });
 
     // Start the bot
@@ -43,7 +53,7 @@ async function main() {
 
 // Run the bot
 main().catch((error) => {
-    console.error("Fatal error:", error);
+    logger.error("fatal_error", errorFields(error));
     process.exit(1);
 });
  

@@ -3,6 +3,7 @@ import { DiscordInteraction } from "../types/DiscordInteraction";
 import { ApiService } from "../services/apiService";
 import { loadBotConfig } from "../configs/env";
 import { CommandDeploymentService } from "../services/deploymentService";
+import { logger, errorFields } from "../infra/logger";
 
 export const data = new SlashCommandBuilder()
     .setName("rollout")
@@ -62,12 +63,12 @@ export async function execute(interaction: DiscordInteraction) {
                 return;
             }
 
-            console.log(`[Rollout] LOCAL deployment to guild ${guildId} by user ${chatInput.user.id}`);
+            logger.info("rollout_command_deploy_started", { mode, guild_id: guildId });
             result = await deploymentService.deployToGuild(guildId);
 
         } else {
             // Global deployment to all servers
-            console.log(`[Rollout] GLOBAL deployment by user ${chatInput.user.id}`);
+            logger.info("rollout_command_deploy_started", { mode });
             result = await deploymentService.deployGlobally();
         }
 
@@ -126,10 +127,14 @@ export async function execute(interaction: DiscordInteraction) {
             embeds: [successEmbed]
         });
 
-        console.log(`[Rollout] Successfully deployed ${result.commandCount} commands (${mode} mode)`);
+        logger.info("rollout_command_deploy_completed", {
+            mode,
+            result: "success",
+            command_count: result.commandCount,
+        });
 
     } catch (error: any) {
-        console.error("[Rollout] Failed to deploy commands:", error);
+        logger.error("rollout_command_deploy_failed", errorFields(error));
 
         const errorMessage = error?.message || "Unknown error occurred";
 
