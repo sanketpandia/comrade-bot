@@ -1,79 +1,32 @@
-import { SlashCommandBuilder, SlashCommandOptionsOnlyBuilder, SlashCommandSubcommandsOnlyBuilder } from "discord.js";
-
-// Import all command data
-import { data as statusCmd } from "../commands/status";
-import { data as logbookCmd } from "../commands/logbook";
-import { data as registerCmd } from "../commands/register";
-import { data as initServerCmd } from "../commands/initServer";
-import { data as liveCmd } from "../commands/live";
-import { data as rolloutCmd } from "../commands/rollout";
-import { data as statsCmd } from "../commands/stats";
-import { data as logCmd } from "../commands/log";
-import { data as helpCmd } from "../commands/help";
-import { data as dashboardCmd } from "../commands/dashboard";
-import { data as membershipCmd } from "../commands/membership";
-import { data as eventsCmd } from "../commands/events";
-import { data as tourCmd } from "../commands/tour";
-import { data as tour_legCmd } from "../commands/tour_leg";
+import {
+    deployableCommandRegistry,
+    getDeployableCommandNames,
+    getDeployableCommandsJSON,
+    validateCommands,
+} from "../commands/registry";
 
 /**
  * Command registry
  * Centralized list of all bot commands
  * Supports SlashCommandBuilder, SlashCommandOptionsOnlyBuilder, and SlashCommandSubcommandsOnlyBuilder
  */
-export const COMMANDS: (SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder)[] = [
-    statusCmd,
-    registerCmd,
-    logbookCmd,
-    initServerCmd,
-    liveCmd,
-    rolloutCmd,
-    statsCmd,
-    logCmd,
-    helpCmd,
-    dashboardCmd,
-    membershipCmd,
-    eventsCmd,
-    tourCmd,
-    tour_legCmd
-];
+export const COMMANDS = deployableCommandRegistry.map(command => command.data);
 
 /**
  * Get all commands in JSON format for Discord API
  */
 export function getCommandsJSON() {
-    return COMMANDS.map(cmd => cmd.toJSON());
+    return getDeployableCommandsJSON();
 }
 
 /**
  * Get command names
  */
 export function getCommandNames(): string[] {
-    return COMMANDS.map(cmd => cmd.name);
+    return getDeployableCommandNames();
 }
 
 /**
  * Validate all commands
  */
-export function validateCommands(): void {
-    const names = new Set<string>();
-
-    for (const cmd of COMMANDS) {
-        // Check for duplicate names
-        if (names.has(cmd.name)) {
-            throw new Error(`Duplicate command name: ${cmd.name}`);
-        }
-        names.add(cmd.name);
-
-        // Validate command structure
-        if (!cmd.description) {
-            throw new Error(`Command ${cmd.name} missing description`);
-        }
-
-        if (cmd.name.length < 1 || cmd.name.length > 32) {
-            throw new Error(`Command ${cmd.name} has invalid name length`);
-        }
-    }
-
-    console.log(`✅ Validated ${COMMANDS.length} commands`);
-}
+export { validateCommands };

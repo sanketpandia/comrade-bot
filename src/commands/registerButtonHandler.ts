@@ -65,7 +65,7 @@ export async function handleRegisterLink(interaction: DiscordInteraction) {
         .setMaxLength(50);
 
     const modal = new ModalBuilder()
-        .setCustomId("register_link_modal")
+        .setCustomId(CUSTOM_IDS.REGISTER_LINK_MODAL)
         .setTitle("Link to Virtual Airline");
 
     modal.addComponents(

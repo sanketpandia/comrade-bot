@@ -145,6 +145,9 @@ export interface PilotStatsData {
     last_career_mode_flight?: string;
     assigned_routes?: string[];
     last_activity_cm?: string;
+    additional_fields?: {
+      [key: string]: any;
+    };
   };
   provider_data?: {
     join_date?: string;

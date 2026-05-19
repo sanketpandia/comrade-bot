@@ -3,6 +3,7 @@ import { DiscordInteraction } from "../types/DiscordInteraction";
 import { ApiService } from "../services/apiService";
 import { UnauthorizedError } from "../helpers/UnauthorizedException";
 import { PermissionDeniedError } from "../helpers/PermissionDeniedException";
+import { CUSTOM_IDS } from "../configs/constants";
 
 export const data = new SlashCommandBuilder()
     .setName("tour_leg")
@@ -274,7 +275,7 @@ export async function execute(interaction: DiscordInteraction) {
 
             // Create "File PIREP" button
             const filePirepButton = new ButtonBuilder()
-                .setCustomId("tour_leg_file_pirep")
+                .setCustomId(CUSTOM_IDS.TOUR_LEG_FILE_PIREP_BUTTON)
                 .setLabel("File PIREP")
                 .setStyle(ButtonStyle.Primary);
 

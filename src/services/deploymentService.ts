@@ -1,109 +1,87 @@
 import { REST, Routes } from "discord.js";
-import { getCommandsJSON, getCommandNames } from "../utils/commandLoader";
+import { getDeployableCommandNames, getDeployableCommandsJSON, validateCommands } from "../commands/registry";
+
+export type DeploymentScope =
+    | { type: "guild"; guildId: string }
+    | { type: "global" };
+
+export interface DeploymentCredentials {
+    clientId: string;
+    token: string;
+}
 
 /**
  * Service for deploying Discord slash commands
  */
-export class DeploymentService {
-    private static clientId: string;
-    private static token: string;
+export class CommandDeploymentService {
+    private clientId: string;
+    private token: string;
 
-    /**
-     * Initialize the deployment service with bot credentials
-     */
-    static initialize(clientId: string, token: string) {
-        this.clientId = clientId;
-        this.token = token;
+    constructor(credentials: DeploymentCredentials) {
+        this.clientId = credentials.clientId;
+        this.token = credentials.token;
     }
 
     /**
-     * Deploy commands to a specific guild
-     * @param guildId - The Discord guild/server ID
-     * @returns Object with deployment results
+     * Deploy commands to Discord for the requested scope.
      */
-    static async deployToGuild(guildId: string): Promise<DeploymentResult> {
-        if (!this.clientId || !this.token) {
-            throw new Error("DeploymentService not initialized. Call initialize() first.");
-        }
-
+    async deploy(scope: DeploymentScope): Promise<DeploymentResult> {
         try {
-            const commands = getCommandsJSON();
-            const commandNames = getCommandNames();
+            validateCommands();
+
+            const commands = getDeployableCommandsJSON();
+            const commandNames = getDeployableCommandNames();
 
             const rest = new REST().setToken(this.token);
-            const route = Routes.applicationGuildCommands(this.clientId, guildId);
+            const route = scope.type === "guild"
+                ? Routes.applicationGuildCommands(this.clientId, scope.guildId)
+                : Routes.applicationCommands(this.clientId);
 
-            console.log(`[DeploymentService] Deploying ${commands.length} commands to guild ${guildId}`);
+            console.log(`[CommandDeploymentService] Deploying ${commands.length} commands (${scope.type})`);
 
             const deployedCommands = await rest.put(route, { body: commands }) as any[];
 
-            console.log(`[DeploymentService] Successfully deployed ${deployedCommands.length} commands`);
+            console.log(`[CommandDeploymentService] Successfully deployed ${deployedCommands.length} commands (${scope.type})`);
 
             return {
                 success: true,
                 commandCount: deployedCommands.length,
                 commandNames,
-                guildId,
-                scope: "guild",
-                message: `Successfully deployed ${deployedCommands.length} commands`
+                guildId: scope.type === "guild" ? scope.guildId : undefined,
+                scope: scope.type,
+                message: scope.type === "guild"
+                    ? `Successfully deployed ${deployedCommands.length} commands`
+                    : `Successfully deployed ${deployedCommands.length} commands globally (may take up to 1 hour to propagate)`
             };
 
         } catch (error: any) {
-            console.error("[DeploymentService] Deployment failed:", error);
+            const message = error?.message || "Unknown deployment error";
+            console.error(`[CommandDeploymentService] Deployment failed (${scope.type}):`, message);
 
             return {
                 success: false,
                 commandCount: 0,
                 commandNames: [],
-                guildId,
-                scope: "guild",
-                message: error?.message || "Unknown deployment error",
+                guildId: scope.type === "guild" ? scope.guildId : undefined,
+                scope: scope.type,
+                message,
                 error
             };
         }
     }
 
     /**
-     * Deploy commands globally (takes ~1 hour to propagate)
+     * Deploy commands to a specific guild.
      */
-    static async deployGlobally(): Promise<DeploymentResult> {
-        if (!this.clientId || !this.token) {
-            throw new Error("DeploymentService not initialized. Call initialize() first.");
-        }
+    async deployToGuild(guildId: string): Promise<DeploymentResult> {
+        return this.deploy({ type: "guild", guildId });
+    }
 
-        try {
-            const commands = getCommandsJSON();
-            const commandNames = getCommandNames();
-
-            const rest = new REST().setToken(this.token);
-            const route = Routes.applicationCommands(this.clientId);
-
-            console.log(`[DeploymentService] Deploying ${commands.length} commands globally`);
-
-            const deployedCommands = await rest.put(route, { body: commands }) as any[];
-
-            console.log(`[DeploymentService] Successfully deployed ${deployedCommands.length} commands globally`);
-
-            return {
-                success: true,
-                commandCount: deployedCommands.length,
-                commandNames,
-                scope: "global",
-                message: `Successfully deployed ${deployedCommands.length} commands globally (may take up to 1 hour to propagate)`
-            };
-
-        } catch (error: any) {
-            console.error("[DeploymentService] Global deployment failed:", error);
-
-            return {
-                success: false,
-                commandCount: 0,
-                commandNames: [],
-                scope: "global",
-                message: error?.message || "Unknown deployment error",
-                error
-            };
-        }
+    /**
+     * Deploy commands globally (takes ~1 hour to propagate).
+     */
+    async deployGlobally(): Promise<DeploymentResult> {
+        return this.deploy({ type: "global" });
     }
 }
 
@@ -112,7 +90,7 @@ export interface DeploymentResult {
     commandCount: number;
     commandNames: string[];
     guildId?: string;
-    scope: "guild" | "global";
+    scope: DeploymentScope["type"];
     message: string;
     error?: any;
 }

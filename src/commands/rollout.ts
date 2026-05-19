@@ -1,7 +1,8 @@
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 import { DiscordInteraction } from "../types/DiscordInteraction";
 import { ApiService } from "../services/apiService";
-import { DeploymentService } from "../services/deploymentService";
+import { loadBotConfig } from "../configs/env";
+import { CommandDeploymentService } from "../services/deploymentService";
 
 export const data = new SlashCommandBuilder()
     .setName("rollout")
@@ -43,6 +44,11 @@ export async function execute(interaction: DiscordInteraction) {
             return;
         }
 
+        const botConfig = loadBotConfig();
+        const deploymentService = new CommandDeploymentService({
+            clientId: botConfig.discordClientId,
+            token: botConfig.discordBotToken,
+        });
         let result;
 
         if (mode === "local") {
@@ -57,12 +63,12 @@ export async function execute(interaction: DiscordInteraction) {
             }
 
             console.log(`[Rollout] LOCAL deployment to guild ${guildId} by user ${chatInput.user.id}`);
-            result = await DeploymentService.deployToGuild(guildId);
+            result = await deploymentService.deployToGuild(guildId);
 
         } else {
             // Global deployment to all servers
             console.log(`[Rollout] GLOBAL deployment by user ${chatInput.user.id}`);
-            result = await DeploymentService.deployGlobally();
+            result = await deploymentService.deployGlobally();
         }
 
         if (!result.success) {

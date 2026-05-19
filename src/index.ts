@@ -1,5 +1,6 @@
 import * as dotenv from "dotenv";
 import { BotClient } from "./bot/BotClient";
+import { loadBotConfig } from "./configs/env";
 
 // Load environment variables
 dotenv.config();
@@ -8,28 +9,10 @@ dotenv.config();
  * Main entry point for Comrade Bot
  */
 async function main() {
-    // Validate required environment variables
-    const botToken = process.env.DISCORD_BOT_TOKEN;
-    const clientId = process.env.DISCORD_BOT_CLIENT_ID;
-
-    console.log(`
-        ================================================
-        ${botToken}
-        ${clientId}
-        ================================================`)
-
-    if (!botToken) {
-        console.error("DISCORD_BOT_TOKEN is not set in environment variables");
-        process.exit(1);
-    }
-
-    if (!clientId) {
-        console.error(" DISCORD_BOT_CLIENT_ID is not set in environment variables");
-        process.exit(1);
-    };
+    const config = loadBotConfig();
 
     // Initialize and start bot
-    const bot = new BotClient(botToken, clientId);
+    const bot = new BotClient(config);
 
     // Handle graceful shutdown
     process.on("SIGINT", async () => {

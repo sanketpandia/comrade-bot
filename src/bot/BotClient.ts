@@ -1,6 +1,6 @@
 import { Client, GatewayIntentBits, Events } from "discord.js";
 import { InteractionRouter } from "../handlers/InteractionRouter";
-import { DeploymentService } from "../services/deploymentService";
+import { BotConfig } from "../configs/env";
 
 /**
  * Bot client manager
@@ -9,17 +9,12 @@ import { DeploymentService } from "../services/deploymentService";
 export class BotClient {
     private client: Client;
     private token: string;
-    private clientId: string;
 
-    constructor(token: string, clientId: string) {
-        this.token = token;
-        this.clientId = clientId;
+    constructor(config: BotConfig) {
+        this.token = config.discordBotToken;
         this.client = new Client({
             intents: [GatewayIntentBits.Guilds]
         });
-
-        // Initialize deployment service
-        DeploymentService.initialize(clientId, token);
 
         this.setupEventHandlers();
     }

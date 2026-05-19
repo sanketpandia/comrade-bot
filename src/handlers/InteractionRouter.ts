@@ -14,11 +14,27 @@ import { logModeSelectionHandler } from "../commands/logModeSelectionHandler";
 import { handleTourFilePirep } from "../commands/tourButtonHandler";
 import { commandMap } from "../configs/commandMap";
 
+type WrappedHandler = (interaction: DiscordInteraction) => Promise<void>;
+
 /**
  * Centralized interaction router
  * Handles all Discord interactions: commands, modals, buttons, select menus
  */
 export class InteractionRouter {
+    private static readonly modalHandlers: Record<string, WrappedHandler> = {
+        [RegisterHandler.data.name]: RegisterHandler.execute,
+        [InitServerHandler.data.name]: InitServerHandler.execute,
+        [CUSTOM_IDS.REGISTER_LINK_MODAL]: RegisterHandler.execute,
+    };
+
+    private static readonly buttonHandlers: Record<string, WrappedHandler> = {
+        [CUSTOM_IDS.INIT_SERVER_PROCEED_BUTTON]: handleInitServerProceed,
+        [CUSTOM_IDS.REGISTER_NEW_BUTTON]: handleRegisterNew,
+        [CUSTOM_IDS.REGISTER_LINK_BUTTON]: handleRegisterLink,
+        [CUSTOM_IDS.TOUR_FILE_PIREP_BUTTON]: handleTourFilePirep,
+        [CUSTOM_IDS.TOUR_LEG_FILE_PIREP_BUTTON]: handleTourFilePirep,
+    };
+
     /**
      * Route incoming interaction to appropriate handler
      */
@@ -55,35 +71,25 @@ export class InteractionRouter {
 
         const wrapped = new DiscordInteraction(interaction);
 
-        // Static modal handlers
-        switch (interaction.customId) {
-            case RegisterHandler.data.name:
-                await RegisterHandler.execute(wrapped);
-                break;
-
-            case InitServerHandler.data.name:
-                await InitServerHandler.execute(wrapped);
-                break;
-
-            case "register_link_modal":
-                // Handle link-only registration (callsign-only modal)
-                await RegisterHandler.execute(wrapped);
-                break;
-
-            case CUSTOM_IDS.MEMBERSHIP_JOIN_MODAL:
-                const MembershipJoinHandler = await import("../commands/membershipJoinModalHandler");
-                await MembershipJoinHandler.execute(wrapped);
-                break;
-
-            default:
-                // Check if it's a PIREP modal with encoded mode_id (format: pirepModal_modeId)
-                if (interaction.customId.startsWith(CUSTOM_IDS.PIREP_MODAL)) {
-                    await PirepModalHandler.execute(wrapped);
-                } else {
-                    // Dynamic modal handlers (with IDs)
-                    await this.handleDynamicModal(interaction, wrapped);
-                }
+        const handler = this.modalHandlers[interaction.customId];
+        if (handler) {
+            await handler(wrapped);
+            return;
         }
+
+        if (interaction.customId === CUSTOM_IDS.MEMBERSHIP_JOIN_MODAL) {
+            const MembershipJoinHandler = await import("../commands/membershipJoinModalHandler");
+            await MembershipJoinHandler.execute(wrapped);
+            return;
+        }
+
+        // Check if it's a PIREP modal with encoded mode_id (format: pirepModal_modeId)
+        if (interaction.customId.startsWith(CUSTOM_IDS.PIREP_MODAL)) {
+            await PirepModalHandler.execute(wrapped);
+            return;
+        }
+
+        await this.handleDynamicModal(interaction, wrapped);
     }
 
     /**
@@ -105,21 +111,9 @@ export class InteractionRouter {
 
         const wrapped = new DiscordInteraction(interaction);
 
-        // Handle initserver proceed button
-        if (interaction.customId === "initserver_proceed") {
-            await handleInitServerProceed(wrapped);
-            return;
-        }
-
-        // Handle register new user button
-        if (interaction.customId === "register_new") {
-            await handleRegisterNew(wrapped);
-            return;
-        }
-
-        // Handle register link button (for users who need to link to VA)
-        if (interaction.customId === "register_link") {
-            await handleRegisterLink(wrapped);
+        const handler = this.buttonHandlers[interaction.customId];
+        if (handler) {
+            await handler(wrapped);
             return;
         }
 
@@ -133,18 +127,6 @@ export class InteractionRouter {
         // Handle PIREP mode selection buttons
         if (interaction.customId.startsWith(CUSTOM_IDS.PIREP_MODE_PREFIX)) {
             await logModeSelectionHandler(wrapped);
-            return;
-        }
-
-        // Handle tour File PIREP button
-        if (interaction.customId === "tour_file_pirep") {
-            await handleTourFilePirep(wrapped);
-            return;
-        }
-
-        // Handle tour leg File PIREP button
-        if (interaction.customId === "tour_leg_file_pirep") {
-            await handleTourFilePirep(wrapped);
             return;
         }
 

@@ -1,10 +1,7 @@
 // src/commands/initServer.ts
 import {
   SlashCommandBuilder,
-  ModalBuilder,
-  TextInputBuilder,
   ActionRowBuilder,
-  TextInputStyle,
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
@@ -69,7 +66,7 @@ export async function execute(interaction: DiscordInteraction) {
 
   // Create proceed button
   const proceedButton = new ButtonBuilder()
-    .setCustomId("initserver_proceed")
+    .setCustomId(CUSTOM_IDS.INIT_SERVER_PROCEED_BUTTON)
     .setLabel("Proceed")
     .setStyle(ButtonStyle.Primary)
     .setEmoji("▶️");

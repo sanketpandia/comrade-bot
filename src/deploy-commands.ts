@@ -1,6 +1,6 @@
-import { REST, Routes } from "discord.js";
 import * as dotenv from "dotenv";
-import { getCommandsJSON, validateCommands, getCommandNames } from "./utils/commandLoader";
+import { getDeployableCommandNames, validateCommands } from "./commands/registry";
+import { CommandDeploymentService, DeploymentScope } from "./services/deploymentService";
 
 dotenv.config();
 
@@ -34,46 +34,44 @@ async function deployCommands() {
     const mode = args[0]; // 'local' or 'global'
 
     try {
-        // Validate commands before deploying
         validateCommands();
+        const commandNames = getDeployableCommandNames();
 
-        const commands = getCommandsJSON();
-        const rest = new REST().setToken(token);
-
-        console.log(`\n📦 Deploying ${commands.length} slash commands...`);
-        console.log(`📋 Commands: ${getCommandNames().join(", ")}`);
+        console.log(`\n📦 Deploying ${commandNames.length} slash commands...`);
+        console.log(`📋 Commands: ${commandNames.join(", ")}`);
 
         // Determine deployment scope
-        let route;
-        let scope;
+        let scope: DeploymentScope;
+        let scopeLabel: string;
 
         if (mode === "global") {
-            // Force global deployment
-            route = Routes.applicationCommands(clientId);
-            scope = "Global (all servers)";
+            scope = { type: "global" };
+            scopeLabel = "Global (all servers)";
             console.log("🌍 Mode: GLOBAL deployment");
         } else if (mode === "local" || guildId) {
-            // Guild-specific deployment (instant, great for dev)
             if (!guildId) {
                 console.error("❌ GUILD_ID environment variable is required for local deployment");
                 process.exit(1);
             }
-            route = Routes.applicationGuildCommands(clientId, guildId);
-            scope = `Guild: ${guildId}`;
+            scope = { type: "guild", guildId };
+            scopeLabel = `Guild: ${guildId}`;
             console.log("🏠 Mode: LOCAL (guild-specific) deployment");
         } else {
-            // Default to global if no mode specified and no guild ID
-            route = Routes.applicationCommands(clientId);
-            scope = "Global (all servers)";
+            scope = { type: "global" };
+            scopeLabel = "Global (all servers)";
             console.log("🌍 Mode: GLOBAL deployment (default)");
         }
 
-        console.log(`🎯 Scope: ${scope}`);
+        console.log(`🎯 Scope: ${scopeLabel}`);
 
-        // Deploy commands
-        const data = await rest.put(route, { body: commands }) as any[];
+        const service = new CommandDeploymentService({ clientId, token });
+        const result = await service.deploy(scope);
 
-        console.log(`\n✅ Successfully deployed ${data.length} commands!`);
+        if (!result.success) {
+            throw new Error(result.message);
+        }
+
+        console.log(`\n✅ Successfully deployed ${result.commandCount} commands!`);
 
         if (mode === "global" || !guildId) {
             console.log("⏳ Note: Global commands may take up to 1 hour to update across all servers");

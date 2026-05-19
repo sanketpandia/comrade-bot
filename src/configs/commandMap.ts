@@ -1,36 +1,8 @@
-import * as status from "../commands/status";
-import * as register from "../commands/register";
-import * as logbook from "../commands/logbook";
-import * as initserver from "../commands/initServer";
-import * as live from "../commands/live";
-import * as rollout from "../commands/rollout";
-import * as stats from "../commands/stats";
-import * as log from "../commands/log";
-import * as help from "../commands/help";
-import * as dashboard from "../commands/dashboard";
-import * as membership from "../commands/membership";
-import * as events from "../commands/events";
-import * as tour from "../commands/tour";
-import * as tour_leg from "../commands/tour_leg";
 import { DiscordInteraction } from "../types/DiscordInteraction";
+import { commandMap as registryCommandMap } from "../commands/registry";
 
 export type CommandHandler = {
     execute: (interaction: DiscordInteraction) => Promise<void>;
 }
 
-export const commandMap: Record<string, CommandHandler> = {
-    status,
-    register,
-    logbook,
-    initserver,
-	live,
-    rollout,
-    stats,
-    log,
-    help,
-    dashboard,
-    membership,
-    events,
-    tour,
-    tour_leg
-}
+export const commandMap: Record<string, CommandHandler> = registryCommandMap;

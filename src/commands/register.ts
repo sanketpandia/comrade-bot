@@ -8,6 +8,7 @@ import {
 } from "discord.js";
 import { DiscordInteraction } from "../types/DiscordInteraction";
 import { ApiService } from "../services/apiService";
+import { CUSTOM_IDS } from "../configs/constants";
 import * as path from "path";
 
 export const data = new SlashCommandBuilder()
@@ -78,7 +79,7 @@ export async function execute(interaction: DiscordInteraction) {
 
         // Create link button
         const linkButton = new ButtonBuilder()
-            .setCustomId("register_link")
+            .setCustomId(CUSTOM_IDS.REGISTER_LINK_BUTTON)
             .setLabel("Link to VA")
             .setStyle(ButtonStyle.Primary)
             .setEmoji("🔗");
@@ -123,7 +124,7 @@ async function showNewUserRegistration(chatInput: any) {
 
     // Create proceed button for new registration
     const proceedButton = new ButtonBuilder()
-        .setCustomId("register_new")
+        .setCustomId(CUSTOM_IDS.REGISTER_NEW_BUTTON)
         .setLabel("Proceed")
         .setStyle(ButtonStyle.Success)
         .setEmoji("✅");

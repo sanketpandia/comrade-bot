@@ -25,7 +25,7 @@ export async function execute(interaction: DiscordInteraction) {
     const modalId = _interaction.customId;
 
     // SCENARIO 1: Link-only modal (registered user linking to VA)
-    if (modalId === "register_link_modal") {
+    if (modalId === CUSTOM_IDS.REGISTER_LINK_MODAL) {
         await handleLinkOnlyRegistration(interaction);
         return;
     }
@@ -88,7 +88,7 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
 
                 // Create "Link to VA" button
                 const linkButton = new ButtonBuilder()
-                    .setCustomId("register_link")
+                    .setCustomId(CUSTOM_IDS.REGISTER_LINK_BUTTON)
                     .setLabel("Link to VA")
                     .setStyle(ButtonStyle.Primary)
                     .setEmoji("🔗");
