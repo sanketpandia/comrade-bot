@@ -8,8 +8,6 @@ import InitServerHandler from "../commands/initServerModalHandler";
 import PirepModalHandler from "../commands/pirepModalHandler";
 import { handleInitServerProceed } from "../commands/initServerButtonHandler";
 import { handleRegisterNew, handleRegisterLink } from "../commands/registerButtonHandler";
-import { ConfigurePilotRoleHandler } from "../commands/ConfigurePilotRoleHandler";
-import { SyncUserModalHandler } from "../commands/SyncUserHandler";
 import { handleFlightHistory } from "../commands/logbookHandler";
 import { handleLiveFlights } from "../commands/liveHandler";
 import { logModeSelectionHandler } from "../commands/logModeSelectionHandler";
@@ -45,20 +43,8 @@ export class InteractionRouter {
     /**
      * Handle select menu interactions
      */
-    private static async handleSelectMenu(interaction: Interaction): Promise<void> {
-        if (!interaction.isStringSelectMenu()) return;
-
-        const [prefix, section, tag, userId] = interaction.customId.split("_");
-
-        // Route to pilot role configuration
-        if (prefix === CUSTOM_IDS.SET_PILOT_ROLE_MODAL) {
-            const selectedRole = interaction.values[0];
-            await ConfigurePilotRoleHandler.execute(
-                new DiscordInteraction(interaction),
-                section,
-                selectedRole
-            );
-        }
+    private static async handleSelectMenu(_interaction: Interaction): Promise<void> {
+        // No active select menu handlers — pilot role configuration removed.
     }
 
     /**
@@ -79,17 +65,9 @@ export class InteractionRouter {
                 await InitServerHandler.execute(wrapped);
                 break;
 
-            case CUSTOM_IDS.LINK_PILOT_CONFIRM:
-                await SyncUserModalHandler.execute(wrapped);
-                break;
-
             case "register_link_modal":
                 // Handle link-only registration (callsign-only modal)
                 await RegisterHandler.execute(wrapped);
-                break;
-
-            case CUSTOM_IDS.SYNC_USER_MODAL:
-                await SyncUserModalHandler.execute(wrapped);
                 break;
 
             case CUSTOM_IDS.MEMBERSHIP_JOIN_MODAL:
@@ -109,21 +87,14 @@ export class InteractionRouter {
     }
 
     /**
-     * Handle dynamic modals with custom IDs containing parameters
+     * Handle dynamic modals with custom IDs containing parameters.
+     * Previously routed SyncUserModal; removed along with the syncUserToVA endpoint.
      */
     private static async handleDynamicModal(
-        interaction: Interaction,
-        wrapped: DiscordInteraction
+        _interaction: Interaction,
+        _wrapped: DiscordInteraction
     ): Promise<void> {
-        if (!interaction.isModalSubmit()) return;
-
-        const [prefix, section, tag] = interaction.customId.split("_");
-        const customId = `${prefix}_${section}_${tag}`;
-
-        // Sync user modal
-        if (customId === CUSTOM_IDS.SYNC_USER_MODAL) {
-            await SyncUserModalHandler.execute(wrapped);
-        }
+        // No active dynamic modal handlers.
     }
 
     /**

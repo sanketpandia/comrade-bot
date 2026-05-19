@@ -289,46 +289,6 @@ export class ApiService {
 
 
 
-    static async syncUserToVA(meta: MetaInfo, payload: SyncUserPayload): Promise<SyncUserResult> {
-        try {
-            const res = await fetch(`${API_URL}/api/v1/va/userSync`, {
-                method: "POST",
-                headers: {
-                    ...generateMetaHeaders(meta),
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payload),
-            });
-
-            const body = (await res.json()) as SyncUserResult;
-            return body;
-        } catch (err) {
-            console.error("[ApiService.syncUserToVA]", err);
-            throw err;
-        }
-    }
-
-    static async assignUserRole(meta: MetaInfo, payload: { user_id: string; role: string }): Promise<SyncUserResult> {
-        try {
-            const res = await fetch(`${API_URL}/api/v1/va/setRole`, {
-                method: "POST",
-                headers: {
-                    ...generateMetaHeaders(meta),
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payload),
-            });
-            console.log(payload, "\n", `${API_URL}/api/v1/va/setRole`, "\n", res)
-
-            const body = (await res.json()) as SyncUserResult;
-            return body;
-        } catch (err) {
-            console.error("[ApiService.assignUserRole]", err);
-            console.log(err)
-            throw err;
-        }
-    }
-
     static async getUserDetails(meta: MetaInfo): Promise<UserDetailsData> {
         try {
             const res = await fetch(`${API_URL}/api/v1/user/status`, {
@@ -390,48 +350,6 @@ export class ApiService {
         } catch (err) {
             console.error("[ApiService.verifyGodMode]", err);
             return false;
-        }
-    }
-
-    /**
-     * Links an existing registered user to a VA with their callsign
-     * This is for users who are already registered but not linked to the current VA
-     */
-    static async linkUserToVA(meta: MetaInfo, callsign: string): Promise<ApiResponse<any>> {
-        try {
-            const res = await fetch(`${API_URL}/api/v1/user/register/link`, {
-                method: "POST",
-                headers: {
-                    ...generateMetaHeaders(meta),
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ callsign })
-            });
-
-            if (res.status === 401) {
-                const message = await res.text();
-                throw new UnauthorizedError(message || "Unauthorized");
-            }
-
-            if (res.status === 403) {
-                const body = await res.json() as ApiResponse<any>;
-                throw new PermissionDeniedError(body.message || "Forbidden");
-            }
-
-            if (!res.ok) {
-                throw new Error(`Failed to link user to VA: ${res.status} ${res.statusText}`);
-            }
-
-            const response: ApiResponse<any> = await res.json() as ApiResponse<any>;
-
-            if (!response.result) {
-                throw new Error("No data received in API response");
-            }
-
-            return response;
-        } catch (err) {
-            console.error("[ApiService.linkUserToVA]", err);
-            throw err;
         }
     }
 
@@ -554,48 +472,6 @@ export class ApiService {
             return response;
         } catch (err) {
             console.error("[ApiService.submitPirep]", err);
-            throw err;
-        }
-    }
-
-    /**
-     * Generate a presigned dashboard link for web UI access
-     * Returns a single-use URL that expires in 15 minutes
-     */
-    static async generateDashboardLink(meta: MetaInfo): Promise<ApiResponse<{ url: string; expires_in: number }>> {
-        try {
-            const res = await fetch(`${API_URL}/api/v1/auth/generate-dashboard-link`, {
-                method: "POST",
-                headers: {
-                    ...generateMetaHeaders(meta),
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({})
-            });
-
-            if (res.status === 401) {
-                const message = await res.text();
-                throw new UnauthorizedError(message || "Unauthorized");
-            }
-
-            if (res.status === 403) {
-                const body = await res.json() as ApiResponse<any>;
-                throw new PermissionDeniedError(body.message || "Forbidden");
-            }
-
-            if (!res.ok) {
-                throw new Error(`Failed to generate dashboard link: ${res.status} ${res.statusText}`);
-            }
-
-            const response: ApiResponse<{ url: string; expires_in: number }> = await res.json() as ApiResponse<{ url: string; expires_in: number }>;
-
-            if (!response.result) {
-                throw new Error("No data received in API response");
-            }
-
-            return response;
-        } catch (err) {
-            console.error("[ApiService.generateDashboardLink]", err);
             throw err;
         }
     }
@@ -864,18 +740,4 @@ export class ApiService {
             throw err;
         }
     }
-}
-
-
-
-
-export interface SyncUserPayload {
-    user_id: string;
-    callsign: string;
-}
-export interface SyncUserResult {
-    status: string;
-    message?: string;  // add this
-    data?: any;
-    error?: string;
 }
