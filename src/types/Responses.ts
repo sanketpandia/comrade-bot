@@ -28,7 +28,9 @@ export interface InitServerResult {
   success: boolean;
   message: string;
   va_code: string;
-  va_id: string;
+  setup_required: boolean;
+  dashboard_url?: string;
+  setup_url?: string;
 }
 
 type RegistrationStep = {

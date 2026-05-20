@@ -155,10 +155,7 @@ export class ApiService {
 
     static async initiateServerRegistration(
         meta: MetaInfo,
-        code: string,
-        name: string,
-        callsignPrefix: string,
-        callsignSuffix: string
+        code: string
     ): Promise<InitServerResult> {
         try {
             const res = await fetch(`${API_URL}/api/v1/server/init`, {
@@ -166,9 +163,6 @@ export class ApiService {
                 headers: generateRegistrationMetaHeaders(meta),
                 body: JSON.stringify({
                     va_code: code,
-                    va_name: name,
-                    callsign_prefix: callsignPrefix,
-                    callsign_suffix: callsignSuffix
                 }),
             });
 
@@ -179,19 +173,22 @@ export class ApiService {
 
             if (res.status === 403) {
                 const body = await res.json() as ApiResponse<any>;
-                throw new PermissionDeniedError(body.message || "Forbidden");
+                const errorCode = body.error?.code;
+                throw new PermissionDeniedError(`${errorCode ? `${errorCode}: ` : ""}${body.error?.message || body.message || "Forbidden"}`);
             }
 
             if (res.status === 400) {
                 const body = await res.json() as any;
+                const errorCode = body.error?.code;
                 const errorMsg = body.error?.message || body.message || "You must register as a user before initializing a server";
-                throw new Error(errorMsg);
+                throw new Error(`${errorCode ? `${errorCode}: ` : ""}${errorMsg}`);
             }
 
             if (res.status === 409) {
                 const body = await res.json() as any;
+                const errorCode = body.error?.code;
                 const errorMsg = body.error?.message || body.message || "This Discord server is already registered as a VA";
-                throw new Error(errorMsg);
+                throw new Error(`${errorCode ? `${errorCode}: ` : ""}${errorMsg}`);
             }
 
             if (!res.ok) {

@@ -8,6 +8,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import { CUSTOM_IDS } from "../configs/constants";
+import { ApiService } from "../services/apiService";
 import { DiscordInteraction } from "../types/DiscordInteraction";
 
 /* ──────────────────────────────────────────────────────────
@@ -15,7 +16,7 @@ import { DiscordInteraction } from "../types/DiscordInteraction";
    ────────────────────────────────────────────────────────── */
 export const data = new SlashCommandBuilder()
   .setName("initserver")
-  .setDescription("Initialise this Discord server with VA details")
+  .setDescription("Bootstrap this Discord server with a VA Code / ID")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 /* ──────────────────────────────────────────────────────────
@@ -25,51 +26,59 @@ export async function execute(interaction: DiscordInteraction) {
   const chatInput = interaction.getChatInputInteraction();
   if (!chatInput) return;
 
-  // Create info embed
+  if (!chatInput.guildId) {
+    await chatInput.reply({
+      content: "❌ `/initserver` must be run inside the Discord server you want to bootstrap. It cannot be used in DMs.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const userDetails = await ApiService.getUserDetails(interaction.getMetaInfo());
+
+  if (!userDetails.is_registered && !userDetails.global_user_exists) {
+    await chatInput.reply({
+      content: "👋 Please run `/register` first, then come back to `/initserver` to claim this Discord server for your VA.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (userDetails.current_server?.is_configured_va) {
+    const currentServer = userDetails.current_server;
+    await chatInput.reply({
+      content: `✅ This Discord server is already initialized for **${currentServer.va_name ?? currentServer.va_code ?? "your VA"}**${currentServer.va_code ? ` (${currentServer.va_code})` : ""}. Use \`/dashboard\` to continue setup in Vizburo.`,
+      ephemeral: true,
+    });
+    return;
+  }
+
   const infoEmbed = new EmbedBuilder()
     .setColor(0x0099FF)
-    .setTitle("🏢 Initialize Virtual Airline Server")
-    .setDescription("Please provide your Virtual Airline details to set up this Discord server.")
+    .setTitle("🏢 Start VA Setup")
+    .setDescription("Bootstrap this Discord server with one field: your VA Code / ID. Detailed setup continues in Vizburo.")
     .addFields(
       {
-        name: "📝 VA Code (3-5 characters)",
-        value: "A unique identifier for your virtual airline.\nExample: `AAVA`, `DAL`, `UAE`",
-        inline: false
+        name: "📝 VA Code / ID",
+        value: "A short identifier for your virtual airline. Example: `IFE`, `DAL`, `UAE`.",
+        inline: false,
       },
       {
-        name: "✈️ VA Name",
-        value: "The full name of your virtual airline.\nExample: `Air India Virtual`, `Delta Virtual Airlines`",
-        inline: false
+        name: "🌐 What happens next?",
+        value: "After this, open `/dashboard` in a desktop browser or desktop view to set your display name and callsign matching.",
+        inline: false,
       },
       {
-        name: "🔖 Callsign Prefix (Optional)",
-        value: "The text that appears **before** the flight number in pilot callsigns.\nExample: If pilots use `Air India 001VA`, the prefix is `Air India`",
-        inline: false
+        name: "✈️ Flight matching",
+        value: "Live-flight features start working after staff add either a callsign start or callsign end in Vizburo Basic Setup.",
+        inline: false,
       },
-      {
-        name: "🔖 Callsign Suffix (Optional)",
-        value: "The text that appears **after** the flight number in pilot callsigns.\nExample: If pilots use `Air India 001VA`, the suffix is `VA`\nIf pilots use `<Livery> 001 AI`, the suffix is `AI`",
-        inline: false
-      },
-      {
-        name: "💡 Callsign Pattern Examples",
-        value:
-          "**Example 1:** `Air India 001VA`\n" +
-          "→ Prefix: `Air India`, Suffix: `VA`\n\n" +
-          "**Example 2:** `<Any Livery> 001 AI`\n" +
-          "→ Prefix: (empty), Suffix: `AI`\n\n" +
-          "**Example 3:** `DAL 123`\n" +
-          "→ Prefix: `DAL`, Suffix: (empty)\n\n" +
-          "*The system will match all live flights with callsigns containing your prefix/suffix pattern.*",
-        inline: false
-      }
     )
-    .setFooter({ text: "Click 'Proceed' to fill in your VA details" });
+    .setFooter({ text: "Click 'Start setup' to enter your VA Code / ID" });
 
-  // Create proceed button
   const proceedButton = new ButtonBuilder()
     .setCustomId(CUSTOM_IDS.INIT_SERVER_PROCEED_BUTTON)
-    .setLabel("Proceed")
+    .setLabel("Start setup")
     .setStyle(ButtonStyle.Primary)
     .setEmoji("▶️");
 
@@ -79,6 +88,6 @@ export async function execute(interaction: DiscordInteraction) {
   await chatInput.reply({
     embeds: [infoEmbed],
     components: [row],
-    ephemeral: true
+    ephemeral: true,
   });
 }

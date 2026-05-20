@@ -10,7 +10,7 @@ export const data = {
 
 /**
  * Handles server initialization modal submission
- * Validates VA code and name, then registers server via API
+ * Validates VA code, then registers server via API
  */
 export async function execute(interaction: DiscordInteraction) {
     const _interaction = interaction.getModalInputInteraction();
@@ -20,44 +20,21 @@ export async function execute(interaction: DiscordInteraction) {
 
     // Extract inputs
     const vaCode = _interaction.fields.getTextInputValue("vaCode").trim().toUpperCase();
-    const vaName = _interaction.fields.getTextInputValue("vaName").trim();
-    const callsignPrefix = _interaction.fields.getTextInputValue("callsignPrefix")?.trim() || "";
-    const callsignSuffix = _interaction.fields.getTextInputValue("callsignSuffix")?.trim() || "";
 
     // Validate VA code
     if (!await CommandErrorHandler.validateInput(
         interaction, vaCode, "VA code", ValidationPatterns.VA_CODE, 3, 5
     )) return;
 
-    // Validate VA name
-    if (!await CommandErrorHandler.validateInput(
-        interaction, vaName, "VA name", undefined, 3, 50
-    )) return;
-
-    // Validate at least one callsign pattern is provided
-    if (!callsignPrefix && !callsignSuffix) {
-        await interaction.reply({
-            content: "❌ **Validation Error**\nYou must provide at least a Callsign Prefix or Suffix for flight matching.",
-            ephemeral: true
-        });
-        return;
-    }
-
     // Log execution
     CommandErrorHandler.logExecution("Server Init", _interaction.user.id, _interaction.guildId, {
         vaCode,
-        vaName,
-        callsignPrefix,
-        callsignSuffix
     });
  
     try {
         const response = await ApiService.initiateServerRegistration(
             interaction.getMetaInfo(),
             vaCode,
-            vaName,
-            callsignPrefix,
-            callsignSuffix
         );
 
         // Validate response
@@ -69,7 +46,7 @@ export async function execute(interaction: DiscordInteraction) {
         // Send success response
         if (response.success) {
             await interaction.reply({
-                content: `✅ **Server Initialization Successful!**\n\n${response.message}\n\n**VA Code:** ${response.va_code}\n**VA ID:** ${response.va_id}\n\nYour Virtual Airline is now set up and ready to use!`,
+                content: `✅ **VA setup started!**\n\n${response.message}\n\n**VA Code / ID:** ${response.va_code}\n\nNext: use \`/dashboard\` to open Vizburo and finish Basic Setup. A desktop browser or desktop view is recommended. Live-flight matching starts after staff add a callsign start or end.`,
                 ephemeral: true
             });
         } else {
@@ -81,6 +58,23 @@ export async function execute(interaction: DiscordInteraction) {
         }
 
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "";
+        if (errorMessage.includes("USER_NOT_REGISTERED")) {
+            await interaction.reply({ content: "👋 Please run `/register` first, then try `/initserver` again.", ephemeral: true });
+            return;
+        }
+        if (errorMessage.includes("SERVER_ALREADY_REGISTERED")) {
+            await interaction.reply({ content: "✅ This Discord server is already initialized. Use `/dashboard` to continue setup in Vizburo.", ephemeral: true });
+            return;
+        }
+        if (errorMessage.includes("VA_CODE_ALREADY_EXISTS")) {
+            await interaction.reply({ content: "❌ That VA Code / ID is already in use. Please choose the official unique code for your VA or contact support.", ephemeral: true });
+            return;
+        }
+        if (errorMessage.includes("MISSING_DISCORD_CONTEXT")) {
+            await interaction.reply({ content: "🔒 Discord context was missing. Please try `/initserver` again inside the server you want to set up.", ephemeral: true });
+            return;
+        }
         await CommandErrorHandler.handleApiError(interaction, error, "Server Init");
     }
 }
