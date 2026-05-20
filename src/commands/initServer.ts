@@ -5,6 +5,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
+  PermissionFlagsBits,
 } from "discord.js";
 import { CUSTOM_IDS } from "../configs/constants";
 import { DiscordInteraction } from "../types/DiscordInteraction";
@@ -14,7 +15,8 @@ import { DiscordInteraction } from "../types/DiscordInteraction";
    ────────────────────────────────────────────────────────── */
 export const data = new SlashCommandBuilder()
   .setName("initserver")
-  .setDescription("Initialise this Discord server with VA details");
+  .setDescription("Initialise this Discord server with VA details")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 /* ──────────────────────────────────────────────────────────
    Slash command → show info screen with button
