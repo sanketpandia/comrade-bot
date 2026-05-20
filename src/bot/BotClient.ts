@@ -28,13 +28,12 @@ export class BotClient {
         // Bot ready event
         this.client.once(Events.ClientReady, async (client) => {
             metrics.recordDiscordEvent("ready", "success");
-            logger.info("discord_client_ready", { bot_tag: client.user.tag });
 
             // Wait a bit for guild cache to populate
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             const guildCount = client.guilds.cache.size;
-            logger.info("discord_guild_cache_ready", { guild_count: guildCount });
+            logger.info("discord_client_ready", { guild_count: guildCount });
 
             if (guildCount === 0) {
                 logger.warn("discord_no_guilds_found");
@@ -70,7 +69,7 @@ export class BotClient {
      */
     async start(): Promise<void> {
         try {
-            logger.info("bot_starting");
+            logger.debug("bot_starting");
             await this.client.login(this.token);
         } catch (error) {
             logger.error("bot_start_failed", errorFields(error));

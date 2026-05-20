@@ -23,6 +23,7 @@ import { generateMetaHeaders, generateRegistrationMetaHeaders } from "../helpers
 import { UnauthorizedError } from "../helpers/UnauthorizedException";
 import { PermissionDeniedError } from "../helpers/PermissionDeniedException";
 import { NotFoundError } from "../helpers/NotFoundException";
+import { errorFields, logger } from "../infra/logger";
 
 const API_URL = process.env.API_URL ?? "http://localhost:8080";
 
@@ -296,8 +297,6 @@ export class ApiService {
                 headers: generateRegistrationMetaHeaders(meta),
             });
 
-            console.log(res)
-
             if (res.status === 401) {
                 const message = await res.text();
                 throw new UnauthorizedError(message || "Unauthorized");
@@ -319,7 +318,10 @@ export class ApiService {
 
             return response.result;
         } catch (err) {
-            console.error("[ApiService.getUserDetails]", err);
+            logger.error("api_request_failed", {
+                operation: "get_user_details",
+                ...errorFields(err),
+            });
             throw err;
         }
     }

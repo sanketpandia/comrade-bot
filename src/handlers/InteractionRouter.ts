@@ -213,7 +213,7 @@ export class InteractionRouter {
         }
 
         const wrapped = new DiscordInteraction(interaction);
-        logger.info("command_started", {
+        logger.debug("command_started", {
             command: interaction.commandName,
             interaction_type: interactionType,
             guild_id: interaction.guildId || "DM",

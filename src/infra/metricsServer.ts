@@ -47,7 +47,7 @@ export class MetricsServer {
             this.server?.listen(this.config.port, this.config.host, () => resolve());
         });
 
-        logger.info("metrics_server_started", {
+        logger.debug("metrics_server_started", {
             host: this.config.host,
             port: this.config.port,
         });
@@ -66,6 +66,6 @@ export class MetricsServer {
             });
         });
 
-        logger.info("metrics_server_stopped");
+        logger.debug("metrics_server_stopped");
     }
 }
