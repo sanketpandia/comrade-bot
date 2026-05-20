@@ -56,9 +56,7 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
     )) return;
 
     // Log execution
-    CommandErrorHandler.logExecution("Registration", _interaction.user.id, _interaction.guildId, {
-        ifcId,
-    });
+    CommandErrorHandler.logExecution("Registration", _interaction.user.id, _interaction.guildId, {});
 
     try {
         const response = await ApiService.initiateRegistration(
@@ -73,9 +71,6 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
             await CommandErrorHandler.handleEmptyResponse(interaction);
             return;
         }
-
-        // Log response for debugging
-        console.log("[RegisterModal] Registration response:", JSON.stringify(response, null, 2));
 
         // Send success response
         if (response.success) {

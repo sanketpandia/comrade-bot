@@ -108,37 +108,45 @@ export class ApiService {
             }
 
             if (!res.ok) {
-                const errorText = await res.text();
-                console.error("[ApiService.initiateRegistration] Error response:", res.status, errorText);
+                logger.warn("api_request_failed", {
+                    operation: "initiate_registration",
+                    status: res.status,
+                    status_text: res.statusText,
+                });
                 throw new Error(`Failed to fetch initRegistration: ${res.status} ${res.statusText}`);
             }
             
             const responseText = await res.text();
-            console.log("[ApiService.initiateRegistration] Raw response:", responseText);
-            
+
             let response: ApiResponse<RegistrationResult>;
             try {
                 response = JSON.parse(responseText) as ApiResponse<RegistrationResult>;
             } catch (jsonErr) {
-                console.error("[ApiService.initiateRegistration] JSON parse error:", jsonErr);
+                logger.warn("api_response_parse_failed", {
+                    operation: "initiate_registration",
+                    ...errorFields(jsonErr),
+                });
                 throw new Error("Failed to parse API response as JSON");
             }
-
-            // Log response for debugging
-            console.log("[ApiService.initiateRegistration] Response:", JSON.stringify(response, null, 2));
 
             if (!response) {
                 throw new Error("Empty response from API");
             }
 
             if (!response.result) {
-                console.error("[ApiService.initiateRegistration] Response missing result field:", JSON.stringify(response, null, 2));
+                logger.warn("api_response_missing_result", {
+                    operation: "initiate_registration",
+                    api_status: response.status,
+                });
                 throw new Error("No data received in API response - result field is missing");
             }
             
             return response.result;
         } catch (err) {
-            console.error("[ApiService.initRegistation]", err);
+            logger.error("api_request_failed", {
+                operation: "initiate_registration",
+                ...errorFields(err),
+            });
             throw err
         }
     }
