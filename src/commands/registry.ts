@@ -16,7 +16,7 @@ import * as stats from "./stats";
 import * as log from "./log";
 import * as help from "./help";
 import * as dashboard from "./dashboard";
-import * as membership from "./membership";
+import * as botstatus from "./botstatus";
 import * as events from "./events";
 import * as tour from "./tour";
 import * as tourLeg from "./tour_leg";
@@ -54,8 +54,8 @@ export const commandRegistry: CommandRegistryEntry[] = [
     entry(stats, "user"),
     entry(log, "operations"),
     entry(help, "user"),
+    entry(botstatus, "operations"),
     entry(dashboard, "user"),
-    entry(membership, "onboarding"),
     entry(events, "events"),
     entry(tour, "events"),
     entry(tourLeg, "events"),

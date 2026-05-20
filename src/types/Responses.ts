@@ -107,23 +107,55 @@ export interface VARole {
   role: string;
   is_active: boolean;
   joined_at: string;
+  callsign?: string;
 }
 
 export interface CurrentVA {
   is_member: boolean;
+  va_id?: string;
+  va_name?: string;
+  va_code?: string;
+  role?: string;
+  is_active?: boolean;
+  callsign?: string;
+}
+
+export interface CurrentServerStatus {
+  discord_server_id: string;
+  is_configured_va: boolean;
+  va_id?: string;
+  va_name?: string;
+  va_code?: string;
+}
+
+export interface MembershipsSummary {
+  total_count: number;
+  active_count: number;
+}
+
+export interface MembershipSummary {
+  va_id: string;
+  va_name: string;
+  va_code: string;
   role: string;
   is_active: boolean;
 }
 
 export interface UserDetailsData {
-  user_id: string;
+  is_registered: boolean;
+  global_user_exists: boolean;
+  user_id?: string;
   discord_id: string;
-  if_community_id: string;
-  if_api_id: string;
+  if_community_id?: string;
+  if_api_id?: string;
   is_active: boolean;
-  created_at: string;
+  created_at?: string;
   affiliations: VARole[];
+  current_server: CurrentServerStatus;
   current_va: CurrentVA;
+  memberships_summary: MembershipsSummary;
+  other_memberships_count: number;
+  other_memberships?: MembershipSummary[];
 }
 
 export type UserDetailsResponse = ApiResponse<UserDetailsData>;

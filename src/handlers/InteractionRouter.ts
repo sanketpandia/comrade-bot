@@ -85,12 +85,6 @@ export class InteractionRouter {
                 return;
             }
 
-            if (interaction.customId === CUSTOM_IDS.MEMBERSHIP_JOIN_MODAL) {
-                const MembershipJoinHandler = await import("../commands/membershipJoinModalHandler");
-                await MembershipJoinHandler.execute(wrapped);
-                return;
-            }
-
             // Check if it's a PIREP modal with encoded mode_id (format: pirepModal_modeId)
             if (interaction.customId.startsWith(CUSTOM_IDS.PIREP_MODAL)) {
                 await PirepModalHandler.execute(wrapped);
@@ -138,13 +132,6 @@ export class InteractionRouter {
             const handler = this.buttonHandlers[interaction.customId];
             if (handler) {
                 await handler(wrapped);
-                return;
-            }
-
-            // Handle membership join proceed button
-            if (interaction.customId === CUSTOM_IDS.MEMBERSHIP_JOIN_BUTTON) {
-                const { handleMembershipJoinProceed } = await import("../commands/membershipJoinButtonHandler");
-                await handleMembershipJoinProceed(wrapped);
                 return;
             }
 

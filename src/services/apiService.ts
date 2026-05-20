@@ -29,10 +29,13 @@ const API_URL = process.env.API_URL ?? "http://localhost:8080";
 
 export class ApiService {
     static async getHealth(metainfo: MetaInfo): Promise<HealthApiResponse> {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
         try {
             const res = await fetch(`${API_URL}/healthCheck`, {
                 method: "GET",
-                headers: generateMetaHeaders(metainfo)
+                headers: generateMetaHeaders(metainfo),
+                signal: controller.signal,
             });
             if (!res.ok) {
                 throw new Error(`Failed to fetch healthCheck: ${res.status} ${res.statusText}`);
@@ -40,8 +43,13 @@ export class ApiService {
             const data = await res.json() as HealthApiResponse;
             return data;
         } catch (err) {
-            console.error("[ApiService.getHealth]", err);
+            logger.warn("api_request_failed", {
+                operation: "get_health",
+                ...errorFields(err),
+            });
             throw err;
+        } finally {
+            clearTimeout(timeout);
         }
     }
 

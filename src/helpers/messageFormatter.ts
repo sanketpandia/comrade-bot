@@ -101,18 +101,18 @@ export class MessageFormatters {
     if (!data) return "No user data found.";
 
     // Format the registration date
-    const registeredDate = new Date(data.created_at).toLocaleDateString("en-US", {
+    const registeredDate = data.created_at ? new Date(data.created_at).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric"
-    });
+    }) : "Unknown";
 
     // Build the message
     let msg = "**User Status:**\n";
 
     // Registration status
     msg += `**Registration Status:** ${data.is_active ? "✅ Registered" : "❌ Not Active"}\n`;
-    msg += `**IFC Username:** ${data.if_community_id}\n`;
+    msg += `**IFC Username:** ${data.if_community_id ?? "Not available"}\n`;
     msg += `**Registered Since:** ${registeredDate}\n\n`;
 
     // Current VA status - find affiliation by Discord server ID
@@ -133,7 +133,7 @@ export class MessageFormatters {
         msg += `**Joined:** ${joinedDate}\n`;
       } else {
         msg += `**Current VA:** ✅ Member\n`;
-        msg += `**Role:** ${formatRole(data.current_va.role)}\n`;
+        msg += `**Role:** ${data.current_va.role ? formatRole(data.current_va.role) : "Member"}\n`;
       }
     } else {
       msg += `**Current VA:** ❌ Not a member of this Virtual Airline\n`;

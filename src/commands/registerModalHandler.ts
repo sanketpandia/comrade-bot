@@ -15,7 +15,7 @@ export const data = {
 /**
  * Handles user registration modal submission
  * Supports two scenarios:
- * 1. Full registration (REGISTER_MODAL): IFC ID + Last Flight + optional Callsign
+ * 1. Full registration (REGISTER_MODAL): IFC ID + Last Flight
  * 2. Link-only (register_link_modal): Callsign only
  */
 export async function execute(interaction: DiscordInteraction) {
@@ -35,7 +35,7 @@ export async function execute(interaction: DiscordInteraction) {
 }
 
 /**
- * Handles full user registration with IFC ID, last flight, and optional callsign
+ * Handles full user registration with IFC ID and last flight only.
  */
 async function handleFullRegistration(interaction: DiscordInteraction) {
     const _interaction = interaction.getModalInputInteraction();
@@ -58,7 +58,6 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
     // Log execution
     CommandErrorHandler.logExecution("Registration", _interaction.user.id, _interaction.guildId, {
         ifcId,
-        lastFlight
     });
 
     try {
@@ -82,9 +81,19 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
         if (response.success) {
             let message = `✅ **Registration Successful!**\n\n${response.message}\n\n`;
 
-            if (response.is_va_registered) {
+            let shouldOfferVALink = response.is_va_registered;
+            let vaName = "this Virtual Airline";
+            try {
+                const status = await ApiService.getUserDetails(interaction.getMetaInfo());
+                shouldOfferVALink = status.current_server?.is_configured_va === true && !status.current_va?.is_member;
+                vaName = status.current_server?.va_name || vaName;
+            } catch (_statusErr) {
+                // Keep the registration success path usable; fallback to registration response hint.
+            }
+
+            if (shouldOfferVALink) {
                 // User is registered to this VA server - show button to link
-                message += "📌 **Next Step:**\nYou're registered to Comrade Bot. Click the button below to link yourself to this Virtual Airline.";
+                message += `📌 **Next Step:**\nYou're registered to Comrade Bot. Click the button below to link yourself to **${vaName}** with your VA callsign.`;
 
                 // Create "Link to VA" button
                 const linkButton = new ButtonBuilder()
