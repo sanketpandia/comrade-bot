@@ -64,7 +64,7 @@ export class ApiService {
                 last_flight: lastFlight
             };
 
-            const res = await fetch(`${API_URL}/api/v1/pilots/register`, {
+            const res = await fetch(`${API_URL}/api/v1/user/register`, {
                 method: "POST",
                 headers: {
                     ...generateRegistrationMetaHeaders(meta),
