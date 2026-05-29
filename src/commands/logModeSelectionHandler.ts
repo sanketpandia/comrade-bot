@@ -87,20 +87,22 @@ export async function logModeSelectionHandler(interaction: DiscordInteraction): 
             modal.addComponents(routeRow);
         }
 
+        const totalComponents = (selectedMode.requires_route_selection ? 1 : 0) + selectedMode.fields.length;
+        if (totalComponents > 5) {
+            console.warn(`[logModeSelectionHandler] Mode ${modeId} has ${totalComponents} fields, exceeds Discord modal limit of 5`);
+            await buttonInteraction.reply({
+                content: "❌ This flight mode configuration is invalid (more than 5 modal fields). Please contact a VA admin.",
+                ephemeral: true
+            });
+            return;
+        }
+
         // Add mode-specific fields
         for (const field of selectedMode.fields) {
             const inputField = createInputField(field);
             const row = new ActionRowBuilder<ModalActionRowComponentBuilder>()
                 .addComponents(inputField);
             modal.addComponents(row);
-        }
-
-        // Discord modals have a max of 5 rows total (5 input components)
-        // Count: 1 context (hidden) + 1 route (if required) + N mode fields
-        const totalComponents = 1 + (selectedMode.requires_route_selection ? 1 : 0) + selectedMode.fields.length;
-        if (totalComponents > 5) {
-            console.warn(`[logModeSelectionHandler] Mode ${modeId} has ${totalComponents} fields, exceeds Discord limit of 5`);
-            return;
         }
 
         // Remove the button row from the original message before showing modal

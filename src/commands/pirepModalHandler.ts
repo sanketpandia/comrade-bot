@@ -23,6 +23,13 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
 
         // Extract form data from modal
         const flightTime = modalInteraction.fields.getTextInputValue("flight_time");
+        if (!isValidFlightTimeHHMM(flightTime)) {
+            await modalInteraction.reply({
+                content: "❌ Flight time must use HH:MM format (e.g., 02:45).",
+                flags: 64,
+            });
+            return;
+        }
 
         // Optional fields based on mode
         let routeId: string | undefined;
@@ -44,21 +51,33 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
         }
 
         try {
-            fuelKg = parseInt(modalInteraction.fields.getTextInputValue("fuel_kg"));
+            fuelKg = parseOptionalInteger(modalInteraction.fields.getTextInputValue("fuel_kg"), "Fuel (kg)");
         } catch {
-            // Fuel not present or invalid
+            await modalInteraction.reply({
+                content: "❌ Fuel (kg) must be a valid whole number.",
+                flags: 64,
+            });
+            return;
         }
 
         try {
-            cargoKg = parseInt(modalInteraction.fields.getTextInputValue("cargo_kg"));
+            cargoKg = parseOptionalInteger(modalInteraction.fields.getTextInputValue("cargo_kg"), "Cargo (kg)");
         } catch {
-            // Cargo not present or invalid
+            await modalInteraction.reply({
+                content: "❌ Cargo (kg) must be a valid whole number.",
+                flags: 64,
+            });
+            return;
         }
 
         try {
-            passengers = parseInt(modalInteraction.fields.getTextInputValue("passengers"));
+            passengers = parseOptionalInteger(modalInteraction.fields.getTextInputValue("passengers"), "Passengers");
         } catch {
-            // Passengers not present or invalid
+            await modalInteraction.reply({
+                content: "❌ Passengers must be a valid whole number.",
+                flags: 64,
+            });
+            return;
         }
 
         // Build summary with submitted PIREP data
@@ -347,6 +366,19 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
             console.error("[handlePirepModal] Failed to send error message:", replyErr);
         }
     }
+}
+
+function isValidFlightTimeHHMM(value: string): boolean {
+    return /^\d{1,2}:[0-5]\d$/.test(value.trim());
+}
+
+function parseOptionalInteger(value: string, fieldName: string): number {
+    const normalized = value.trim();
+    if (!/^\d+$/.test(normalized)) {
+        throw new Error(`${fieldName} must be a positive whole number`);
+    }
+
+    return Number.parseInt(normalized, 10);
 }
 
 export default { data, execute };

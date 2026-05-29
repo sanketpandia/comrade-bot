@@ -405,7 +405,7 @@ export class ApiService {
         try {
             const res = await fetch(`${API_URL}/api/v1/pireps/config`, {
                 method: "GET",
-                headers: generateMetaHeaders(meta),
+                headers: generateRegistrationMetaHeaders(meta),
             });
 
             if (res.status === 401) {
@@ -448,7 +448,7 @@ export class ApiService {
             const res = await fetch(`${API_URL}/api/v1/pireps/submit`, {
                 method: "POST",
                 headers: {
-                    ...generateMetaHeaders(meta),
+                    ...generateRegistrationMetaHeaders(meta),
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify(pirepData)
