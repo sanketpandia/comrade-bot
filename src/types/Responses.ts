@@ -257,6 +257,7 @@ export interface PirepSubmitRequest {
   fuel_kg?: number;
   cargo_kg?: number;
   passengers?: number;
+  inputs?: Record<string, string>;
 }
 
 export interface PirepSubmitData {

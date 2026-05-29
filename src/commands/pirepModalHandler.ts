@@ -80,6 +80,18 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
             return;
         }
 
+        const inputs: Record<string, string> = {};
+        modalInteraction.fields.fields.forEach((_field, key) => {
+            try {
+                const value = modalInteraction.fields.getTextInputValue(key);
+                if (value !== undefined && value !== null && value.trim() !== "") {
+                    inputs[key] = value.trim();
+                }
+            } catch {
+                // ignore non-input/unknown field
+            }
+        });
+
         // Build summary with submitted PIREP data
         const summaryLines = [
             `**Mode:** ${modeId}`,
@@ -98,6 +110,7 @@ export async function execute(wrapped: DiscordInteraction): Promise<void> {
         const pirepData: any = {
             mode: modeId,
             flight_time: flightTime,
+            inputs,
         };
 
         // Only add optional fields if they are defined
