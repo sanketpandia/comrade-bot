@@ -1,13 +1,10 @@
 import {
     ModalBuilder,
-    TextInputBuilder,
-    TextInputStyle,
-    ActionRowBuilder,
-    ModalActionRowComponentBuilder,
 } from "discord.js";
 import { DiscordInteraction } from "../types/DiscordInteraction";
 import { ApiService } from "../services/apiService";
 import { CUSTOM_IDS } from "../configs/constants";
+import { buildSingleModalForMode } from "./discordPirepFlowOrchestrator";
 
 export async function logModeSelectionHandler(interaction: DiscordInteraction): Promise<void> {
     const buttonInteraction = interaction.getButtonInteraction();
@@ -56,53 +53,16 @@ export async function logModeSelectionHandler(interaction: DiscordInteraction): 
             return;
         }
 
-        // Create modal with dynamic fields based on mode configuration
-        // Encode mode_id in custom ID so we can extract it on submission
-        const modal = new ModalBuilder()
-            .setCustomId(`${CUSTOM_IDS.PIREP_MODAL}_${modeId}`)
-            .setTitle(`${selectedMode.display_name} - PIREP`);
-
-        // No context metadata field needed - backend derives everything from claims + request
-
-        // Add route field if mode requires route selection
-        if (selectedMode.requires_route_selection) {
-            const routeField = new TextInputBuilder()
-                .setCustomId("route_id")
-                .setLabel("Route (e.g., LFPG-EGLL)")
-                .setPlaceholder("Enter the route code")
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true);
-
-            // Prepopulate with autofill_route (takes priority)
-            // OR use current route if it's valid for this mode
-            if (selectedMode.autofill_route) {
-                routeField.setValue(selectedMode.autofill_route);
-            } else if (selectedMode.status === "valid" && userInfo.current_route) {
-                // Current route is valid for this mode, prefill it
-                routeField.setValue(userInfo.current_route);
-            }
-
-            const routeRow = new ActionRowBuilder<ModalActionRowComponentBuilder>()
-                .addComponents(routeField);
-            modal.addComponents(routeRow);
-        }
-
-        const totalComponents = (selectedMode.requires_route_selection ? 1 : 0) + selectedMode.fields.length;
-        if (totalComponents > 5) {
-            console.warn(`[logModeSelectionHandler] Mode ${modeId} has ${totalComponents} fields, exceeds Discord modal limit of 5`);
+        let modal: ModalBuilder;
+        try {
+            modal = buildSingleModalForMode(selectedMode);
+        } catch (orchestratorErr: any) {
+            console.warn(`[logModeSelectionHandler] Invalid mode ${modeId}: ${orchestratorErr?.message}`);
             await buttonInteraction.reply({
                 content: "❌ This flight mode configuration is invalid (more than 5 modal fields). Please contact a VA admin.",
                 ephemeral: true
             });
             return;
-        }
-
-        // Add mode-specific fields
-        for (const field of selectedMode.fields) {
-            const inputField = createInputField(field);
-            const row = new ActionRowBuilder<ModalActionRowComponentBuilder>()
-                .addComponents(inputField);
-            modal.addComponents(row);
         }
 
         // Remove the button row from the original message before showing modal
@@ -149,38 +109,4 @@ export async function logModeSelectionHandler(interaction: DiscordInteraction): 
             console.error("[logModeSelectionHandler] Failed to send error reply:", replyErr);
         }
     }
-}
-
-/**
- * Create a TextInputBuilder from a field configuration
- */
-function createInputField(field: any): TextInputBuilder {
-    const input = new TextInputBuilder()
-        .setCustomId(field.name)
-        .setLabel(field.label)
-        .setRequired(field.required);
-
-    // Set input style based on field type
-    if (field.type === "textarea") {
-        input.setStyle(TextInputStyle.Paragraph);
-    } else if (field.type === "number") {
-        input.setStyle(TextInputStyle.Short);
-        input.setPlaceholder("Enter a number");
-    } else {
-        // text or default
-        input.setStyle(TextInputStyle.Short);
-    }
-
-    // Add placeholders for common fields
-    if (field.name === "flight_time") {
-        input.setPlaceholder("HH:MM");
-    } else if (field.name === "fuel_kg") {
-        input.setPlaceholder("e.g., 15000");
-    } else if (field.name === "cargo_kg") {
-        input.setPlaceholder("e.g., 5000");
-    } else if (field.name === "passengers") {
-        input.setPlaceholder("e.g., 200");
-    }
-
-    return input;
 }
