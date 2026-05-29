@@ -56,7 +56,7 @@ export async function execute(interaction: DiscordInteraction) {
   const infoEmbed = new EmbedBuilder()
     .setColor(0x0099FF)
     .setTitle("🏢 Start VA Setup")
-    .setDescription("Bootstrap this Discord server with one field: your VA Code / ID. Detailed setup continues in Vizburo.")
+    .setDescription("Bootstrap this Discord server with one field: your VA Code / ID. Detailed setup continues in webpage. Navigate to VA Admin > VA Setup.")
     .addFields(
       {
         name: "📝 VA Code / ID",
