@@ -4,20 +4,171 @@
 
 import {
   ActionRowBuilder,
-  AttachmentBuilder,
   ButtonBuilder,
-  ButtonInteraction,
   ButtonStyle,
-  ChatInputCommandInteraction,
 } from "discord.js";
 
 import { ApiService } from "../services/apiService";
-import { renderLiveFlights } from "../helpers/LiveTableRenderer";
 import { DiscordInteraction } from "../types/DiscordInteraction";
-import { LiveFlightRecord } from "../types/Responses";
+import { LiveFlightRecord, LiveFlightsResult } from "../types/Responses";
 import { UnauthorizedError } from "../helpers/UnauthorizedException";
 
-const FLIGHTS_PER_PAGE = 15;
+const MAX_DISPLAYED_FLIGHTS = 30;
+const DISCORD_MESSAGE_LIMIT = 2000;
+const MESSAGE_TARGET_LIMIT = 1800;
+const MESSAGE_APPEND_LIMIT = 1700;
+const CODE_BLOCK_OVERHEAD = 8;
+const USERNAME_LIMIT = 24;
+const EQUIPMENT_LIMIT = 56;
+const ROUTE_LIMIT = 64;
+
+type ReplyTarget = NonNullable<ReturnType<DiscordInteraction["getChatInputInteraction"]>> | NonNullable<ReturnType<DiscordInteraction["getButtonInteraction"]>>;
+
+function truncate(value: string | undefined | null, maxLength: number, fallback: string): string {
+  const normalized = value?.trim() || fallback;
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
+}
+
+function formatNumber(value: number | undefined | null): string | undefined {
+  if (typeof value !== "number" || Number.isNaN(value)) return undefined;
+  return Math.round(value).toLocaleString("en-US");
+}
+
+function formatAltitude(value: number | undefined | null): string {
+  const altitude = formatNumber(value);
+  return altitude ? `${altitude} ft` : "alt unknown";
+}
+
+function formatSpeed(value: number | undefined | null): string {
+  const speed = formatNumber(value);
+  return speed ? `${speed} kt` : "speed unknown";
+}
+
+function formatRoute(flight: LiveFlightRecord): string {
+  if (flight.route?.trim()) return truncate(flight.route, ROUTE_LIMIT, "Route unknown");
+  if (flight.origin?.trim() || flight.destination?.trim()) {
+    return truncate(`${flight.origin || "?"} -> ${flight.destination || "?"}`, ROUTE_LIMIT, "Route unknown");
+  }
+  return "Route unknown";
+}
+
+function formatFlightBlock(flight: LiveFlightRecord, displayIndex: number): string {
+  const callsign = truncate(flight.callsign, 42, "Unknown callsign");
+  const username = truncate(flight.username, USERNAME_LIMIT, "Unknown pilot");
+  const aircraft = truncate(flight.aircraft_name, 28, "Unknown aircraft");
+  const livery = truncate(flight.livery_name, 24, "Unknown livery");
+  const equipment = truncate(`${aircraft} / ${livery}`, EQUIPMENT_LIMIT, "Unknown equipment");
+  const statusParts = [
+    formatAltitude(flight.altitude),
+    formatSpeed(flight.speed),
+    truncate(flight.session_name, 18, "",),
+    truncate(flight.phase, 18, "",),
+  ].filter(Boolean);
+
+  return [
+    `${displayIndex}. ${callsign} - ${username}`,
+    equipment,
+    statusParts.join(" | "),
+    formatRoute(flight),
+  ].join("\n");
+}
+
+function buildHeader(result: LiveFlightsResult | undefined, displayedCount: number, totalFlights: number): string {
+  const detected = result?.summary?.total_detected_flights ?? totalFlights;
+  const lines = [`Live flights - showing ${displayedCount} of ${detected}`];
+
+  if (result?.message) lines.push(result.message);
+  if (result?.summary?.top_route) {
+    lines.push(`Top route: ${result.summary.top_route.route} x${result.summary.top_route.count}`);
+  }
+  if (totalFlights > MAX_DISPLAYED_FLIGHTS) {
+    lines.push(`Showing first ${MAX_DISPLAYED_FLIGHTS} flights.`);
+  }
+  if (result?.code === "SIGNED_LINK_UNAVAILABLE") {
+    lines.push("Live map link is temporarily unavailable.");
+  }
+
+  return lines.join("\n");
+}
+
+function buildContinuationHeader(batchNumber: number): string {
+  return `Live flights continued (${batchNumber})`;
+}
+
+function codeBlock(content: string): string {
+  const safeContent = content.replace(/```/g, "'''");
+  return `\`\`\`\n${safeContent.slice(0, MESSAGE_TARGET_LIMIT - CODE_BLOCK_OVERHEAD)}\n\`\`\``;
+}
+
+function splitFlightMessages(result: LiveFlightsResult | undefined, flights: LiveFlightRecord[]): string[] {
+  const displayedFlights = flights.slice(0, MAX_DISPLAYED_FLIGHTS);
+  const messages: string[] = [];
+  let current = buildHeader(result, displayedFlights.length, flights.length);
+  let batchNumber = 2;
+
+  for (let index = 0; index < displayedFlights.length; index++) {
+    const block = formatFlightBlock(displayedFlights[index], index + 1);
+    const next = `${current}\n\n${block}`;
+
+    if (next.length > MESSAGE_APPEND_LIMIT && current.length > 0) {
+      messages.push(current.slice(0, MESSAGE_TARGET_LIMIT));
+      current = `${buildContinuationHeader(batchNumber)}\n\n${block}`;
+      batchNumber += 1;
+      continue;
+    }
+
+    current = next;
+  }
+
+  if (current.length > DISCORD_MESSAGE_LIMIT) {
+    messages.push(current.slice(0, MESSAGE_TARGET_LIMIT));
+  } else {
+    messages.push(current);
+  }
+
+  return messages;
+}
+
+function liveMapComponents(signedLink: string | undefined): ActionRowBuilder<ButtonBuilder>[] {
+  if (!signedLink) return [];
+  return [new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setLabel("Open Live Map")
+      .setStyle(ButtonStyle.Link)
+      .setURL(signedLink),
+  )];
+}
+
+async function editReply(target: ReplyTarget, content: string, signedLink?: string): Promise<void> {
+  await target.editReply({
+    content: codeBlock(content),
+    components: liveMapComponents(signedLink),
+  });
+}
+
+async function followUp(target: ReplyTarget, content: string): Promise<void> {
+  await target.followUp({
+    content: codeBlock(content),
+    ephemeral: true,
+  });
+}
+
+function errorMessageFor(err: any): string {
+  if (err instanceof UnauthorizedError) {
+    return "You need to register before viewing live flights.\nUse `/register` to get started.";
+  }
+
+  if (err.code === "MISSING_DISCORD_CONTEXT" || err.code === "VA_CONTEXT_NOT_CONFIGURED") {
+    return `Live flights are not configured for this Discord server.\n${err.message || "Ask an admin to finish VA setup."}`;
+  }
+
+  if (err.code === "USER_NOT_REGISTERED" || err.code === "FORBIDDEN" || err.status === 403) {
+    return `${err.message || "You need to register before viewing live flights."}\nUse \`/register\` to get started.`;
+  }
+
+  return "Live flights are temporarily unavailable.\nPlease try again later.";
+}
 
 // ────────────────────────────────────────────────
 // Main worker
@@ -31,6 +182,7 @@ export async function handleLiveFlights(
 
   if (!chat && !btn) return;                  // ignore other interactions
   const fromSlash = !!chat;
+  const target = (chat ?? btn)!;
 
   // ── 1) ACK once ────────────────────────────────
   if (fromSlash) {
@@ -41,129 +193,35 @@ export async function handleLiveFlights(
 
   // ── 2) Fetch data ──────────────────────────────
   let flights: LiveFlightRecord[] = [];
-  let responseTimeMs: number | undefined;
-  let apiResponseTime: string | undefined;
   let signedLink: string | undefined;
+  let result: (LiveFlightsResult & { responseTimeMs?: number }) | undefined;
 
   try {
-    const startTime = Date.now();
-    const result = await ApiService.getLiveFlights(di.getMetaInfo());
-    responseTimeMs = Date.now() - startTime;
+    result = await ApiService.getLiveFlights(di.getMetaInfo());
     flights = result.flights;
-    apiResponseTime = result.responseTime;
-    signedLink = result.signedLink;
+    signedLink = result.signed_link;
   } catch (err: any) {
     console.error("[handleLiveFlights] Error fetching flights:", err);
-
-    if (err instanceof UnauthorizedError) {
-      const errorEmbed = {
-        title: "Not Registered",
-        description: "❌ You must be registered to view live flights.\n\nUse `/register` to get started.",
-        color: 0xff0000,
-        timestamp: new Date().toISOString()
-      };
-      if (fromSlash) await chat!.editReply({ embeds: [errorEmbed] });
-      else await btn!.followUp({ embeds: [errorEmbed], ephemeral: true });
-      return;
-    }
-
-    // Check for 403 Forbidden (not registered/authorized)
-    if (err.message?.includes("403") || err.message?.includes("Forbidden")) {
-      const errorEmbed = {
-        title: "Not Registered",
-        description: "❌ You must be registered to view live flights.\n\nUse `/register` to get started.",
-        color: 0xff0000,
-        timestamp: new Date().toISOString()
-      };
-      if (fromSlash) await chat!.editReply({ embeds: [errorEmbed] });
-      else await btn!.followUp({ embeds: [errorEmbed], ephemeral: true });
-      return;
-    }
-
-    // Generic error
-    const errorEmbed = {
-      title: "Error",
-      description: "❌ Failed to fetch live flights.\n\nPlease try again later or contact support.",
-      color: 0xff0000,
-      timestamp: new Date().toISOString()
-    };
-    if (fromSlash) await chat!.editReply({ embeds: [errorEmbed] });
-    else await btn!.followUp({ embeds: [errorEmbed], ephemeral: true });
+    await editReply(target, errorMessageFor(err));
     return;
   }
 
   if (!flights || flights.length === 0) {
-    const errorEmbed = {
-      title: "No Live Flights",
-      description: "No live flights currently active for this VA.",
-      color: 0xff9900,
-      timestamp: new Date().toISOString()
-    };
-    if (fromSlash) await chat!.editReply({ embeds: [errorEmbed] });
-    else await btn!.editReply({ embeds: [errorEmbed] });
+    await editReply(
+      target,
+      [
+        "No live flights right now.",
+        result?.message || "No live flights currently active for this VA.",
+      ].join("\n"),
+      signedLink,
+    );
     return;
   }
 
-  // ── 3) Paginate client-side ────────────────────
-  const totalFlights = flights.length;
-  const totalPages = Math.ceil(totalFlights / FLIGHTS_PER_PAGE);
-  const currentPage = Math.max(1, Math.min(page, totalPages));
-  
-  const startIdx = (currentPage - 1) * FLIGHTS_PER_PAGE;
-  const endIdx = startIdx + FLIGHTS_PER_PAGE;
-  const pageFlights = flights.slice(startIdx, endIdx);
+  const messages = splitFlightMessages(result, flights);
+  await editReply(target, messages[0], signedLink);
 
-  // ── 4) Render PNG ──────────────────────────────
-  // Parse response_time from API if available (format: "3ms" → 3)
-  let parsedResponseTime: number | undefined = responseTimeMs;
-  if (apiResponseTime) {
-    const match = apiResponseTime.match(/(\d+)ms?/);
-    if (match) {
-      parsedResponseTime = parseInt(match[1], 10);
-    }
-  }
-
-  console.log(`[handleLiveFlights] Rendering page ${currentPage}/${totalPages} (${pageFlights.length} flights)`);
-  const png = await renderLiveFlights(pageFlights, parsedResponseTime, currentPage, totalFlights);
-  const file = new AttachmentBuilder(png, { name: "live-flights.png" });
-
-  // ── 5) Pagination buttons ──────────────────────
-  const row = new ActionRowBuilder<ButtonBuilder>();
-  if (currentPage > 1) {
-    row.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`live_prev_${currentPage - 1}`)
-        .setLabel("Previous")
-        .setStyle(ButtonStyle.Primary),
-    );
-  }
-  if (currentPage < totalPages) {
-    row.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`live_next_${currentPage + 1}`)
-        .setLabel("Next")
-        .setStyle(ButtonStyle.Primary),
-    );
-  }
-  // Add "See Map" button if signed link is available
-  if (signedLink) {
-    row.addComponents(
-      new ButtonBuilder()
-        .setLabel("See Map")
-        .setStyle(ButtonStyle.Link)
-        .setURL(signedLink),
-    );
-  }
-
-  const editPayload = {
-    files: [file],
-    components: row.components.length ? [row] : [],
-  } as const;
-
-  // ── 6) Edit / update exactly once ───────────────
-  if (fromSlash) {
-    await chat!.editReply(editPayload);
-  } else {
-    await btn!.editReply(editPayload);
+  for (const message of messages.slice(1)) {
+    await followUp(target, message);
   }
 }

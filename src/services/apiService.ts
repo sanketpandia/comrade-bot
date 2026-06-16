@@ -6,6 +6,7 @@ import {
     FlightHistoryPage, 
     InitServerResponse, 
     LiveFlightRecord, 
+    LiveFlightsResult,
     UserDetailsData, 
     PilotStatsData, 
     PirepConfigResponse, 
@@ -245,54 +246,33 @@ export class ApiService {
         }
     }
 
-    static async getLiveFlights(meta: MetaInfo): Promise<{ flights: LiveFlightRecord[], responseTime?: string, signedLink?: string }> {
+    static async getLiveFlights(meta: MetaInfo): Promise<LiveFlightsResult & { responseTimeMs?: number }> {
         try {
             const res = await fetch(`${API_URL}/api/v1/flights/va`, {
                 method: "GET",
-                headers: generateMetaHeaders(meta),
+                headers: generateRegistrationMetaHeaders(meta),
             });
             if (res.status === 401) {
-                const message = await res.text(); // plain-text body
-                throw new UnauthorizedError(message || "Unauthorized");
+                const body = await res.json().catch(() => undefined) as ApiResponse<any> | undefined;
+                throw new UnauthorizedError(body?.error?.message || "Unauthorized");
             }
 
             if (!res.ok) {
-                throw new Error(`Failed to fetch live flights: ${res.status} ${res.statusText}`);
+                const body = await res.json().catch(() => undefined) as ApiResponse<any> | undefined;
+                const error = new Error(body?.error?.message || `Failed to fetch live flights: ${res.status} ${res.statusText}`) as Error & { code?: string; status?: number };
+                error.code = body?.error?.code;
+                error.status = res.status;
+                throw error;
             }
 
-            const response = await res.json() as {
-                status: string;
-                message?: string;
-                response_time?: string;
-                data?: {
-                    flights?: LiveFlightRecord[];
-                    signed_link?: string;
-                } | LiveFlightRecord[];
-                result?: LiveFlightRecord[];
-            };
-
-            // Handle both 'data' and 'result' fields for compatibility
-            // Check if data is an object with flights and signed_link, or just an array
-            let flights: LiveFlightRecord[] | undefined;
-            let signedLink: string | undefined;
-
-            if (Array.isArray(response.data)) {
-                flights = response.data;
-            } else if (response.data && typeof response.data === 'object' && 'flights' in response.data) {
-                flights = response.data.flights;
-                signedLink = response.data.signed_link;
-            } else {
-                flights = response.result;
-            }
-
-            if (!flights) {
+            const response = await res.json() as ApiResponse<LiveFlightsResult>;
+            if (!response.result) {
                 throw new Error("No data received in API response");
             }
 
             return {
-                flights,
-                responseTime: response.response_time,
-                signedLink
+                ...response.result,
+                responseTimeMs: response.responseTimeMs,
             };
 
         } catch (err) {

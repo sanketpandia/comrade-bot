@@ -92,6 +92,7 @@ export interface LiveFlightRecord {
   aircraft_name: string;
   livery_name: string;
   phase: string;
+  route?: string;
   takeoff_time: string;
   origin: string;
   destination: string;
@@ -100,6 +101,35 @@ export interface LiveFlightRecord {
   last_flight_plan_fetch: string;
   max_altitude?: number;
   max_speed?: number;
+}
+
+export type LiveFlightsStateCode =
+  | "LIVE_FLIGHTS_FOUND"
+  | "NO_LIVE_FLIGHTS"
+  | "SIGNED_LINK_UNAVAILABLE"
+  | "VA_CONTEXT_NOT_CONFIGURED"
+  | "LIVE_FLIGHTS_UNAVAILABLE"
+  | "LIVE_FLIGHTS_STALE"
+  | "MISSING_DISCORD_CONTEXT"
+  | "USER_NOT_REGISTERED"
+  | "FORBIDDEN";
+
+export interface LiveFlightsTopRoute {
+  route: string;
+  count: number;
+}
+
+export interface LiveFlightsSummary {
+  total_detected_flights: number;
+  top_route?: LiveFlightsTopRoute;
+}
+
+export interface LiveFlightsResult {
+  code: LiveFlightsStateCode;
+  message: string;
+  flights: LiveFlightRecord[];
+  summary: LiveFlightsSummary;
+  signed_link?: string;
 }
 
 export interface VARole {

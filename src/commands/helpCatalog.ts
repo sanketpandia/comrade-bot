@@ -57,8 +57,11 @@ export const helpCatalog: HelpEntry[] = [
     {
         name: "live",
         category: "flight",
-        summary: "View current active flights for this VA.",
-        details: ["Requires current-server VA membership."],
+        summary: "View cached active flights for the current server's VA.",
+        details: [
+            "Run it in a configured VA server; the bot sends your Discord user/server context automatically.",
+            "Returns an ephemeral summary/table and an Open Live Map button when a signed map link is available.",
+        ],
         examples: ["/live"],
         visible: true,
     },
