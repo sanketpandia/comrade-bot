@@ -1,0 +1,44 @@
+auth_enabled: false
+
+ingester:
+  chunk_idle_period: 3m
+  max_chunk_age: 1h
+  wal:
+    enabled: false
+  lifecycler:
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+    num_tokens: 128
+    heartbeat_timeout: 5m
+
+limits_config:
+  retention_period: 336h
+  reject_old_samples: true
+  reject_old_samples_max_age: 720h
+  allow_structured_metadata: false
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        period: 24h
+
+server:
+  http_listen_port: 3100
+  log_level: info
+
+storage_config:
+  boltdb_shipper:
+    active_index_directory: /loki/index
+    cache_location: /loki/boltdb-cache
+  filesystem:
+    directory: /loki/chunks
+
+compactor:
+  working_directory: /loki/compactor

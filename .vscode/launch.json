@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Politburo: Debug API server",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/services/politburo/cmd/politburo",
+      "cwd": "${workspaceFolder}/services/politburo",
+      "envFile": "${workspaceFolder}/services/politburo/.env",
+      "env": {
+        "DEBUG": "true"
+      },
+      "buildFlags": "-buildvcs=false"
+    },
+    {
+      "name": "Comrade bot: Debug",
+      "type": "node",
+      "request": "launch",
+      "runtimeArgs": ["-r", "ts-node/register"],
+      "args": ["${workspaceFolder}/services/comrade-bot-discord/src/index.ts"],
+      "cwd": "${workspaceFolder}/services/comrade-bot-discord",
+      "envFile": "${workspaceFolder}/services/comrade-bot-discord/.env"
+    },
+    {
+      "name": "Politburo: Attach to Delve",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "host": "127.0.0.1",
+      "port": 2345
+    }
+  ]
+}

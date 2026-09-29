@@ -1,0 +1,46 @@
+type: object
+required: [userId, errorCode]
+properties:
+  userId:
+    type: string
+    format: uuid
+    x-go-type: string
+  discourseUsername:
+    type: string
+    nullable: true
+  virtualOrganization:
+    type: string
+    nullable: true
+  onlineFlights:
+    type: integer
+  violations:
+    type: integer
+  xp:
+    type: number
+    format: double
+  landingCount:
+    type: integer
+  flightTime:
+    type: number
+    format: double
+  atcOperations:
+    type: integer
+  atcRank:
+    type: integer
+    nullable: true
+  grade:
+    type: integer
+  hash:
+    type: string
+  errorCode:
+    type: integer
+  roles:
+    type: array
+    items:
+      type: integer
+  groups:
+    type: array
+    items:
+      type: string
+      format: uuid
+      x-go-type: string

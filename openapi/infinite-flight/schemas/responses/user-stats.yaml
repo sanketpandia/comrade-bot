@@ -1,0 +1,10 @@
+type: object
+x-go-type-name: UserStatsResponse
+required: [errorCode, result]
+properties:
+  errorCode:
+    type: integer
+  result:
+    type: array
+    items:
+      $ref: ../user-stats.yaml

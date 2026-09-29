@@ -1,0 +1,148 @@
+server:
+  http_listen_port: 9080
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Reads from the systemd journal — the native log destination for Podman containers.
+  # Requires the container to run with userns_mode: keep-id and the host user to be
+  # a member of the systemd-journal group (sudo usermod -aG systemd-journal <user>).
+  - job_name: journal
+    journal:
+      max_age: 12h
+      path: /var/log/journal
+      labels:
+        job: journal
+    relabel_configs:
+      # Only keep entries that came from a container (have CONTAINER_NAME set by conmon)
+      - source_labels: ['__journal_CONTAINER_NAME']
+        regex: '.+'
+        action: keep
+      # Container name → 'container' label
+      - source_labels: ['__journal_CONTAINER_NAME']
+        target_label: 'container'
+      # Use container name as 'service' label (mirrors the docker-compose service name)
+      - source_labels: ['__journal_CONTAINER_NAME']
+        target_label: 'service'
+      - source_labels: ['__journal_CONTAINER_NAME']
+        target_label: 'job'
+    pipeline_stages:
+      # Parse JSON logs emitted by politburo (Zap structured JSON)
+      - json:
+          expressions:
+            log_level: L
+            timestamp: T
+            caller: C
+            message: M
+            # Common application fields
+            sessionID: sessionID
+            sessionName: sessionName
+            flightID: flightID
+            origin: origin
+            destination: destination
+            phase: phase
+            # Watermill / PIREP messaging fields
+            handler: handler
+            message_uuid: message_uuid
+            va_id: va_id
+            record_id: record_id
+            attempt: attempt
+            # Rate-limit middleware fields
+            group: group
+            user_id: user_id
+            count: count
+            limit: limit
+            # Auth middleware fields
+            method: method
+            path: path
+            # Comrade Bot structured JSON fields
+            level: level
+            service_field: service
+            env_field: env
+            event: event
+            command: command
+            interaction_type: interaction_type
+            guild_id: guild_id
+            result: result
+            duration_ms: duration_ms
+            error_name: error_name
+            error_message: error_message
+      # Use the JSON timestamp when available, fall back to journal timestamp
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - '2006-01-02T15:04:05.000-0700'
+            - '2006-01-02T15:04:05Z'
+          location: UTC
+      # Promote log_level to a Loki stream label for efficient filtering
+      - labels:
+          log_level: ""
+          level: ""
+
+  # Scrapes the politburo log file written by air/the server process running on the host.
+  # The start-dev.sh script redirects politburo output to /tmp/politburo.log.
+  # /tmp on the host is mounted into this container at /host-tmp (read-only).
+  - job_name: politburo-file
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: politburo
+          service: politburo
+          container: politburo
+          env: dev
+          __path__: /host-tmp/politburo.log
+    pipeline_stages:
+      # Parse Zap structured JSON logs
+      - json:
+          expressions:
+            log_level: L
+            timestamp: T
+            caller: C
+            message: M
+            sessionID: sessionID
+            sessionName: sessionName
+            flightID: flightID
+            origin: origin
+            destination: destination
+            phase: phase
+            handler: handler
+            message_uuid: message_uuid
+            va_id: va_id
+            record_id: record_id
+            attempt: attempt
+            group: group
+            user_id: user_id
+            count: count
+            limit: limit
+            method: method
+            path: path
+            level: level
+            service_field: service
+            env_field: env
+            event: event
+            command: command
+            interaction_type: interaction_type
+            guild_id: guild_id
+            result: result
+            duration_ms: duration_ms
+            error_name: error_name
+            error_message: error_message
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - '2006-01-02T15:04:05.000-0700'
+            - '2006-01-02T15:04:05Z'
+          location: UTC
+      - labels:
+          log_level: ""
+          level: ""

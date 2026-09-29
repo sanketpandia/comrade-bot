@@ -1,0 +1,224 @@
+import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { DiscordInteraction } from "../types/DiscordInteraction";
+import { ApiService } from "../services/apiService";
+import { UnauthorizedError } from "../helpers/UnauthorizedException";
+import { PermissionDeniedError } from "../helpers/PermissionDeniedException";
+import { CUSTOM_IDS } from "../configs/constants";
+
+export const data = new SlashCommandBuilder()
+    .setName("tour")
+    .setDescription("View active tour details");
+
+export async function execute(interaction: DiscordInteraction) {
+    const chat = interaction.getChatInputInteraction();
+    if (!chat) return;
+
+    try {
+        // Defer the reply since we're making API calls (ephemeral)
+        await chat.deferReply({ ephemeral: true });
+
+        const metaInfo = interaction.getMetaInfo();
+
+        try {
+            // Fetch active events
+            const eventsResponse = await ApiService.getActiveEvents(metaInfo);
+            const events = eventsResponse.result || [];
+
+            // Find active multi-leg event (tour)
+            const tourEvent = events.find((event: any) => (event.legs?.length || 0) > 1);
+
+            if (!tourEvent) {
+                await chat.editReply({
+                    embeds: [{
+                        title: "🗺️ No Active Tour",
+                        description: "No active tour found. A tour is a multi-leg event with more than one leg.",
+                        color: 0xff9900,
+                        timestamp: new Date().toISOString(),
+                        footer: {
+                            text: "Use /events to view all active events"
+                        }
+                    }]
+                });
+                return;
+            }
+
+            // Build tour summary embed
+            const fields: Array<{ name: string; value: string; inline?: boolean }> = [];
+
+            // Add description if available
+            if (tourEvent.description) {
+                fields.push({
+                    name: "📝 Description",
+                    value: tourEvent.description,
+                    inline: false
+                });
+            }
+
+            const legCount = tourEvent.legs?.length || 0;
+
+            // Add total legs and status
+            fields.push({
+                name: "🗺️ Total Legs",
+                value: legCount.toString(),
+                inline: true
+            });
+
+            // Add status with emoji
+            const statusEmoji = tourEvent.status === "active" ? "🟢" : tourEvent.status === "completed" ? "✅" : tourEvent.status === "cancelled" ? "❌" : "⚪";
+            fields.push({
+                name: `${statusEmoji} Status`,
+                value: tourEvent.status.charAt(0).toUpperCase() + tourEvent.status.slice(1),
+                inline: true
+            });
+
+            // Add dates if available (displayed in ZULU time)
+            if (tourEvent.start_date || tourEvent.end_date) {
+                const dateInfo: string[] = [];
+                if (tourEvent.start_date) {
+                    const startDate = new Date(tourEvent.start_date);
+                    dateInfo.push(`**Start:** ${startDate.toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                        timeZone: "UTC"
+                    })}Z`);
+                }
+                if (tourEvent.end_date) {
+                    const endDate = new Date(tourEvent.end_date);
+                    dateInfo.push(`**End:** ${endDate.toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                        timeZone: "UTC"
+                    })}Z`);
+                }
+                fields.push({
+                    name: "Dates",
+                    value: dateInfo.join("\n"),
+                    inline: false
+                });
+            }
+
+            // Add leg preview (first 5 legs)
+            if (tourEvent.legs && tourEvent.legs.length > 0) {
+                // Sort legs by leg_number to ensure proper ordering
+                const sortedLegs = [...tourEvent.legs].sort((a, b) => a.leg_number - b.leg_number);
+                const previewLegs = sortedLegs.slice(0, 5);
+                
+                // Use position-based numbering (1-indexed) instead of leg_number
+                const legPreview = previewLegs.map((leg, index) => {
+                    const position = index + 1;
+                    return `**Leg #${position}:** ${leg.origin} → ${leg.destination}`;
+                }).join("\n");
+
+                const moreLegs = legCount > 5 ? `\n*...and ${legCount - 5} more leg${legCount - 5 !== 1 ? 's' : ''}*` : "";
+                
+                fields.push({
+                    name: "📍 Leg Preview",
+                    value: legPreview + moreLegs,
+                    inline: false
+                });
+            }
+
+            // Generate signed link for dashboard
+            let dashboardLink: string | null = null;
+            try {
+                const signedLinkResponse = await ApiService.generateSignedLink(metaInfo, "/dashboard");
+                if (signedLinkResponse?.result?.url) {
+                    dashboardLink = signedLinkResponse.result.url;
+                }
+            } catch (linkErr) {
+                console.error("[tour command] Failed to generate signed link:", linkErr);
+                // Continue without the link button if generation fails
+            }
+
+            // Create "File PIREP" button
+            const filePirepButton = new ButtonBuilder()
+                .setCustomId(CUSTOM_IDS.TOUR_FILE_PIREP_BUTTON)
+                .setLabel("File PIREP")
+                .setStyle(ButtonStyle.Primary);
+
+            const buttonRow = new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(filePirepButton);
+
+            // Add "Show Leaderboard" link button if signed link is available
+            if (dashboardLink) {
+                const leaderboardButton = new ButtonBuilder()
+                    .setLabel("Show Leaderboard")
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(dashboardLink);
+                buttonRow.addComponents(leaderboardButton);
+            }
+
+            await chat.editReply({
+                embeds: [{
+                    title: `🗺️ ${tourEvent.name}`,
+                    description: `Active tour with **${legCount}** leg${legCount !== 1 ? 's' : ''}`,
+                    fields: fields,
+                    color: 0x0099ff,
+                    timestamp: new Date().toISOString(),
+                    footer: {
+                        text: "Use /tour_leg <number> to view detailed leg information"
+                    }
+                }],
+                components: [buttonRow]
+            });
+        } catch (tourErr: any) {
+            if (tourErr instanceof UnauthorizedError) {
+                await chat.editReply({
+                    embeds: [{
+                        title: "🔒 Not Authorized",
+                        description: `❌ ${tourErr.message}`,
+                        color: 0xff0000,
+                        timestamp: new Date().toISOString()
+                    }]
+                });
+                return;
+            }
+
+            if (tourErr instanceof PermissionDeniedError) {
+                await chat.editReply({
+                    embeds: [{
+                        title: "⚠️ Registration Required",
+                        description: `❌ ${tourErr.message}\n\nPlease register your account using the \`/register\` command before accessing tour information.`,
+                        color: 0xff9900,
+                        timestamp: new Date().toISOString()
+                    }]
+                });
+                return;
+            }
+
+            console.error("[tour command] Error fetching tour:", tourErr);
+            await chat.editReply({
+                embeds: [{
+                    title: "❌ Error",
+                    description: `Unable to fetch tour: ${tourErr.message || 'Unknown error'}`,
+                    color: 0xff0000,
+                    timestamp: new Date().toISOString()
+                }]
+            });
+        }
+    } catch (err) {
+        console.error("[tour command]", err);
+        try {
+            const chat = interaction.getChatInputInteraction();
+            if (chat) {
+                await chat.editReply({
+                    embeds: [{
+                        title: "Error",
+                        description: `❌ An error occurred: ${String(err)}`,
+                        color: 0xff0000
+                    }]
+                });
+            }
+        } catch (replyErr) {
+            console.error("[tour command] Failed to send error message:", replyErr);
+        }
+    }
+}

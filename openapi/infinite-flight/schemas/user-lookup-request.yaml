@@ -1,0 +1,16 @@
+type: object
+properties:
+  userIds:
+    type: array
+    items:
+      type: string
+      format: uuid
+      x-go-type: string
+  discourseNames:
+    type: array
+    items:
+      type: string
+  userHashes:
+    type: array
+    items:
+      type: string

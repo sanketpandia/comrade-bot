@@ -1,0 +1,9 @@
+type: object
+required: [errorCode]
+properties:
+  errorCode:
+    type: integer
+    description: Infinite Flight API error code.
+  result:
+    nullable: true
+    description: Optional error result supplied by Infinite Flight.

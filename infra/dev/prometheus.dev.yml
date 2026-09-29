@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'politburo-dev'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+scrape_configs:
+  # Politburo API metrics — process runs on the host (outside Docker).
+  # In the dev compose stack Prometheus uses host networking, so localhost is
+  # the host network namespace.
+  - job_name: 'politburo'
+    static_configs:
+      - targets: ['localhost:8082']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 5s
+
+  # Comrade Bot metrics — dev bot runs with host networking.
+  - job_name: 'comrade-bot'
+    static_configs:
+      - targets: ['localhost:9091']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 5s

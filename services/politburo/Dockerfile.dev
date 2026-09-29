@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1
+# Build from repository root: docker build -f services/politburo/Dockerfile.dev .
+
+FROM golang:1.25-alpine3.22 AS development
+
+RUN apk add --no-cache git make
+WORKDIR /repo
+
+COPY services/politburo/go.mod services/politburo/go.sum ./services/politburo/
+RUN cd services/politburo && go mod download
+COPY cicd/tools/go.mod cicd/tools/go.sum ./cicd/tools/
+RUN cd cicd/tools && go mod download
+
+COPY Makefile ./
+COPY cicd ./cicd
+COPY openapi ./openapi
+COPY services/politburo ./services/politburo
+
+WORKDIR /repo/services/politburo
+EXPOSE 8082
+CMD ["sh", "-c", "cd ../../cicd/tools && go tool air -c ../../services/politburo/.air.toml"]
+
+FROM development AS ci
+WORKDIR /repo
+RUN make -C cicd generate-politburo generate-infinite-flight
+WORKDIR /repo/services/politburo
+RUN go test ./...
+RUN go build -buildvcs=false ./cmd/politburo

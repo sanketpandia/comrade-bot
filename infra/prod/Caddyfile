@@ -1,0 +1,165 @@
+{
+  # Global options
+  log {
+    output stdout
+    format json
+    level INFO
+  }
+  
+}
+
+comradebot.cc {
+  # Block metrics endpoint from public access
+  @metrics {
+    path /metrics
+  }
+  respond @metrics 403
+
+  # Enable automatic HTTPS (Let's Encrypt)
+  encode gzip
+
+  # Enable structured JSON access logging
+  log {
+    output stdout
+    format json
+    level INFO
+  }
+
+  # Security headers
+  header / {
+    # Prevent clickjacking
+    X-Frame-Options "SAMEORIGIN"
+    # Disable content-type sniffing
+    X-Content-Type-Options "nosniff"
+    # Enable XSS protection
+    X-XSS-Protection "1; mode=block"
+    # Referrer policy
+    Referrer-Policy "strict-origin-when-cross-origin"
+    # Prevent browsers from opening unsafe file types
+    X-Download-Options "noopen"
+    # Restrict permissions
+    Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  }
+
+  # Proxy public API endpoints to backend
+  reverse_proxy /public/* 127.0.0.1:8080 {
+    header_up Host {http.request.header.Host}
+    header_up X-Real-IP {http.request.remote.host}
+    header_up X-Forwarded-For {http.request.remote.host}
+    header_up X-Forwarded-Proto {http.request.scheme}
+  }
+
+  # Proxy API endpoints to backend
+  reverse_proxy /api/* 127.0.0.1:8080 {
+    header_up Host {http.request.header.Host}
+    header_up X-Real-IP {http.request.remote.host}
+    header_up X-Forwarded-For {http.request.remote.host}
+    header_up X-Forwarded-Proto {http.request.scheme}
+  }
+
+  # Proxy authentication routes to backend
+  reverse_proxy /auth/* 127.0.0.1:8080 {
+    header_up Host {http.request.header.Host}
+    header_up X-Real-IP {http.request.remote.host}
+    header_up X-Forwarded-For {http.request.remote.host}
+    header_up X-Forwarded-Proto {http.request.scheme}
+  }
+
+  # Proxy dashboard routes to backend
+  reverse_proxy /dashboard/* 127.0.0.1:8080 {
+    header_up Host {http.request.header.Host}
+    header_up X-Real-IP {http.request.remote.host}
+    header_up X-Forwarded-For {http.request.remote.host}
+    header_up X-Forwarded-Proto {http.request.scheme}
+  }
+
+  # Proxy static files to backend
+  reverse_proxy /static/* 127.0.0.1:8080 {
+    header_up Host {http.request.header.Host}
+    header_up X-Real-IP {http.request.remote.host}
+    header_up X-Forwarded-For {http.request.remote.host}
+    header_up X-Forwarded-Proto {http.request.scheme}
+  }
+
+  # Proxy UI API routes to backend
+  reverse_proxy /ui/api/* 127.0.0.1:8080 {
+    header_up Host {http.request.header.Host}
+    header_up X-Real-IP {http.request.remote.host}
+    header_up X-Forwarded-For {http.request.remote.host}
+    header_up X-Forwarded-Proto {http.request.scheme}
+  }
+
+  # Proxy all remaining traffic to backend (root / and catch-all)
+  reverse_proxy /* 127.0.0.1:8080 {
+    header_up Host {http.request.header.Host}
+    header_up X-Real-IP {http.request.remote.host}
+    header_up X-Forwarded-For {http.request.remote.host}
+    header_up X-Forwarded-Proto {http.request.scheme}
+  }
+}
+
+jobs.comradebot.cc {
+  encode gzip
+
+  log {
+    output stdout
+    format json
+    level INFO
+  }
+
+  header / {
+    X-Frame-Options "SAMEORIGIN"
+    X-Content-Type-Options "nosniff"
+    X-XSS-Protection "1; mode=block"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    X-Download-Options "noopen"
+    Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  }
+
+  reverse_proxy /* 127.0.0.1:3001 {
+    header_up Host {http.request.header.Host}
+    header_up X-Real-IP {http.request.remote.host}
+    header_up X-Forwarded-For {http.request.remote.host}
+    header_up X-Forwarded-Proto {http.request.scheme}
+  }
+}
+
+monitor.comradebot.cc {
+  # Enable automatic HTTPS (Let's Encrypt)
+  encode gzip
+
+  # Security headers
+  header / {
+    # Prevent clickjacking (allow for embedding if needed)
+    X-Frame-Options "SAMEORIGIN"
+    # Disable content-type sniffing
+    X-Content-Type-Options "nosniff"
+    # Enable XSS protection
+    X-XSS-Protection "1; mode=block"
+    # Referrer policy
+    Referrer-Policy "strict-origin-when-cross-origin"
+    # Prevent browsers from opening unsafe file types
+    X-Download-Options "noopen"
+    # Restrict permissions
+    Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  }
+
+  # Proxy all traffic to Grafana
+  reverse_proxy /* 127.0.0.1:3000 {
+    # Essential headers for reverse proxy
+    header_up Host {http.request.host}
+    header_up X-Real-IP {http.request.remote.host}
+    header_up X-Forwarded-For {http.request.remote.host}
+    header_up X-Forwarded-Proto {http.request.scheme}
+    header_up X-Forwarded-Host {http.request.host}
+    header_up X-Forwarded-Port {http.request.port}
+    # Preserve original headers
+    header_up Origin {http.request.header.Origin}
+    header_up Referer {http.request.header.Referer}
+    # WebSocket support for Grafana live features
+    header_up Connection {http.request.header.Connection}
+    header_up Upgrade {http.request.header.Upgrade}
+    # Remove hop-by-hop headers that shouldn't be forwarded
+    header_down -X-Frame-Options
+  }
+}

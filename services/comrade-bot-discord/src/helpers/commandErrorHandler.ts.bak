@@ -1,0 +1,125 @@
+import { DiscordInteraction } from "../types/DiscordInteraction";
+import { UnauthorizedError } from "./UnauthorizedException";
+
+/**
+ * Standard error messages for common scenarios
+ */
+export const ErrorMessages = {
+    EMPTY_RESPONSE: "❌ Empty response from API. Please try again later.",
+    GENERIC_ERROR: "⚠️ **Operation Failed**\nSomething went wrong. Please try again later or contact support.",
+    UNAUTHORIZED: (message: string) => `❌ **Authorization Failed**\n${message}`,
+    VALIDATION_ERROR: (field: string, requirement: string) => `❌ Invalid ${field}. ${requirement}`,
+} as const;
+
+/**
+ * Standard input validation patterns
+ */
+export const ValidationPatterns = {
+    FLIGHT_ROUTE: /^[A-Z]{4}-[A-Z]{4}$/,
+    VA_CODE: /^[A-Z0-9]{3,5}$/,
+    IFC_USERNAME: /^[a-zA-Z0-9_-]{3,30}$/,
+} as const;
+
+/**
+ * Centralized error handler for modal interactions
+ * Provides consistent error formatting and logging
+ */
+export class CommandErrorHandler {
+    /**
+     * Handle API errors with consistent formatting
+     */
+    static async handleApiError(
+        interaction: DiscordInteraction,
+        error: unknown,
+        operation: string
+    ): Promise<void> {
+        console.error(`[${operation} Error]`, error);
+
+        // Handle unauthorized errors
+        if (error instanceof UnauthorizedError) {
+            await interaction.reply({
+                content: ErrorMessages.UNAUTHORIZED(error.message),
+                ephemeral: true
+            });
+            return;
+        }
+
+        // Handle generic errors
+        await interaction.reply({
+            content: ErrorMessages.GENERIC_ERROR,
+            ephemeral: true
+        });
+    }
+
+    /**
+     * Validate empty response
+     */
+    static async handleEmptyResponse(interaction: DiscordInteraction): Promise<boolean> {
+        await interaction.reply({
+            content: ErrorMessages.EMPTY_RESPONSE,
+            ephemeral: true
+        });
+        return false;
+    }
+
+    /**
+     * Validate input field
+     */
+    static async validateInput(
+        interaction: DiscordInteraction,
+        value: string,
+        fieldName: string,
+        pattern?: RegExp,
+        minLength?: number,
+        maxLength?: number
+    ): Promise<boolean> {
+        // Check length
+        if (minLength && value.length < minLength) {
+            await interaction.reply({
+                content: ErrorMessages.VALIDATION_ERROR(
+                    fieldName,
+                    `Must be at least ${minLength} characters.`
+                ),
+                ephemeral: true
+            });
+            return false;
+        }
+
+        if (maxLength && value.length > maxLength) {
+            await interaction.reply({
+                content: ErrorMessages.VALIDATION_ERROR(
+                    fieldName,
+                    `Must be no more than ${maxLength} characters.`
+                ),
+                ephemeral: true
+            });
+            return false;
+        }
+
+        // Check pattern
+        if (pattern && !pattern.test(value)) {
+            await interaction.reply({
+                content: ErrorMessages.VALIDATION_ERROR(
+                    fieldName,
+                    `Does not match required format.`
+                ),
+                ephemeral: true
+            });
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Log command execution
+     */
+    static logExecution(
+        commandName: string,
+        userId: string,
+        guildId: string | null,
+        params: Record<string, any>
+    ): void {
+        console.log(`[${commandName}] User: ${userId}, Guild: ${guildId || 'DM'}, Params:`, params);
+    }
+}

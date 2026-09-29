@@ -1,0 +1,134 @@
+openapi: 3.0.3
+info:
+  title: Infinite Flight Live API
+  version: 2.0.0
+  description: Upstream API contract consumed by Politburo scheduled jobs.
+servers:
+  - url: https://api.infiniteflight.com/public/{apiVersion}
+    description: Infinite Flight public API
+    variables:
+      apiVersion:
+        default: v2
+        enum: [v2]
+        description: Public API version used by Politburo.
+security:
+  - bearerAuth: []
+paths:
+  /sessions:
+    get:
+      operationId: getSessions
+      summary: List active Infinite Flight sessions
+      tags: [sessions]
+      responses:
+        "200":
+          $ref: ./responses/sessions.yaml
+        default:
+          $ref: "#/components/responses/Error"
+  /sessions/{sessionId}/flights:
+    get:
+      operationId: getSessionFlights
+      summary: List flights in an Infinite Flight session
+      description: Upstream returns at most 1500 flights per request.
+      tags: [flights]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            x-go-type: string
+      responses:
+        "200":
+          $ref: ./responses/session-flights.yaml
+        default:
+          $ref: "#/components/responses/Error"
+  /aircraft/liveries:
+    get:
+      operationId: getAircraftLiveries
+      summary: List Infinite Flight aircraft liveries
+      tags: [aircraft]
+      responses:
+        "200":
+          $ref: ./responses/aircraft-liveries.yaml
+        default:
+          $ref: "#/components/responses/Error"
+  /users:
+    post:
+      operationId: lookupUsers
+      summary: Look up users by IFC username, user id, or hash
+      description: IFC username and Discourse username are the same value (discourseNames).
+      tags: [users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserLookupRequest"
+      responses:
+        "200":
+          $ref: ./responses/user-stats.yaml
+        default:
+          $ref: "#/components/responses/Error"
+  /users/{userId}/flights:
+    get:
+      operationId: getUserFlights
+      summary: Paginated online flight logbook for a user
+      tags: [users]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            x-go-type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          $ref: ./responses/user-flights.yaml
+        default:
+          $ref: "#/components/responses/Error"
+components:
+  responses:
+    Error:
+      description: Infinite Flight returned an error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API key
+      description: Infinite Flight API key sent in the Authorization header.
+  schemas:
+    SessionsResponse:
+      $ref: ./schemas/responses/sessions.yaml
+    SessionFlightsResponse:
+      $ref: ./schemas/responses/session-flights.yaml
+    AircraftLiveriesResponse:
+      $ref: ./schemas/responses/aircraft-liveries.yaml
+    ErrorResponse:
+      $ref: ./schemas/responses/error.yaml
+    Session:
+      $ref: ./schemas/session.yaml
+    FlightEntry:
+      $ref: ./schemas/flight-entry.yaml
+    LiveryData:
+      $ref: ./schemas/livery-data.yaml
+    UserLookupRequest:
+      $ref: ./schemas/user-lookup-request.yaml
+    UserStatsResponse:
+      $ref: ./schemas/responses/user-stats.yaml
+    UserFlightsResponse:
+      $ref: ./schemas/responses/user-flights.yaml
+    UserStats:
+      $ref: ./schemas/user-stats.yaml
+    UserFlight:
+      $ref: ./schemas/user-flight.yaml

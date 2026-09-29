@@ -1,0 +1,5 @@
+description: User statistics for one or more users.
+content:
+  application/json:
+    schema:
+      $ref: ../schemas/responses/user-stats.yaml

@@ -1,0 +1,5 @@
+description: Paginated online flight logbook for a user.
+content:
+  application/json:
+    schema:
+      $ref: ../schemas/responses/user-flights.yaml

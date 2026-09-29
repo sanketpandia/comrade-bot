@@ -1,0 +1,24 @@
+type: object
+x-go-type-name: UserFlightsResponse
+required: [errorCode, result]
+properties:
+  errorCode:
+    type: integer
+  result:
+    type: object
+    required: [pageIndex, totalPages, totalCount, hasPreviousPage, hasNextPage, data]
+    properties:
+      pageIndex:
+        type: integer
+      totalPages:
+        type: integer
+      totalCount:
+        type: integer
+      hasPreviousPage:
+        type: boolean
+      hasNextPage:
+        type: boolean
+      data:
+        type: array
+        items:
+          $ref: ../user-flight.yaml

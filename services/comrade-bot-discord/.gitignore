@@ -1,0 +1,15 @@
+node_modules
+dist
+.env
+src/generated/
+
+# AI tooling artifacts
+CLAUDE.md
+.claude/
+.cursor/
+.dev-log/
+plans/
+memory/
+PLAN.md
+WORKLOG.md
+ARCHITECTURE_NOTES.md

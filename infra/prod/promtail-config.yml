@@ -1,0 +1,102 @@
+server:
+  http_listen_port: 9080
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Scrape Podman container logs from a shared log directory
+  # Containers should write logs to /var/log/containers/<container-name>.log
+  - job_name: podman-containers
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: podman-containers
+          source: podman
+          __path__: /var/log/containers/*.log
+    relabel_configs:
+      # Extract container name from file path
+      # Promtail expands globs and sets __path__ for each discovered file
+      - source_labels: ['__path__']
+        regex: '.*/containers/([^/]+)\.log'
+        target_label: 'container_name'
+        replacement: '${1}'
+      # Map container_name to service label for easier querying
+      - source_labels: ['container_name']
+        target_label: 'service'
+    pipeline_stages:
+      # Remove timestamp prefix added by log shipper (format: "2026-03-02T15:04:00.176Z ")
+      # Extract the actual log content after the timestamp
+      - regex:
+          expression: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s+(?P<log_line>.*)'
+          source: line
+      # If regex didn't match (no timestamp prefix), log_line won't be set, so use original line
+      # Set the output to use log_line if available, otherwise use original line
+      - template:
+          source: output_line
+          template: '{{ if .log_line }}{{ .log_line }}{{ else }}{{ .line }}{{ end }}'
+      # Parse JSON logs (for containers like politburo that output JSON)
+      # Parse from output_line which contains the actual log content
+      - json:
+          expressions:
+            log_level: L
+            timestamp: T
+            caller: C
+            message: M
+            # Extract other common fields for filtering/querying
+            sessionID: sessionID
+            sessionName: sessionName
+            flightID: flightID
+            origin: origin
+            destination: destination
+            phase: phase
+            # Watermill / PIREP messaging fields
+            handler: handler
+            message_uuid: message_uuid
+            va_id: va_id
+            record_id: record_id
+            attempt: attempt
+            # Rate-limit middleware fields
+            group: group
+            user_id: user_id
+            count: count
+            limit: limit
+            # Auth middleware fields
+            method: method
+            path: path
+            # Comrade Bot structured JSON fields
+            level: level
+            service_field: service
+            env_field: env
+            event: event
+            command: command
+            interaction_type: interaction_type
+            guild_id: guild_id
+            result: result
+            duration_ms: duration_ms
+            error_name: error_name
+            error_message: error_message
+          source: output_line
+      # Use the timestamp from JSON if available
+      # Format: "2026-03-02T21:01:01.340+0530" (RFC3339 with nanoseconds and timezone)
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - '2006-01-02T15:04:05.000-0700'  # Format like "2026-03-02T21:01:01.340+0530"
+            - '2006-01-02T15:04:05Z'
+          location: UTC
+      # Add log level as a label for easier filtering (only if JSON parsing succeeded)
+      - labels:
+          log_level: ""
+          level: ""
+      # Output: Always output the actual log content (output_line contains the log message)
+      # This preserves the full log message for display in Grafana
+      - output:
+          source: output_line

@@ -1,0 +1,51 @@
+type: object
+required: [id, userId, callsign]
+properties:
+  id:
+    type: string
+    format: uuid
+    x-go-type: string
+  created:
+    type: string
+    format: date-time
+  userId:
+    type: string
+    format: uuid
+    x-go-type: string
+  aircraftId:
+    type: string
+    format: uuid
+    x-go-type: string
+  liveryId:
+    type: string
+    format: uuid
+    x-go-type: string
+  callsign:
+    type: string
+  server:
+    type: string
+  dayTime:
+    type: number
+    format: float
+  nightTime:
+    type: number
+    format: float
+  totalTime:
+    type: number
+    format: float
+  landingCount:
+    type: integer
+  originAirport:
+    type: string
+    nullable: true
+  destinationAirport:
+    type: string
+    nullable: true
+  xp:
+    type: integer
+  fuelUsedKg:
+    type: number
+    format: float
+    nullable: true
+  worldType:
+    type: integer

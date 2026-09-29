@@ -1,0 +1,29 @@
+[Unit]
+Description=Caddy Reverse Proxy (Rootful)
+Documentation=https://caddyserver.com/docs/
+After=network-online.target
+Wants=network-online.target
+Requires=podman.service
+
+[Service]
+Type=notify
+User=root
+Group=root
+ExecStartPre=/usr/bin/podman pull docker.io/library/caddy:latest
+ExecStart=/usr/bin/podman run \
+  --rm \
+  --name=caddy \
+  --network=host \
+  -v /home/runner/projects/labour-bureau/prod/Caddyfile:/etc/caddy/Caddyfile:ro \
+  -v /home/runner/projects/labour-bureau/prod/caddy_data:/data \
+  -v /home/runner/projects/labour-bureau/prod/caddy_config:/config \
+  docker.io/library/caddy:latest \
+  caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+ExecStop=/usr/bin/podman stop caddy
+ExecStopPost=/usr/bin/podman rm -f caddy
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

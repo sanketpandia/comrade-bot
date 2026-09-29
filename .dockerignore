@@ -1,0 +1,14 @@
+.git
+.github
+_monorepo-backup
+.dev-log
+**/.env
+**/node_modules
+**/dist
+**/.air_tmp
+docs/
+design_screens
+*.png
+.claude
+.opencode
+.vscode

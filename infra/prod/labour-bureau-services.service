@@ -1,0 +1,35 @@
+# DEPRECATED: Use labour-bureau-compose.service instead.
+# This oneshot unit can report "active" while containers are not running after reboot.
+# The compose-based unit runs "podman compose up" in the foreground so systemd tracks the stack reliably.
+
+[Unit]
+Description=Labour Bureau Services (Politburo, Comrade Bot, DB, Redis, Monitoring) [DEPRECATED - use labour-bureau-compose.service]
+Documentation=https://github.com/infinite-experiment
+After=network-online.target podman.service
+Wants=network-online.target
+Requires=podman.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Change User/Group to match the user that runs podman
+# For rootless podman, use your username (e.g., User=odin)
+# For rootful podman, use root
+# To check: run 'podman ps' - if it works without sudo, use your username
+User=runner
+Group=runner
+WorkingDirectory=/home/runner/projects/labour-bureau/prod
+# Required for rootless podman when running as a system-level service
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/home/runner/projects/labour-bureau/prod/start-services.sh
+ExecStop=/home/runner/projects/labour-bureau/prod/stop-services.sh
+StandardOutput=journal
+StandardError=journal
+# Restart the systemd service if it fails (though containers auto-restart)
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=300
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

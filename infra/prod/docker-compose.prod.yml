@@ -1,0 +1,196 @@
+version: "3.9"
+# Production compose file. Run with: podman compose -f docker-compose.prod.yml ...
+# Project name so volumes match legacy names (e.g. labour-bureau_pgdata-prod)
+name: labour-bureau
+services:
+  politburo:
+    container_name: politburo
+    build:
+      context: ../..
+      dockerfile: services/politburo/Dockerfile
+    # Expose to localhost for rootful Caddy to access
+    ports:
+      - "127.0.0.1:8080:8080"
+    env_file:
+      - ./env/politburo.env
+    # Start after db and redis (start order only). podman-compose 1.0.6 does not support
+    # condition: service_healthy (see https://github.com/containers/podman-compose/issues/866);
+    # politburo may start before they are healthy. restart: unless-stopped will retry until they are.
+    depends_on:
+      - db
+      - redis
+    networks:
+      - internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8080/healthCheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  db:
+    container_name: db
+    image: docker.io/library/postgres:15
+    env_file:
+      - ./env/database.env
+    volumes:
+      - pgdata-prod:/var/lib/postgresql/data
+      - ../../services/politburo/migrations:/migrations
+    # Localhost only: for SSH tunnel / DBeaver; not reachable from internet
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ieuser -d infinite"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+    restart: unless-stopped
+
+  redis:
+    container_name: redis
+    image: docker.io/library/redis:7-alpine
+    restart: unless-stopped
+    env_file:
+      - ./env/cache.env
+    command: sh -c 'redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"'
+    volumes:
+      - redis-prod:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "sh", "-c", "redis-cli --raw -a \"$${REDIS_PASSWORD}\" incr ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    # No public port exposure - only accessible via internal network
+
+  comrade-bot:
+    container_name: comrade-bot
+    build:
+      context: ../..
+      dockerfile: services/comrade-bot-discord/Dockerfile
+    env_file:
+      - ./env/comrade-bot.env
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      METRICS_ENABLED: ${METRICS_ENABLED:-true}
+      METRICS_HOST: ${METRICS_HOST:-0.0.0.0}
+      METRICS_PORT: ${METRICS_PORT:-9091}
+    expose:
+      - "9091"
+    networks:
+      - internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:9091/healthz', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  jobhunt:
+    container_name: jobhunt
+    build:
+      context: ../../../jobhunt
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:3001:3000"
+    env_file:
+      - ./env/jobhunt.env
+    depends_on:
+      - db
+    networks:
+      - internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  prometheus:
+    image: docker.io/prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-storage:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    networks:
+      - internal
+
+  loki:
+    image: docker.io/grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki.prod.yml:/etc/loki/local-config.yml:ro
+      - loki-storage:/loki
+    command: -config.file=/etc/loki/local-config.yml
+    networks:
+      - internal
+
+  promtail:
+    image: docker.io/grafana/promtail:latest
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      # Podman: log shipper writes to /var/log/containers/*.log
+      - /var/log/containers:/var/log/containers:ro
+      - /var/log:/var/log:ro
+    ports:
+      - "9080:9080"
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - internal
+
+  grafana:
+    image: docker.io/grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    # Expose to localhost for rootful Caddy to access
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file:
+      - ./env/monitoring.env
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_SECURITY_ADMIN_USER: admin
+      GF_INSTALL_PLUGINS: grafana-worldmap-panel
+      GF_SERVER_ROOT_URL: https://monitor.comradebot.cc
+      GF_SERVER_DOMAIN: monitor.comradebot.cc
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_LOG_LEVEL: warn
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    networks:
+      - internal
+
+  # Caddy is run separately as rootful via systemd service
+  # See prod/caddy-rootful.service for systemd unit file
+
+volumes:
+  pgdata-prod:
+  redis-prod:
+  prometheus-storage:
+  loki-storage:
+  grafana-storage:
+
+networks:
+  internal:
+    driver: bridge

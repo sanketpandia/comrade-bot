@@ -1,0 +1,113 @@
+# Backing services for local dev. Politburo and comrade-bot-discord run on the host
+# via infra/dev/start-dev.sh for live reload (Air / ts-node-dev).
+
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: infinite
+      POSTGRES_USER: ieuser
+      POSTGRES_PASSWORD: iepass
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+      - ../../services/politburo/migrations:/migrations:ro
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: sanketpandia@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: ieadmin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+  swagger-editor:
+    image: swaggerapi/swagger-editor
+    restart: always
+    ports:
+      - "8081:80"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    network_mode: "host"
+    volumes:
+      - ./prometheus.dev.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-storage:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: always
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki.dev.yml:/etc/loki/local-config.yml:ro
+      - loki-storage:/loki
+    command: -config.file=/etc/loki/local-config.yml
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    restart: always
+    # userns_mode: keep-id runs the container as the host user so the
+    # systemd-journal group membership carries through and grants read access to
+    # /var/log/journal. Requires: sudo usermod -aG systemd-journal <user> + re-login.
+    userns_mode: "keep-id"
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /var/log:/var/log:ro
+      # Host Politburo (Air) tees logs to /tmp/politburo.log
+      - /tmp:/host-tmp:ro
+    ports:
+      - "9080:9080"
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - default
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    network_mode: "host"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
+      PG_PASSWORD: iepass
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+
+volumes:
+  pgdata-dev:
+  redis-data:
+  prometheus-storage:
+  loki-storage:
+  grafana-storage:
