@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: "{{politburo-base-url}}/api/v1/game/sessions/active"
+  url: "{{politburo-base-url}}/api/v1/game/flights/active"
   params:
     - name: history
       value: "false"
@@ -19,6 +19,6 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
+  forwardAuthorizationHeader: true
 
-docs: |-
-  `getActiveSessions` — read the latest active Infinite Flight sessions from cache.
+docs: "`getActiveSessions` — read the latest active Infinite Flight sessions from cache."

@@ -19,7 +19,7 @@ infra/prod/k8s/
 |-----------|----------|
 | `ie-data` | `postgres`, `redis` |
 | `ie-apps` | `politburo` (:8080 on `127.0.0.1` via hostPort), `comrade-bot` |
-| `ie-observability` | `prometheus`, `loki`, `grafana` (:3000 on `127.0.0.1`), `promtail` DaemonSet |
+| `ie-observability` | `prometheus`, `loki`, `grafana` (:3000 on `127.0.0.1`), `promtail`, `cadvisor`, `node-exporter` DaemonSets |
 
 Host **Caddy** (native `caddy.service`) proxies public HTTPS to `127.0.0.1:8080` and `127.0.0.1:3000` — sync [`../edge/Caddyfile`](../edge/Caddyfile) to `/etc/caddy/Caddyfile`.
 
@@ -198,7 +198,12 @@ Quick checks on the VPS:
 kubectl -n ie-observability logs daemonset/promtail --tail=80
 kubectl -n ie-observability exec daemonset/promtail -- sh -c \
   'echo HOSTNAME=$HOSTNAME; ls /var/log/pods | head -3'
-kubectl -n ie-observability exec deploy/loki -- wget -qO- http://localhost:3100/loki/api/v1/labels
+# Loki image has no curl/wget; query from the host via port-forward:
+kubectl -n ie-observability port-forward svc/loki 3100:3100 >/tmp/loki-pf.log 2>&1 &
+PF_PID=$!
+sleep 2
+curl -sS http://127.0.0.1:3100/loki/api/v1/labels
+kill "$PF_PID" 2>/dev/null || true
 ```
 
 After fixing manifests, re-apply and restart Promtail:

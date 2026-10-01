@@ -6,3 +6,5 @@ resources:
   - loki.yaml
   - grafana.yaml
   - promtail.yaml
+  - cadvisor.yaml
+  - node-exporter.yaml
