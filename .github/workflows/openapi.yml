@@ -58,3 +58,12 @@ jobs:
           cd services/comrade-bot-discord
           npm ci
           npm run build
+
+      - name: Discord notify
+        if: always() && failure()
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: OpenAPI CI
+          status: failure
+          job-name: generate-and-build

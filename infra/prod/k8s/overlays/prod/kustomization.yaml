@@ -1,0 +1,37 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+configMapGenerator:
+  - name: prometheus-config
+    namespace: ie-observability
+    files:
+      - prometheus.yml=../../base/observability/prometheus-k8s.yml
+  - name: loki-config
+    namespace: ie-observability
+    files:
+      - local-config.yml=../../../observability/loki.prod.yml
+  - name: promtail-config
+    namespace: ie-observability
+    files:
+      - config.yml=../../base/observability/promtail-k8s.yml
+  - name: grafana-datasources
+    namespace: ie-observability
+    files:
+      - datasources.yml=../../base/observability/grafana-datasources-k8s.yml
+  - name: grafana-dashboards
+    namespace: ie-observability
+    files:
+      - dashboards.yml=../../../observability/grafana/provisioning/dashboards/dashboards.yml
+      - comrade-bot-metrics.json=../../../observability/grafana/provisioning/dashboards/comrade-bot-metrics.json
+      - logs-errors.json=../../../observability/grafana/provisioning/dashboards/logs-errors.json
+      - politburo-background.json=../../../observability/grafana/provisioning/dashboards/politburo-background.json
+      - politburo-http.json=../../../observability/grafana/provisioning/dashboards/politburo-http.json
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+# Override image registry owner to match GitHub (lowercase):
+#   kustomize edit set image ghcr.io/infinite-experiment/politburo:<sha>

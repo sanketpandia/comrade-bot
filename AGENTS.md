@@ -11,7 +11,7 @@ Single monorepo (`comrade-bot` on GitHub). Run commands from the directory that 
 | `services/politburo/` | Go API, jobs, embedded dashboard |
 | `services/comrade-bot-discord/` | TypeScript Discord bot |
 | `infra/dev/` | Local Compose backing services, observability config, `start-dev.sh` |
-| `infra/prod/` | Production Podman Compose, Caddy, deploy scripts, env templates, Grafana |
+| `infra/prod/` | Production k3s manifests (`k8s/`), legacy Podman Compose, Caddy edge config, env templates |
 | `_monorepo-backup/` | Bare backups of the old three repos — never edit |
 
 ## Dependencies
@@ -28,7 +28,8 @@ Full map and known traps: `.claude/commands/architecture.md`. Agents in `.claude
 - `docs/standards.md` and much of `docs/politburo/**`, `docs/infra/**` still describe the old multi-repo layout (`labour-bureau/`, `api/openapi/`, Vizburo, `internal/routes`). Verify against code.
 - Identity/membership/operator `/api/v1` routes are hand-mounted in `server.go` and missing from OpenAPI; new JSON routes go through the spec.
 - The bot still calls legacy endpoints the rewrite does not serve (`/healthCheck`, `/pireps/*`, `/events/*`, `/pilot/stats`, …), and doesn't use the generated TS types yet.
-- Ports differ: dev Politburo `8082`, prod `8080`. Prod compose healthcheck still targets `/healthCheck`; prod `politburo.env.example` lacks `SIGNED_LINK_SECRET` (required outside local).
+- Ports differ: dev Politburo `8082`, prod `8080`. k8s/compose health probes use `/health/live` and `/health/ready`. Prod `politburo.env.example` may lack `SIGNED_LINK_SECRET` (required outside local).
+- Production deploy: GHCR images + self-hosted runner (`runs-on: [self-hosted, linux, prod]`, environment `production`); bootstrap [`infra/prod/k8s/README.md`](infra/prod/k8s/README.md). lalquila uses **native** `caddy.service`, not Podman `caddy-rootful`.
 - Grafana dashboards and Promtail pipelines partly target legacy metrics/labels and Zap log keys; Politburo now logs `slog` JSON.
 - Migrations are manual SQL; the `politburo_next` DB must be created by hand in dev.
 - If `make` recursion aborts in an agent sandbox, run `/usr/bin/make MAKE=/usr/bin/make <target>`.
@@ -78,7 +79,8 @@ docker build -f services/comrade-bot-discord/Dockerfile .
 
 ## Production
 
-- Deploy: `infra/prod/deploy-services.sh politburo|comrade-bot|all`
+- k3s: `infra/prod/k8s/` — apply with `bash infra/prod/k8s/apply.sh`; CD via GitHub Actions on self-hosted runner (see `infra/prod/k8s/README.md`).
+- Legacy compose deploy: `infra/prod/deploy-services.sh politburo|comrade-bot|all`
 - Env templates: `infra/prod/env/*.env.example`
 
 ## Docs

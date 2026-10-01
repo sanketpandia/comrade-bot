@@ -42,12 +42,23 @@ jobs:
           npm test
           npm run build
 
+      - name: Discord notify
+        if: always() && failure()
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: Comrade-bot CI — test
+          status: failure
+          job-name: test
+
   production-image:
     runs-on: ubuntu-latest
     needs: test
     permissions:
       contents: read
       packages: write
+    outputs:
+      image: ${{ steps.ghcr.outputs.prefix }}/comrade-bot:${{ github.sha }}
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -73,3 +84,66 @@ jobs:
           tags: |
             ${{ steps.ghcr.outputs.prefix }}/comrade-bot:${{ github.sha }}
             ${{ steps.ghcr.outputs.prefix }}/comrade-bot:main
+
+      - name: Discord notify
+        if: always() && (failure() || (success() && github.event_name == 'push' && github.ref == 'refs/heads/main'))
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: Comrade-bot CI — production-image
+          status: ${{ job.status }}
+          job-name: production-image
+          details: ${{ steps.ghcr.outputs.prefix }}/comrade-bot:${{ github.sha }}
+
+  deploy:
+    needs: production-image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, prod]
+    environment: production
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure kubeconfig from secret
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+        run: |
+          if [ -z "${KUBECONFIG_B64}" ]; then
+            echo "KUBECONFIG_B64 not set; using runner kubeconfig"
+            exit 0
+          fi
+          mkdir -p "$HOME/.kube"
+          echo "$KUBECONFIG_B64" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Ensure GHCR imagePullSecret
+        env:
+          GHCR_USER: ${{ github.repository_owner }}
+          GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        run: |
+          if [ -z "${GHCR_TOKEN}" ]; then
+            echo "GHCR_PULL_TOKEN not set; skipping imagePullSecret refresh"
+            exit 0
+          fi
+          kubectl create secret docker-registry ghcr-cred -n ie-apps \
+            --docker-server=ghcr.io \
+            --docker-username="$GHCR_USER" \
+            --docker-password="$GHCR_TOKEN" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Roll out comrade-bot
+        env:
+          IMAGE: ${{ needs.production-image.outputs.image }}
+        run: |
+          kubectl -n ie-apps set image deployment/comrade-bot comrade-bot="$IMAGE"
+          kubectl -n ie-apps rollout status deployment/comrade-bot --timeout=5m
+
+      - name: Discord notify
+        if: always() && (failure() || success())
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: Comrade-bot deploy (lalquila)
+          status: ${{ job.status }}
+          job-name: deploy
+          details: ${{ needs.production-image.outputs.image }}
