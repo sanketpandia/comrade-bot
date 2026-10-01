@@ -24,3 +24,15 @@ scrape_configs:
     metrics_path: '/metrics'
     scrape_interval: 15s
     scrape_timeout: 5s
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: ['cadvisor.ie-observability.svc.cluster.local:8080']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  - job_name: node-exporter
+    static_configs:
+      - targets: ['node-exporter.ie-observability.svc.cluster.local:9100']
+    scrape_interval: 15s
+    scrape_timeout: 5s
