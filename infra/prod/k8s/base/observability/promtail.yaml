@@ -13,16 +13,30 @@ spec:
         app: promtail
     spec:
       serviceAccountName: promtail
+      # Host log dirs are root-owned; match upstream Promtail Helm chart.
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      tolerations:
+        - operator: Exists
+          effect: NoSchedule
       containers:
         - name: promtail
           image: docker.io/grafana/promtail:latest
           args:
             - -config.file=/etc/promtail/config.yml
+          env:
+            # Promtail 3.x filters pod SD by $HOSTNAME; default is the pod name, not the node.
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           ports:
             - containerPort: 9080
               name: http
           securityContext:
             readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
           volumeMounts:
             - name: config
               mountPath: /etc/promtail

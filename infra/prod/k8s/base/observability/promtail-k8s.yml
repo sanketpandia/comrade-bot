@@ -12,7 +12,12 @@ scrape_configs:
   - job_name: kubernetes-pods
     kubernetes_sd_configs:
       - role: pod
+    pipeline_stages:
+      - cri: {}
     relabel_configs:
+      # Required: Promtail only tails targets whose __host__ matches $HOSTNAME (node name).
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: __host__
       - source_labels: [__meta_kubernetes_pod_node_name]
         target_label: node_name
       - source_labels: [__meta_kubernetes_namespace]
@@ -21,6 +26,11 @@ scrape_configs:
         target_label: pod
       - source_labels: [__meta_kubernetes_pod_container_name]
         target_label: container
+      # Provisioned Grafana dashboards (Podman era) query container_name / service.
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        target_label: container_name
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        target_label: service
       - action: replace
         replacement: /var/log/pods/*$1/*.log
         separator: /

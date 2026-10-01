@@ -181,6 +181,32 @@ Preserve existing ACME data under `/var/lib/caddy` (or your current path).
 - Discord bot responds
 - `https://monitor.comradebot.cc` → Grafana
 - Prometheus targets: politburo + comrade-bot UP (in-cluster)
+- Grafana → Explore → Loki: `{namespace="ie-apps"}` or `{container_name="politburo"}` returns lines
+
+### Loki has no pod logs
+
+Promtail must discover pods **on this node** and read `/var/log/pods` on the host. On a fresh cluster the usual causes are:
+
+1. **Missing `HOSTNAME` env** — Promtail 3.x uses `$HOSTNAME` when filtering Kubernetes SD targets. Without `spec.nodeName` downward API, it defaults to the Promtail **pod** name, matches no node, and ships nothing (DaemonSet still looks “healthy”).
+2. **Missing `__host__` relabel** — Each target needs `__host__` from `__meta_kubernetes_pod_node_name` (see [Promtail scraping docs](https://grafana.com/docs/loki/latest/send-data/promtail/scraping/#kubernetes-discovery)).
+3. **Host log permissions** — Promtail runs as root in our manifests so it can read kubelet log files under `/var/log/pods`.
+4. **Grafana query labels** — Provisioned dashboards filter `{container_name="politburo"}`. k8s Promtail also sets `namespace`, `pod`, `container`, and `service`.
+
+Quick checks on the VPS:
+
+```bash
+kubectl -n ie-observability logs daemonset/promtail --tail=80
+kubectl -n ie-observability exec daemonset/promtail -- sh -c \
+  'echo HOSTNAME=$HOSTNAME; ls /var/log/pods | head -3'
+kubectl -n ie-observability exec deploy/loki -- wget -qO- http://localhost:3100/loki/api/v1/labels
+```
+
+After fixing manifests, re-apply and restart Promtail:
+
+```bash
+cd /opt/comrade-bot && bash infra/prod/k8s/apply.sh
+kubectl -n ie-observability rollout restart daemonset/promtail
+```
 
 ## CD / CI secrets
 
