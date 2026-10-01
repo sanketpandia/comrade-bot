@@ -1,0 +1,17 @@
+type: object
+required: [availableFilters, result, count, meta]
+properties:
+  availableFilters:
+    type: array
+    items:
+      $ref: "./AvailableFilter.yaml"
+  result:
+    type: array
+    items:
+      $ref: "./TrimmedFlight.yaml"
+  count:
+    type: integer
+    minimum: 0
+    description: Number of matching flights. This response is not paged.
+  meta:
+    $ref: "./CacheMetadata.yaml"

@@ -1,0 +1,13 @@
+info:
+  name: Health
+  type: folder
+  seq: 1
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    Liveness and readiness probes from the OpenAPI contract. No API key required;
+    the collection still sends `X-API-Key` when configured in your environment.
+  type: text/markdown

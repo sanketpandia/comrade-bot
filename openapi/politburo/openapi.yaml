@@ -1,0 +1,82 @@
+openapi: 3.0.3
+info:
+  title: Politburo API
+  version: 0.1.0
+  description: Authoritative contract for the clean-slate Politburo application.
+servers:
+  - url: http://localhost:8080
+    description: Local rewrite
+paths:
+  /health/live:
+    $ref: "./paths/health/live.yaml"
+  /health/ready:
+    $ref: "./paths/health/ready.yaml"
+  /api/v1/game/sessions/active:
+    $ref: "./paths/game/sessions-active.yaml"
+  /api/v1/game/flights/active:
+    $ref: "./paths/game/flights-active.yaml"
+  /api/v1/game/flights/active/trimmed:
+    $ref: "./paths/game/flights-active-trimmed.yaml"
+  /api/v1/game/flights/active/detail:
+    $ref: "./paths/game/flights-active-detail.yaml"
+  /api/v1/signed-link:
+    $ref: "./paths/auth/signed-link.yaml"
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: UUID of an active row in the api_keys table.
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: session_id
+      description: Browser session cookie minted by GET /auth/login.
+  schemas:
+    HealthResponse:
+      $ref: "./components/schemas/HealthResponse.yaml"
+    ActiveSessionsResponse:
+      $ref: "./components/schemas/ActiveSessionsResponse.yaml"
+    ActiveSessionsData:
+      $ref: "./components/schemas/ActiveSessionsData.yaml"
+    AvailableFilter:
+      $ref: "./components/schemas/AvailableFilter.yaml"
+    CacheMetadata:
+      $ref: "./components/schemas/CacheMetadata.yaml"
+    SessionHistorySnapshot:
+      $ref: "./components/schemas/SessionHistorySnapshot.yaml"
+    ErrorResponse:
+      $ref: "./components/schemas/ErrorResponse.yaml"
+    GenerateSignedLinkRequest:
+      $ref: "./components/schemas/GenerateSignedLinkRequest.yaml"
+    GenerateSignedLinkData:
+      $ref: "./components/schemas/GenerateSignedLinkData.yaml"
+    GenerateSignedLinkResponse:
+      $ref: "./components/schemas/GenerateSignedLinkResponse.yaml"
+    Session:
+      $ref: "./components/schemas/Session.yaml"
+    PilotStateName:
+      $ref: "./components/schemas/PilotStateName.yaml"
+    ActiveFlightsResponse:
+      $ref: "./components/schemas/ActiveFlightsResponse.yaml"
+    ActiveFlightsData:
+      $ref: "./components/schemas/ActiveFlightsData.yaml"
+    Pagination:
+      $ref: "./components/schemas/Pagination.yaml"
+    TrimmedActiveFlightsResponse:
+      $ref: "./components/schemas/TrimmedActiveFlightsResponse.yaml"
+    TrimmedActiveFlightsData:
+      $ref: "./components/schemas/TrimmedActiveFlightsData.yaml"
+    TrimmedFlight:
+      $ref: "./components/schemas/TrimmedFlight.yaml"
+    ActiveFlightResponse:
+      $ref: "./components/schemas/ActiveFlightResponse.yaml"
+    ActiveFlightData:
+      $ref: "./components/schemas/ActiveFlightData.yaml"
+    FlightPathSync:
+      $ref: "./components/schemas/FlightPathSync.yaml"
+    FlightNormalized:
+      $ref: "./components/schemas/FlightNormalized.yaml"
+    Flight:
+      $ref: "./components/schemas/Flight.yaml"

@@ -1,0 +1,9 @@
+type: object
+required: [lastCached, refreshIntervalMins]
+properties:
+  lastCached:
+    type: string
+    format: date-time
+  refreshIntervalMins:
+    type: integer
+    minimum: 1

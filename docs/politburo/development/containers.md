@@ -11,9 +11,22 @@ Politburo has two container entry points:
   application binary and CA certificates.
 
 The GitHub Actions workflow builds the `ci` target and then the complete
-production image. CI must publish images with immutable Git-SHA tags; deployment
-configuration should select one of those tags rather than building on the
-production host.
+production image. On push to `main`, images are published to GHCR as
+`ghcr.io/<owner>/politburo:<git-sha>` and `ghcr.io/<owner>/comrade-bot:<git-sha>`
+(with a floating `:main` tag). Deployment should pull those tags rather than
+building on the production host.
+
+## GitHub Actions (path filters)
+
+Workflows run only when matching paths change (monorepo isolation):
+
+| Workflow | Triggers on |
+|----------|-------------|
+| [`.github/workflows/openapi.yml`](../../../.github/workflows/openapi.yml) | `openapi/**`, `cicd/**`, root `Makefile` |
+| [`.github/workflows/politburo.yml`](../../../.github/workflows/politburo.yml) | `services/politburo/**`, `openapi/**`, `cicd/**`, `Makefile` |
+| [`.github/workflows/discord-bot.yml`](../../../.github/workflows/discord-bot.yml) | `services/comrade-bot-discord/**`, `openapi/**`, `cicd/**`, `Makefile` |
+
+Politburo tests use `docker build --target ci` on [`Dockerfile.dev`](../../../services/politburo/Dockerfile.dev) (generate + `go test` + build). The Discord bot runs `npm ci`, `npm run api:generate`, `npm test`, and `npm run build`. Production images build on every matching PR and push; **GHCR push** runs only on `push` to `main` after tests pass.
 
 ## Development
 

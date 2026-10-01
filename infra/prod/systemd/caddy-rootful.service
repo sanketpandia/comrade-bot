@@ -1,0 +1,34 @@
+# Install:
+#   sudo cp systemd/caddy-rootful.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now caddy-rootful.service
+#
+# Edit volume paths to match your checkout. ACME data lives in edge/caddy_data/.
+
+[Unit]
+Description=Caddy reverse proxy (rootful podman, host network)
+Documentation=https://caddyserver.com/docs/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=root
+Group=root
+ExecStartPre=/usr/bin/podman pull docker.io/library/caddy:latest
+ExecStart=/usr/bin/podman run \
+  --rm \
+  --name=caddy \
+  --network=host \
+  -v /home/deploy/comrade-bot/infra/prod/edge/Caddyfile:/etc/caddy/Caddyfile:ro \
+  -v /home/deploy/comrade-bot/infra/prod/edge/caddy_data:/data \
+  -v /home/deploy/comrade-bot/infra/prod/edge/caddy_config:/config \
+  docker.io/library/caddy:latest \
+  caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+ExecStop=/usr/bin/podman stop caddy
+ExecStopPost=/usr/bin/podman rm -f caddy
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,15 @@
+type: object
+required: [availableFilters, result, meta, pagination]
+properties:
+  availableFilters:
+    type: array
+    items:
+      $ref: "./AvailableFilter.yaml"
+  result:
+    type: array
+    items:
+      $ref: "./Flight.yaml"
+  meta:
+    $ref: "./CacheMetadata.yaml"
+  pagination:
+    $ref: "./Pagination.yaml"

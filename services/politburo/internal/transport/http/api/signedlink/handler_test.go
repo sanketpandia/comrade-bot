@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"infinite-experiment/politburo/internal/auth"
-	"infinite-experiment/politburo/internal/users"
+	"infinite-experiment/politburo/internal/access/auth"
+	"infinite-experiment/politburo/internal/community/users"
 )
 
 type userStub struct {

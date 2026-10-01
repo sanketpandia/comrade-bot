@@ -1,0 +1,5 @@
+type: object
+required: [fplSyncRequired]
+properties:
+  fplSyncRequired:
+    type: boolean

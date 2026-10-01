@@ -31,6 +31,18 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: sanketpandia@gmail.com
       PGADMIN_DEFAULT_PASSWORD: ieadmin
+      # Desktop mode: http://localhost:5050 opens already signed in.
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      PGADMIN_DISABLE_POSTFIX: "True"
+      # Re-import servers.json on every start so the dev server stays registered.
+      PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
+      # Copied to /var/lib/pgadmin/.pgpass (mode 600) for ieuser.
+      PGPASS_FILE: /pgadmin4/pgpass
+    volumes:
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ./pgadmin/pgpass:/pgadmin4/pgpass:ro
+      - ./pgadmin/config_local.py:/pgadmin4/config_local.py:ro
     ports:
       - "5050:80"
     depends_on:

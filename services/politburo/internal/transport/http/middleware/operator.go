@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"slices"
 
-	"infinite-experiment/politburo/internal/auth"
+	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
 

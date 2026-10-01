@@ -1,0 +1,8 @@
+{
+  "name": "comrade-bot-cicd",
+  "private": true,
+  "description": "Pinned Node tooling for OpenAPI bundling (see cicd/Makefile).",
+  "devDependencies": {
+    "@redocly/cli": "2.55.0"
+  }
+}

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
-	domainsessions "infinite-experiment/politburo/internal/game/sessions"
-	"infinite-experiment/politburo/internal/infiniteflight"
+	domainsessions "infinite-experiment/politburo/internal/livegame/sessions"
+	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	"infinite-experiment/politburo/internal/transport/http/api/cachedresponse"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )

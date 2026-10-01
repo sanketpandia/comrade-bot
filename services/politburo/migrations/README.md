@@ -1,27 +1,51 @@
 # Database migrations
 
-Migrations are plain PostgreSQL files applied manually in filename order. The
-application does not run migrations and no migration framework is installed.
+Plain PostgreSQL files applied **manually** in filename order. Politburo does
+not run migrations at startup.
 
-`000_infinite_schema.sql` is the baseline schema. It contains no application
-data and establishes the tables, enums, functions, constraints, indexes, and
-triggers inherited from the existing Infinite Experiment database.
+## Active baseline
 
-Apply the baseline to an empty local rewrite database from `labour-bureau/`:
+`000_core_schema.sql` defines only what the rewrite uses today:
+
+- **Auth:** `api_keys`
+- **Identity / membership:** `users`, `virtual_airlines`, `va_user_roles`, `banned_discord_ids`
+- **Operator:** `platform_reports`, `user_deletion_archives`
+
+Game session and flight data live in **Redis** (jobs), not in Postgres.
+
+Apply to an **empty** database:
+
+```sh
+# from infra/dev/ (Compose Postgres)
+docker compose -f docker-compose.dev.yml exec -T db \
+  psql -v ON_ERROR_STOP=1 -1 -U ieuser -d politburo_next \
+  < ../../services/politburo/migrations/000_core_schema.sql
+```
+
+Create `politburo_next` first if needed:
 
 ```sh
 docker compose -f docker-compose.dev.yml exec -T db \
-  psql -v ON_ERROR_STOP=1 -1 -U ieuser -d politburo_next \
-  < ../politburo/migrations/000_infinite_schema.sql
+  psql -U ieuser -d postgres -c "CREATE DATABASE politburo_next;"
 ```
 
-Validate that PostgreSQL can parse and apply it cleanly by importing it into a
-new empty database. Do not apply `000` directly to an existing populated
-database that already has these objects; treat that database as already being
-at the baseline and begin subsequent changes with `001_*.sql`.
+Seed an API key after migrate:
 
-Each later migration should be transactional where PostgreSQL permits it and
-must be tested against both:
+```sql
+INSERT INTO api_keys (id, status) VALUES ('<uuid>', true);
+```
 
-1. A fresh database created from `000` followed by all later migrations.
-2. A copy of the existing database beginning at the `000` baseline.
+Do **not** apply `000_core_schema.sql` to a database that already has these
+objects. Drop and recreate the database when iterating locally.
+
+## Legacy full schema
+
+The old full dump and follow-up ALTER migration are under `archive/`. See
+`archive/README.md`. They are optional and not part of the default dev path.
+
+## Adding changes
+
+Add `001_<slug>.sql`, `002_<slug>.sql`, … as transactional deltas. Test on:
+
+1. A fresh DB from `000_core_schema.sql` plus all new files.
+2. A copy of an environment that already ran previous migrations.

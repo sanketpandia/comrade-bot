@@ -1,0 +1,6 @@
+type: object
+properties:
+  redirectTo:
+    type: string
+    description: Relative path to send the browser after login. Defaults to /dashboard.
+    example: /dashboard

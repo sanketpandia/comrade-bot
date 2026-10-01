@@ -28,8 +28,8 @@ owning scheduled job.
 
 ## Adding a cache-backed feature
 
-1. Domain package under `internal/game/<feature>` (or another domain name).
-2. Job under `internal/jobs/<feature>`; register once in `jobs.Register`.
+1. Domain package under `internal/livegame/<feature>` (or another bounded context + feature name).
+2. Job under `internal/livegame/jobs/<feature>`; register once in `livegame/jobs.Register`.
 3. OpenAPI path under `/api/v1/...` in `api/openapi/politburo.yaml`.
 4. Handler under `internal/transport/http/api/...` implementing the generated method.
 5. Cache keys only via `internal/cache/keys.go`.
@@ -56,7 +56,7 @@ literals.
 
 HTTP handlers and OpenAPI-generated controller methods own cookies, Redis
 sessions, and `auth.Claims`. Domain and service packages must not import
-`internal/session`, read cookies, or accept a session or claims struct.
+`internal/access/session`, read cookies, or accept a session or claims struct.
 
 Pass only the identifiers the operation needs (`userID`, `discordUserID`,
 optional `discordServerID`, and similar primitives). Do not pass the whole

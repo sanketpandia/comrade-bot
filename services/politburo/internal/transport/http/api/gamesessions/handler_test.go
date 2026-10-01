@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
-	domainsessions "infinite-experiment/politburo/internal/game/sessions"
-	"infinite-experiment/politburo/internal/infiniteflight"
+	domainsessions "infinite-experiment/politburo/internal/livegame/sessions"
+	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 )
 
 type cacheStub struct {

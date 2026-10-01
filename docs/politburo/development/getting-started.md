@@ -26,7 +26,7 @@ Apply the baseline schema once (from `labour-bureau/`):
 ```sh
 docker compose -f docker-compose.dev.yml exec -T db \
   psql -v ON_ERROR_STOP=1 -1 -U ieuser -d politburo_next \
-  < ../politburo/migrations/000_infinite_schema.sql
+  < ../politburo/migrations/000_core_schema.sql
 ```
 
 | Surface | Address |

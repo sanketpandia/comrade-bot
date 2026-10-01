@@ -1,0 +1,66 @@
+post:
+  operationId: generateSignedLink
+  summary: Create a one-time signed URL that mints a browser session
+  description: |
+    Discord bots with a valid API key and X-Discord-User-Id receive a
+    10-minute URL. Visiting it creates a session cookie and redirects
+    to redirectTo (default /dashboard). X-Discord-Server-Id is stored
+    on the session when present; it is not resolved to a VA.
+  security:
+    - ApiKeyAuth: []
+  parameters:
+    - name: X-Discord-User-Id
+      in: header
+      required: false
+      description: Discord user id of the member to sign in.
+      schema:
+        type: string
+    - name: X-Discord-Server-Id
+      in: header
+      required: false
+      description: Optional Discord guild id stored on the session.
+      schema:
+        type: string
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/GenerateSignedLinkRequest.yaml"
+  responses:
+    "200":
+      description: Signed link generated
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/GenerateSignedLinkResponse.yaml"
+    "400":
+      description: Invalid redirect path or request body
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "401":
+      description: Missing or inactive API key
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Missing X-Discord-User-Id
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: No user exists for the Discord user id
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Ticket generation failed
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

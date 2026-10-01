@@ -1,0 +1,15 @@
+type: object
+required: [totalLength, pageLength, pageNumber]
+properties:
+  totalLength:
+    type: integer
+    minimum: 0
+    description: Number of flights matching the current filters before paging.
+  pageLength:
+    type: integer
+    minimum: 1
+    description: Requested page size.
+  pageNumber:
+    type: integer
+    minimum: 1
+    description: Requested 1-based page number.

@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"infinite-experiment/politburo/internal/auth"
+	"infinite-experiment/politburo/internal/access/auth"
 )
 
 type MembershipResolver interface {

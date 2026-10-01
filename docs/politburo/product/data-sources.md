@@ -70,7 +70,7 @@ Precompiled payloads (trimmed map snapshots, filter metadata) belong here.
 
 Upstream contract: `api/openapi/infinite-flight/`. Generated client under
 `internal/api/generated/infiniteflight/`; handwritten wrapper
-`internal/infiniteflight`.
+`internal/livegame/infiniteflight`.
 
 Currently specified and used:
 

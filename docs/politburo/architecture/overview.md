@@ -33,7 +33,7 @@ leave jobs disabled when no `.env` is present; local Air loads `.env` (see
 Middleware lives under `internal/transport/http/middleware`: access log, CORS,
 API-key auth against `api_keys` (Redis-cached for one minute on `/api/v1` only),
 Discord context / UI session / role-gate helpers, and an unwired rate limiter.
-Claims helpers are in `internal/auth`. Browser sessions are Redis JSON objects
+Claims helpers are in `internal/access/auth`. Browser sessions are Redis JSON objects
 keyed `session:{id}` with a `session_id` cookie; UI routes under `/dashboard`
 require that cookie. Domain packages take primitive IDs from handlers rather
 than session or claims objects.

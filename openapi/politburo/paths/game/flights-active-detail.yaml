@@ -1,0 +1,50 @@
+get:
+  operationId: getActiveFlight
+  summary: Read one cached active flight by encrypted map marker id
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: flightId
+      in: query
+      required: true
+      description: Encrypted flight token from the trimmed map payload.
+      schema:
+        type: string
+  responses:
+    "200":
+      description: The matching cached flight
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ActiveFlightResponse.yaml"
+    "400":
+      description: The flight token is invalid
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "401":
+      description: Missing or inactive API key or session cookie
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: The flight is not in the current snapshot
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: The cache entry could not be read
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "503":
+      description: No active-flight snapshot is currently cached for the server
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

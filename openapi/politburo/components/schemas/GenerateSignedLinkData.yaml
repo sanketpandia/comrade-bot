@@ -1,0 +1,13 @@
+type: object
+required: [url, expiresIn, redirectTo]
+properties:
+  url:
+    type: string
+    description: Full one-time URL the member should open.
+  expiresIn:
+    type: integer
+    description: Seconds until the link expires.
+    example: 600
+  redirectTo:
+    type: string
+    example: /dashboard

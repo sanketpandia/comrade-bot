@@ -1,0 +1,13 @@
+info:
+  name: Auth
+  type: folder
+  seq: 3
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    Bot-oriented auth helpers from the rewrite OpenAPI. Signed links require
+    `X-API-Key` and `X-Discord-User-Id`.
+  type: text/markdown

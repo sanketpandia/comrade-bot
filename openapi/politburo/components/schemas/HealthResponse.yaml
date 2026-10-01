@@ -1,0 +1,14 @@
+type: object
+required: [status]
+properties:
+  status:
+    type: string
+  started_at:
+    type: string
+    format: date-time
+  uptime:
+    type: string
+  services:
+    type: object
+    additionalProperties:
+      type: string

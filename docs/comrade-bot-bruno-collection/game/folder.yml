@@ -1,0 +1,14 @@
+info:
+  name: Game
+  type: folder
+  seq: 2
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    Cached Infinite Flight session and flight data. Requires `X-API-Key` or a browser
+    `session_id` cookie (`CookieAuth` in OpenAPI). These requests use the API key
+    from the collection defaults.
+  type: text/markdown

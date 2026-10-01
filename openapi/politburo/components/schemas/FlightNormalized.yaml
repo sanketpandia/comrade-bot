@@ -1,0 +1,14 @@
+type: object
+required: [speed, verticalSpeed, pilotState, isConnected]
+properties:
+  speed:
+    type: string
+    description: Groundspeed with units, for example `526 kts`.
+  verticalSpeed:
+    type: string
+    description: Vertical speed with units, for example `0.0 ft/min`.
+  pilotState:
+    $ref: "./PilotStateName.yaml"
+  isConnected:
+    type: string
+    enum: [connected, disconnected]

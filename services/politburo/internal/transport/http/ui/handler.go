@@ -10,10 +10,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"infinite-experiment/politburo/internal/auth"
-	"infinite-experiment/politburo/internal/operator"
-	"infinite-experiment/politburo/internal/reports"
-	"infinite-experiment/politburo/internal/session"
+	"infinite-experiment/politburo/internal/access/auth"
+	"infinite-experiment/politburo/internal/operations/operator"
+	"infinite-experiment/politburo/internal/operations/reports"
+	"infinite-experiment/politburo/internal/access/session"
 	appui "infinite-experiment/politburo/internal/ui"
 )
 

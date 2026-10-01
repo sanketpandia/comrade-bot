@@ -18,7 +18,7 @@ COPY services/politburo ./services/politburo
 
 WORKDIR /repo/services/politburo
 EXPOSE 8082
-CMD ["sh", "-c", "cd ../../cicd/tools && go tool air -c ../../services/politburo/.air.toml"]
+CMD ["sh", "-c", "exec \"$(cd ../../cicd/tools && go tool -n air)\" -c .air.toml"]
 
 FROM development AS ci
 WORKDIR /repo

@@ -2,7 +2,7 @@
 
 **Status:** planned — not implemented  
 **Last updated:** 2026-09-02  
-**Scope:** migrate `labour-bureau/prod/` from Podman Compose + host Caddy to k3s on one VM
+**Scope:** migrate `infra/prod/` from Podman Compose + host Caddy to k3s on one VM
 
 ## Goals
 
@@ -22,13 +22,13 @@
 
 ## Current production (baseline)
 
-Today the stack lives in `labour-bureau/prod/`:
+Today the stack lives in `infra/prod/`:
 
 | Layer | What runs | Notes |
 |---|---|---|
-| Orchestration | Podman Compose (`docker-compose.prod.yml`) + `labour-bureau-compose.service` | `restart: unless-stopped` per container |
-| Edge | Caddy (rootful systemd unit) | TLS, path-based proxy to `127.0.0.1:8080` / `:3000` / `:3001` |
-| Apps | politburo, comrade-bot, jobhunt | Built on deploy host via `deploy-services.sh` |
+| Orchestration | Podman Compose (`docker-compose.prod.yml`) + `systemd/compose-stack.service` | `restart: unless-stopped` per container |
+| Edge | Caddy (rootful systemd unit) | TLS, path-based proxy to `127.0.0.1:8080` / `:3000` |
+| Apps | politburo, comrade-bot | Images from GHCR; legacy compose built on host via `deploy-services.sh` |
 | Data | Postgres 15, Redis 7 | Compose `internal` network; DB bound to `127.0.0.1:5432` for SSH tunnels |
 | Observability | Prometheus, Loki, Promtail, Grafana | Prometheus scrapes by Compose DNS name; Grafana via Caddy |
 
@@ -104,7 +104,6 @@ flowchart TB
       subgraph public_svc [ClusterIP - edge only]
         PB[politburo :8080]
         GF[grafana :3000]
-        JH[jobhunt :3000]
       end
 
       subgraph internal_svc [ClusterIP - internal only]
@@ -118,7 +117,6 @@ flowchart TB
 
       Caddy -->|hostPort or hostNetwork| PB
       Caddy --> GF
-      Caddy --> JH
       CB -->|API_URL http://politburo:8080| PB
       PB --> PG
       PB --> RD
@@ -138,7 +136,7 @@ flowchart TB
 
 | Namespace | Workloads | Rationale |
 |---|---|---|
-| `ie-apps` | politburo, comrade-bot, jobhunt | Application tier |
+| `ie-apps` | politburo, comrade-bot | Application tier |
 | `ie-data` | postgres, redis | Stateful; tighter NetworkPolicy |
 | `ie-observability` | prometheus, loki, promtail, grafana | Monitoring; scrape apps via cluster DNS |
 
@@ -156,7 +154,6 @@ Kubernetes does not publish ports by default. Every surface is classified:
 |---|---|---|---|
 | `comradebot.cc` | politburo Service | `/api/*`, `/auth/*`, `/dashboard/*`, `/static/*`, `/public/*`, `/ui/api/*`, `/` | Align Caddy rules with rewrite routes (`/api/v1/...`, `/health/*`) when migrating off legacy paths |
 | `monitor.comradebot.cc` | grafana Service | `/*` | WebSocket headers preserved (existing Caddy config) |
-| `jobs.comradebot.cc` | jobhunt Service | `/*` | Unchanged intent |
 
 **Blocked at edge (keep current behaviour):**
 
@@ -166,7 +163,7 @@ Kubernetes does not publish ports by default. Every surface is classified:
 
 | Service | Port | Consumers |
 |---|---|---|
-| `postgres` | 5432 | politburo, jobhunt |
+| `postgres` | 5432 | politburo |
 | `redis` | 6379 | politburo |
 | `comrade-bot` | — (no HTTP API to internet) | Discord outbound; metrics on 9091 |
 | `prometheus` | 9090 | grafana, ops SSH tunnel if needed |
@@ -185,7 +182,7 @@ Kubernetes does not publish ports by default. Every surface is classified:
 
 Example intent (not literal YAML yet):
 
-- `ie-data/postgres`: allow ingress only from pods labeled `app=politburo` and `app=jobhunt` on 5432.
+- `ie-data/postgres`: allow ingress only from pods labeled `app=politburo` on 5432.
 - `ie-data/redis`: allow ingress only from `app=politburo` on 6379.
 - `ie-apps/politburo`: allow ingress from namespace `kube-system` or host Caddy identity on 8080; allow ingress from `ie-observability/prometheus` on `/metrics` if using a dedicated metrics port later.
 - Default deny ingress in `ie-data` and `ie-observability` except explicit selectors.
@@ -204,7 +201,6 @@ This is the most important constraint. Politburo runs scheduled jobs when `JOBS_
 |---|---|---|---|
 | politburo | `1` | **`Recreate`** | Old pod must terminate before new pod starts — no overlap |
 | comrade-bot | `1` | `Recreate` | One Discord session per bot token |
-| jobhunt | `1` | `Recreate` | Avoid duplicate side effects if any cron exists |
 | postgres | `1` | StatefulSet, `replicas: 1` | Single writer |
 | redis | `1` | StatefulSet or Deployment + PVC | Single instance |
 | prometheus, loki, grafana, promtail | `1` each | `Recreate` | Sufficient for single VM |
@@ -328,10 +324,10 @@ No dependency on host loopback or Caddy for bot → API traffic.
 
 | Component | Change from Compose |
 |---|---|
-| Prometheus | Scrape targets use Kubernetes SD or static cluster DNS (`politburo.ie-apps.svc:8080`, `comrade-bot.ie-apps.svc:9091`) — reuse `prometheus.prod.yml` job names |
+| Prometheus | Scrape targets use Kubernetes SD or static cluster DNS (`politburo.ie-apps.svc:8080`, `comrade-bot.ie-apps.svc:9091`) — reuse `observability/prometheus.prod.yml` job names |
 | Promtail | DaemonSet (one per node = one pod) collecting container logs via `/var/log/pods` or k3s containerd paths; retire host `podman-log-shipper` |
 | Loki | StatefulSet + PVC on mounted disk |
-| Grafana | Deployment + PVC; keep provisioning ConfigMaps from `prod/grafana/provisioning/` |
+| Grafana | Deployment + PVC; keep provisioning ConfigMaps from `observability/grafana/provisioning/` |
 | Node metrics | `prometheus-node-exporter` DaemonSet (replaces standalone node-exporter container if present) |
 
 Politburo `/metrics` remains internal-only; Prometheus scrapes over the cluster network. Caddy continues to block `/metrics` on public hostnames.
@@ -373,20 +369,19 @@ Execute in order; each phase should leave production usable.
 ### Phase 2 — Observability in cluster
 
 - [ ] Deploy Prometheus, Loki, Promtail, Grafana.
-- [ ] Import dashboards from `prod/grafana/provisioning/`.
+- [ ] Import dashboards from `observability/grafana/provisioning/`.
 - [ ] Point Grafana DNS to new Grafana Service (parallel run or maintenance window).
 
 ### Phase 3 — Applications
 
 - [ ] Deploy politburo (`replicas: 1`, `Recreate`, probes on `/health/*`).
 - [ ] Deploy comrade-bot with in-cluster `API_URL`.
-- [ ] Deploy jobhunt if still in use.
 - [ ] Wire Caddy to cluster Services (localhost NodePort or hostPort).
 - [ ] Smoke test: Discord commands, `/api/v1` via Caddy, dashboard login, job metrics in Grafana.
 
 ### Phase 4 — Decommission Compose
 
-- [ ] Stop `labour-bureau-compose.service`.
+- [ ] Stop `compose-stack.service`.
 - [ ] Archive `docker-compose.prod.yml` with a README pointer to k8s overlays.
 - [ ] Remove podman-log-shipper if Promtail DaemonSet subsumes it.
 - [ ] Update `labour-bureau/prod/README.md` and `AGENTS.md` deploy instructions.
@@ -461,7 +456,6 @@ labour-bureau/prod/k8s/
     apps/
       politburo.yaml
       comrade-bot.yaml
-      jobhunt.yaml
     data/
       postgres.yaml
       redis.yaml

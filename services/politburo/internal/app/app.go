@@ -8,27 +8,28 @@ import (
 	"sync"
 	"time"
 
-	"infinite-experiment/politburo/internal/apikeys"
-	"infinite-experiment/politburo/internal/auth"
+	"infinite-experiment/politburo/internal/access/apikeys"
+	"infinite-experiment/politburo/internal/access/auth"
+	"infinite-experiment/politburo/internal/access/session"
 	"infinite-experiment/politburo/internal/cache"
+	"infinite-experiment/politburo/internal/community/membership"
+	"infinite-experiment/politburo/internal/community/membership/resolver"
+	"infinite-experiment/politburo/internal/community/membership/roster"
+	"infinite-experiment/politburo/internal/community/registration"
+	"infinite-experiment/politburo/internal/community/users"
+	"infinite-experiment/politburo/internal/community/users/status"
+	"infinite-experiment/politburo/internal/community/virtualairlines"
+	"infinite-experiment/politburo/internal/community/virtualairlines/lookup"
 	"infinite-experiment/politburo/internal/config"
 	"infinite-experiment/politburo/internal/database"
-	"infinite-experiment/politburo/internal/identity"
-	"infinite-experiment/politburo/internal/infiniteflight"
-	"infinite-experiment/politburo/internal/jobs"
+	"infinite-experiment/politburo/internal/livegame/infiniteflight"
+	"infinite-experiment/politburo/internal/livegame/jobs"
+	"infinite-experiment/politburo/internal/livegame/scheduler"
 	"infinite-experiment/politburo/internal/logging"
-	"infinite-experiment/politburo/internal/membership"
 	"infinite-experiment/politburo/internal/metrics"
-	"infinite-experiment/politburo/internal/operator"
-	"infinite-experiment/politburo/internal/registration"
-	"infinite-experiment/politburo/internal/reports"
-	"infinite-experiment/politburo/internal/scheduler"
-	"infinite-experiment/politburo/internal/session"
+	"infinite-experiment/politburo/internal/operations/operator"
+	"infinite-experiment/politburo/internal/operations/reports"
 	"infinite-experiment/politburo/internal/ui"
-	"infinite-experiment/politburo/internal/users"
-	"infinite-experiment/politburo/internal/userstatus"
-	"infinite-experiment/politburo/internal/va/roster"
-	"infinite-experiment/politburo/internal/virtualairlines"
 )
 
 type App struct {
@@ -47,11 +48,11 @@ type App struct {
 	Registration *registration.Service
 	Membership   *membership.Service
 	VAInit       *virtualairlines.Service
-	Status       *userstatus.Builder
+	Status       *status.Builder
 	Reports      *reports.Repository
 	Operator     *operator.Service
-	Resolver         *identity.Resolver
-	VALookup         *identity.VALookup
+	Resolver         *resolver.Resolver
+	VALookup         *lookup.VALookup
 	VirtualAirlines  *virtualairlines.Repository
 	IFUsers          infiniteflight.UsersClient
 	closeOnce    sync.Once
@@ -115,11 +116,11 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		Registration: registration.NewService(userRepo, ifUsers),
 		Membership:   membership.NewService(userRepo, membershipRepo, vaRepo, roster.Noop{}),
 		VAInit:       virtualairlines.NewService(db, userRepo, vaRepo),
-		Status:       userstatus.NewBuilder(userRepo, membershipRepo, vaRepo),
+		Status:       status.NewBuilder(userRepo, membershipRepo, vaRepo),
 		Reports:      reportRepo,
 		Operator:     operator.NewService(db, userRepo, membershipRepo, reportRepo, vaRepo),
-		Resolver:        identity.NewResolver(userRepo, vaRepo, membershipRepo),
-		VALookup:        identity.NewVALookup(vaRepo),
+		Resolver:        resolver.NewResolver(userRepo, vaRepo, membershipRepo),
+		VALookup:        lookup.NewVALookup(vaRepo),
 		VirtualAirlines: vaRepo,
 		IFUsers:         ifUsers,
 	}

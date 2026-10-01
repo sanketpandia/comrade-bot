@@ -1,6 +1,6 @@
 version: "3.9"
-# Production compose file. Run with: podman compose -f docker-compose.prod.yml ...
-# Project name so volumes match legacy names (e.g. labour-bureau_pgdata-prod)
+# Podman Compose stack (legacy/ad-hoc prod). Prefer GHCR images + k3s for new VPS installs.
+# Project name keeps legacy volume names (e.g. labour-bureau_pgdata-prod).
 name: labour-bureau
 services:
   politburo:
@@ -8,14 +8,10 @@ services:
     build:
       context: ../..
       dockerfile: services/politburo/Dockerfile
-    # Expose to localhost for rootful Caddy to access
     ports:
       - "127.0.0.1:8080:8080"
     env_file:
       - ./env/politburo.env
-    # Start after db and redis (start order only). podman-compose 1.0.6 does not support
-    # condition: service_healthy (see https://github.com/containers/podman-compose/issues/866);
-    # politburo may start before they are healthy. restart: unless-stopped will retry until they are.
     depends_on:
       - db
       - redis
@@ -23,7 +19,7 @@ services:
       - internal
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8080/healthCheck"]
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8080/health/live"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -36,7 +32,6 @@ services:
     volumes:
       - pgdata-prod:/var/lib/postgresql/data
       - ../../services/politburo/migrations:/migrations
-    # Localhost only: for SSH tunnel / DBeaver; not reachable from internet
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
@@ -64,7 +59,6 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-    # No public port exposure - only accessible via internal network
 
   comrade-bot:
     container_name: comrade-bot
@@ -90,26 +84,6 @@ services:
       timeout: 5s
       retries: 3
 
-  jobhunt:
-    container_name: jobhunt
-    build:
-      context: ../../../jobhunt
-      dockerfile: Dockerfile
-    ports:
-      - "127.0.0.1:3001:3000"
-    env_file:
-      - ./env/jobhunt.env
-    depends_on:
-      - db
-    networks:
-      - internal
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:3000"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
   prometheus:
     image: docker.io/prom/prometheus:latest
     container_name: prometheus
@@ -117,7 +91,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-storage:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -133,7 +107,7 @@ services:
     ports:
       - "3100:3100"
     volumes:
-      - ./loki.prod.yml:/etc/loki/local-config.yml:ro
+      - ./observability/loki.prod.yml:/etc/loki/local-config.yml:ro
       - loki-storage:/loki
     command: -config.file=/etc/loki/local-config.yml
     networks:
@@ -144,8 +118,7 @@ services:
     container_name: promtail
     restart: unless-stopped
     volumes:
-      - ./promtail-config.yml:/etc/promtail/config.yml:ro
-      # Podman: log shipper writes to /var/log/containers/*.log
+      - ./observability/promtail-config.yml:/etc/promtail/config.yml:ro
       - /var/log/containers:/var/log/containers:ro
       - /var/log:/var/log:ro
     ports:
@@ -158,7 +131,6 @@ services:
     image: docker.io/grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
-    # Expose to localhost for rootful Caddy to access
     ports:
       - "127.0.0.1:3000:3000"
     env_file:
@@ -176,13 +148,12 @@ services:
       GF_PATHS_PROVISIONING: /etc/grafana/provisioning
     volumes:
       - grafana-storage:/var/lib/grafana
-      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
     networks:
       - internal
 
-  # Caddy is run separately as rootful via systemd service
-  # See prod/caddy-rootful.service for systemd unit file
+  # TLS edge: host systemd unit in systemd/caddy-rootful.service
 
 volumes:
   pgdata-prod:

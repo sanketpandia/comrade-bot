@@ -33,11 +33,16 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: services/comrade-bot-discord/package-lock.json
+          cache-dependency-path: |
+            cicd/package-lock.json
+            services/comrade-bot-discord/package-lock.json
 
       - name: Install bot dependencies
         working-directory: services/comrade-bot-discord
         run: npm ci
+
+      - name: Check bundled Politburo spec is up to date
+        run: make openapi-bundle-check
 
       - name: Generate bindings
         run: make generate

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
-	domainflights "infinite-experiment/politburo/internal/game/flights"
+	domainflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/transport/http/api/cachedresponse"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )

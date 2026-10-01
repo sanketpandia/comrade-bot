@@ -1,0 +1,2 @@
+type: string
+enum: [active, away_in_flight, away_parked, in_background]

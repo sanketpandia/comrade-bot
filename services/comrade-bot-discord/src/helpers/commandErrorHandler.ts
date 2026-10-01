@@ -1,6 +1,7 @@
 import { DiscordInteraction } from "../types/DiscordInteraction";
 import { UnauthorizedError } from "./UnauthorizedException";
 import { PermissionDeniedError } from "./PermissionDeniedException";
+import { ApiNotImplementedError } from "./ApiNotImplementedError";
 import { logger, errorFields } from "../infra/logger";
 
 /**
@@ -9,6 +10,8 @@ import { logger, errorFields } from "../infra/logger";
 export const ErrorMessages = {
     EMPTY_RESPONSE: "❌ Empty response from API. Please try again later.",
     GENERIC_ERROR: "⚠️ **Operation Failed**\nSomething went wrong. Please try again later or contact support.",
+    API_NOT_IMPLEMENTED:
+        "🚧 **Not available yet**\nThis command still uses a legacy API that is not part of the Politburo rewrite. It will return when the endpoint is added to the OpenAPI contract.",
     UNAUTHORIZED: (message: string) => `❌ **Authorization Failed**\n${message}`,
     PERMISSION_DENIED: (message: string) => `🔒 **Permission Denied**\n${message}`,
     VALIDATION_ERROR: (field: string, requirement: string) => `❌ Invalid ${field}. ${requirement}`,
@@ -50,6 +53,14 @@ export class CommandErrorHandler {
             await interaction.reply({
                 content: ErrorMessages.UNAUTHORIZED(error.message),
                 ephemeral: true
+            });
+            return;
+        }
+
+        if (error instanceof ApiNotImplementedError) {
+            await interaction.reply({
+                content: ErrorMessages.API_NOT_IMPLEMENTED,
+                ephemeral: true,
             });
             return;
         }

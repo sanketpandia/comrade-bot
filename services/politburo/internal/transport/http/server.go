@@ -13,7 +13,7 @@ import (
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	"infinite-experiment/politburo/internal/app"
-	domainflights "infinite-experiment/politburo/internal/game/flights"
+	domainflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/transport/http/api/gameflights"
 	"infinite-experiment/politburo/internal/transport/http/api/gamesessions"
 	"infinite-experiment/politburo/internal/transport/http/api/health"

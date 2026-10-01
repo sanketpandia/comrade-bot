@@ -1,0 +1,35 @@
+info:
+  name: Generate Signed Link
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{politburo-base-url}}/api/v1/signed-link"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Discord-User-Id
+      value: "{{discord-user-id}}"
+      description: Discord user to sign in
+    - name: X-Discord-Server-Id
+      value: "{{discord-server-id}}"
+      description: Optional guild id stored on the session
+      disabled: true
+  body:
+    type: json
+    data: |-
+      {
+        "redirectTo": "/dashboard"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  `generateSignedLink` — mint a one-time URL (10 minutes) that sets a browser session cookie
+  and redirects to `redirectTo` (default `/dashboard`).

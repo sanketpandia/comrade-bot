@@ -24,7 +24,7 @@ cd infra/dev
 docker compose -f docker-compose.dev.yml up -d   # Postgres, Redis, observability, …
 
 # Politburo (host, port 8082)
-cd services/politburo && sh -c 'cd ../../cicd/tools && go tool air -c ../../services/politburo/.air.toml'
+cd services/politburo && sh -c 'exec "$(cd ../../cicd/tools && go tool -n air)" -c .air.toml'
 
 # Discord bot
 cd services/comrade-bot-discord && API_URL=http://localhost:8082 npm run dev

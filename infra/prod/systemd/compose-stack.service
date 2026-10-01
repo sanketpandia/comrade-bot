@@ -1,0 +1,34 @@
+# Install (after editing paths below):
+#   sudo cp systemd/compose-stack.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now compose-stack.service
+#
+# Set WorkingDirectory, EnvironmentFile, User, Group, and XDG_RUNTIME_DIR for your VPS.
+
+[Unit]
+Description=Comrade Bot stack (podman compose: apps, Postgres, Redis, observability)
+Documentation=https://github.com/infinite-experiment/comrade-bot
+After=network-online.target podman.service
+Wants=network-online.target
+Requires=podman.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/podman compose -f docker-compose.prod.yml up
+ExecStop=/usr/bin/podman compose -f docker-compose.prod.yml down -t 30
+TimeoutStopSec=90
+
+WorkingDirectory=/home/deploy/comrade-bot/infra/prod
+EnvironmentFile=-/home/deploy/comrade-bot/infra/prod/env/monitoring.env
+
+User=deploy
+Group=deploy
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+
+Restart=always
+RestartSec=10
+TimeoutStartSec=300
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

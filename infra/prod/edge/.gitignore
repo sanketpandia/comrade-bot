@@ -1,0 +1,3 @@
+# Local ACME storage for Caddy (not committed).
+caddy_data/
+caddy_config/

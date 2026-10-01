@@ -1,0 +1,7 @@
+type: object
+required: [result, meta]
+properties:
+  result:
+    $ref: "./Flight.yaml"
+  meta:
+    $ref: "./CacheMetadata.yaml"

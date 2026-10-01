@@ -40,12 +40,12 @@ false).
 ### Jobs
 
 Sessions (5 min), liveries (1 hour), flights (1 min). Central register:
-`internal/jobs/register.go`.
+`internal/livegame/jobs/register.go`.
 
 ### Postgres usage in code
 
 Only `api_keys` (auth) and `users` (signed-link lookup). The rest of
-`migrations/000_infinite_schema.sql` is imported and idle.
+`migrations/000_core_schema.sql` is the rewrite baseline; legacy tables live in `migrations/archive/`.
 
 ### Scaffold present but not mounted
 

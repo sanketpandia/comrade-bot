@@ -1,0 +1,25 @@
+# Tails podman container logs to /var/log/containers for promtail (see observability/promtail-config.yml).
+#
+# Install:
+#   sudo cp systemd/podman-log-shipper.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now podman-log-shipper.service
+
+[Unit]
+Description=Podman log shipper for Promtail
+After=network.target podman.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/comrade-bot/infra/prod
+ExecStart=/usr/bin/bash /home/deploy/comrade-bot/infra/prod/scripts/podman-log-shipper.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,16 @@
+get:
+  operationId: getReadiness
+  summary: Report whether required dependencies are ready
+  responses:
+    "200":
+      description: The application is ready
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/HealthResponse.yaml"
+    "503":
+      description: A required dependency is unavailable
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/HealthResponse.yaml"

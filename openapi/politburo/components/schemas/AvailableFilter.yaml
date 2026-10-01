@@ -1,0 +1,15 @@
+type: object
+required: [name, type, desc, current, default]
+properties:
+  name:
+    type: string
+  type:
+    type: string
+  desc:
+    type: string
+  current: {}
+  default: {}
+  options:
+    type: array
+    items:
+      type: string

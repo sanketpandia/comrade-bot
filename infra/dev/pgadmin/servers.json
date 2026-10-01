@@ -1,0 +1,17 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "comrade-bot dev",
+      "Group": "Servers",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "ieuser",
+      "ConnectionParameters": {
+        "sslmode": "prefer",
+        "passfile": "/var/lib/pgadmin/.pgpass",
+        "connect_timeout": 10
+      }
+    }
+  }
+}

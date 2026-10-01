@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"infinite-experiment/politburo/internal/auth"
+	"infinite-experiment/politburo/internal/access/auth"
 )
 
 func TestAPIKeyAuthPassThroughWhenLookupNil(t *testing.T) {

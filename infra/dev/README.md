@@ -36,7 +36,7 @@ docker compose -f docker-compose.dev.yml exec -T db \
   psql -U ieuser -d postgres -c "CREATE DATABASE politburo_next;" 2>/dev/null || true
 docker compose -f docker-compose.dev.yml exec -T db \
   psql -v ON_ERROR_STOP=1 -1 -U ieuser -d politburo_next \
-  < ../../services/politburo/migrations/000_infinite_schema.sql
+  < ../../services/politburo/migrations/000_core_schema.sql
 ```
 
 **4. Discord bot**

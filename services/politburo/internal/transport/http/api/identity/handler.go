@@ -10,21 +10,21 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"infinite-experiment/politburo/internal/auth"
-	"infinite-experiment/politburo/internal/membership"
-	"infinite-experiment/politburo/internal/operator"
-	"infinite-experiment/politburo/internal/registration"
-	"infinite-experiment/politburo/internal/reports"
+	"infinite-experiment/politburo/internal/access/auth"
+	"infinite-experiment/politburo/internal/community/membership"
+	"infinite-experiment/politburo/internal/operations/operator"
+	"infinite-experiment/politburo/internal/community/registration"
+	"infinite-experiment/politburo/internal/operations/reports"
 	"infinite-experiment/politburo/internal/transport/http/response"
-	"infinite-experiment/politburo/internal/userstatus"
-	"infinite-experiment/politburo/internal/virtualairlines"
+	"infinite-experiment/politburo/internal/community/users/status"
+	"infinite-experiment/politburo/internal/community/virtualairlines"
 )
 
 type Handler struct {
 	registration *registration.Service
 	membership   *membership.Service
 	vaInit       *virtualairlines.Service
-	status       *userstatus.Builder
+	status       *status.Builder
 	reports      *reports.Repository
 	operator     *operator.Service
 	vas          *virtualairlines.Repository
@@ -35,7 +35,7 @@ func NewHandler(
 	registration *registration.Service,
 	membership *membership.Service,
 	vaInit *virtualairlines.Service,
-	status *userstatus.Builder,
+	status *status.Builder,
 	reports *reports.Repository,
 	operator *operator.Service,
 	vas *virtualairlines.Repository,

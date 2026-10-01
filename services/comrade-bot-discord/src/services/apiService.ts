@@ -25,24 +25,40 @@ import { PermissionDeniedError } from "../helpers/PermissionDeniedException";
 import { NotFoundError } from "../helpers/NotFoundException";
 import { errorFields, logger } from "../infra/logger";
 import { unwrapApiData } from "../helpers/apiEnvelope";
+import { ApiNotImplementedError } from "../helpers/ApiNotImplementedError";
 
 const API_URL = process.env.API_URL ?? "http://localhost:8080";
 
 export class ApiService {
+    private static rejectStub<T>(operation: string): Promise<T> {
+        logger.warn("api_operation_stubbed", { operation });
+        return Promise.reject(new ApiNotImplementedError(operation));
+    }
+
     static async getHealth(metainfo: MetaInfo): Promise<HealthApiResponse> {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
         try {
-            const res = await fetch(`${API_URL}/healthCheck`, {
+            const res = await fetch(`${API_URL}/health/live`, {
                 method: "GET",
                 headers: generateMetaHeaders(metainfo),
                 signal: controller.signal,
             });
             if (!res.ok) {
-                throw new Error(`Failed to fetch healthCheck: ${res.status} ${res.statusText}`);
+                throw new Error(`Failed to fetch health/live: ${res.status} ${res.statusText}`);
             }
-            const data = await res.json() as HealthApiResponse;
-            return data;
+            const data = await res.json() as {
+                status?: string;
+                started_at?: string;
+                uptime?: string;
+                services?: HealthApiResponse["services"];
+            };
+            return {
+                status: data.status ?? "unknown",
+                up_since: data.started_at ?? "",
+                uptime: data.uptime ?? "",
+                services: data.services ?? {},
+            };
         } catch (err) {
             logger.warn("api_request_failed", {
                 operation: "get_health",
@@ -212,94 +228,11 @@ export class ApiService {
 
 
     static async getUserLogbook(meta: MetaInfo, ifcId: string, page: number): Promise<FlightHistoryPage & { response_time: string }> {
-        try {
-            const res = await fetch(`${API_URL}/api/v1/user/${ifcId}/flights?page=${page}`, {
-                method: "GET",
-                headers: generateMetaHeaders(meta),
-            });
-            if (res.status === 401) {
-                const message = await res.text(); // plain-text body
-                throw new UnauthorizedError(message || "Unauthorized");
-            }
-
-            if (!res.ok) {
-                throw new Error(`Failed to fetch initRegistration: ${res.status} ${res.statusText}`);
-            }
-
-
-            const response: ApiResponse<FlightHistoryPage> = await res.json() as ApiResponse<FlightHistoryPage>;
-
-            if (!response.result) {
-                throw new Error("No data received in API response");
-            }
-
-            // Include the responseTimeMs from the API response
-            return {
-                ...response.result,
-                response_time: response.responseTimeMs?.toString() || "0"
-            };
-
-
-        } catch (err) {
-            console.error("[ApiService.getLogbook]", err);
-            throw err
-        }
+        return ApiService.rejectStub(`GET /api/v1/user/${ifcId}/flights?page=${page}`);
     }
 
     static async getLiveFlights(meta: MetaInfo): Promise<{ flights: LiveFlightRecord[], responseTime?: string, signedLink?: string }> {
-        try {
-            const res = await fetch(`${API_URL}/api/v1/flights/va`, {
-                method: "GET",
-                headers: generateMetaHeaders(meta),
-            });
-            if (res.status === 401) {
-                const message = await res.text(); // plain-text body
-                throw new UnauthorizedError(message || "Unauthorized");
-            }
-
-            if (!res.ok) {
-                throw new Error(`Failed to fetch live flights: ${res.status} ${res.statusText}`);
-            }
-
-            const response = await res.json() as {
-                status: string;
-                message?: string;
-                response_time?: string;
-                data?: {
-                    flights?: LiveFlightRecord[];
-                    signed_link?: string;
-                } | LiveFlightRecord[];
-                result?: LiveFlightRecord[];
-            };
-
-            // Handle both 'data' and 'result' fields for compatibility
-            // Check if data is an object with flights and signed_link, or just an array
-            let flights: LiveFlightRecord[] | undefined;
-            let signedLink: string | undefined;
-
-            if (Array.isArray(response.data)) {
-                flights = response.data;
-            } else if (response.data && typeof response.data === 'object' && 'flights' in response.data) {
-                flights = response.data.flights;
-                signedLink = response.data.signed_link;
-            } else {
-                flights = response.result;
-            }
-
-            if (!flights) {
-                throw new Error("No data received in API response");
-            }
-
-            return {
-                flights,
-                responseTime: response.response_time,
-                signedLink
-            };
-
-        } catch (err) {
-            console.error("[ApiService.getLiveFlights]", err);
-            throw err;
-        }
+        return ApiService.rejectStub("GET /api/v1/flights/va");
     }
 
 
@@ -371,32 +304,7 @@ export class ApiService {
     }
 
     static async getPilotStats(meta: MetaInfo): Promise<ApiResponse<PilotStatsData>> {
-        try {
-            const res = await fetch(`${API_URL}/api/v1/pilot/stats`, {
-                method: "GET",
-                headers: generateMetaHeaders(meta),
-            });
-
-            if (res.status === 401) {
-                const message = await res.text();
-                throw new UnauthorizedError(message || "Unauthorized");
-            }
-
-            if (!res.ok) {
-                throw new Error(`Failed to fetch pilot stats: ${res.status} ${res.statusText}`);
-            }
-
-            const response: ApiResponse<PilotStatsData> = await res.json() as ApiResponse<PilotStatsData>;
-
-            if (!response.result) {
-                throw new Error("No data received in API response");
-            }
-
-            return response;
-        } catch (err) {
-            console.error("[ApiService.getPilotStats]", err);
-            throw err;
-        }
+        return ApiService.rejectStub("GET /api/v1/pilot/stats");
     }
 
     /**
@@ -404,41 +312,7 @@ export class ApiService {
      * Returns available flight modes with validation status and field definitions
      */
     static async getPirepConfig(meta: MetaInfo): Promise<PirepConfigResponse> {
-        try {
-            const res = await fetch(`${API_URL}/api/v1/pireps/config`, {
-                method: "GET",
-                headers: generateMetaHeaders(meta),
-            });
-
-            if (res.status === 401) {
-                const message = await res.text();
-                throw new UnauthorizedError(message || "Unauthorized");
-            }
-
-            if (!res.ok) {
-                let errorMessage = `Failed to fetch PIREP config: ${res.status} ${res.statusText}`;
-                try {
-                    const errorData = await res.json() as any;
-                    if (errorData.message) {
-                        errorMessage = errorData.message;
-                    }
-                } catch (parseErr) {
-                    // JSON parsing failed, use generic error message
-                }
-                throw new Error(errorMessage);
-            }
-
-            const response: PirepConfigResponse = await res.json() as PirepConfigResponse;
-
-            if (!response.result) {
-                throw new Error("No data received in API response");
-            }
-
-            return response;
-        } catch (err) {
-            console.error("[ApiService.getPirepConfig]", err);
-            throw err;
-        }
+        return ApiService.rejectStub("GET /api/v1/pireps/config");
     }
 
     /**
@@ -446,51 +320,7 @@ export class ApiService {
      * Handles all flight modes with mode-specific validation
      */
     static async submitPirep(meta: MetaInfo, pirepData: PirepSubmitRequest): Promise<PirepSubmitResponse> {
-        try {
-            const res = await fetch(`${API_URL}/api/v1/pireps/submit`, {
-                method: "POST",
-                headers: {
-                    ...generateMetaHeaders(meta),
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(pirepData)
-            });
-
-            if (res.status === 401) {
-                const message = await res.text();
-                throw new UnauthorizedError(message || "Unauthorized");
-            }
-
-            if (res.status === 403) {
-                const body = await res.json() as any;
-                const errorMessage = body.error?.message || body.message || "Access denied";
-                throw new PermissionDeniedError(errorMessage);
-            }
-
-            if (!res.ok) {
-                // Try to parse httpdto error envelope: {status:"error", error:{code, message}, responseTimeMs}
-                try {
-                    const errorResponse: PirepSubmitResponse = await res.json() as PirepSubmitResponse;
-                    return {
-                        status: errorResponse.status || "error",
-                        error: errorResponse.error || { code: "UNKNOWN", message: "PIREP submission failed" },
-                        responseTimeMs: errorResponse.responseTimeMs,
-                    } as PirepSubmitResponse;
-                } catch (parseErr) {
-                    // If JSON parsing fails, return generic error
-                    return {
-                        status: "error",
-                        error: { code: "PARSE_ERROR", message: `HTTP ${res.status}: ${res.statusText}` },
-                    } as PirepSubmitResponse;
-                }
-            }
-
-            const response: PirepSubmitResponse = await res.json() as PirepSubmitResponse;
-            return response;
-        } catch (err) {
-            console.error("[ApiService.submitPirep]", err);
-            throw err;
-        }
+        return ApiService.rejectStub("POST /api/v1/pireps/submit");
     }
 
     /**
@@ -513,8 +343,7 @@ export class ApiService {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    redirect_to: redirectTo,
-                    ttl_minutes: ttlMinutes || 15
+                    redirectTo,
                 })
             });
 
@@ -623,46 +452,7 @@ export class ApiService {
      * Returns list of active events with their legs
      */
     static async getActiveEvents(meta: MetaInfo): Promise<EventsResponse> {
-        try {
-            const res = await fetch(`${API_URL}/api/v1/events?active_only=true`, {
-                method: "GET",
-                headers: generateMetaHeaders(meta),
-            });
-
-            if (res.status === 401) {
-                const message = await res.text();
-                throw new UnauthorizedError(message || "Unauthorized");
-            }
-
-            if (res.status === 403) {
-                const body = await res.json() as any;
-                const errorMessage = body.error?.message || body.message || "Access denied";
-                throw new PermissionDeniedError(errorMessage);
-            }
-
-            if (!res.ok) {
-                // Try to parse error response
-                try {
-                    const body = await res.json() as any;
-                    const errorMessage = body.error?.message || body.message || `Failed to fetch active events: ${res.status} ${res.statusText}`;
-                    throw new Error(errorMessage);
-                } catch (parseErr) {
-                    // If parsing fails, use status text
-                    throw new Error(`Failed to fetch active events: ${res.status} ${res.statusText}`);
-                }
-            }
-
-            const response: EventsResponse = await res.json() as EventsResponse;
-
-            if (!response.result) {
-                throw new Error("No data received in API response");
-            }
-
-            return response;
-        } catch (err) {
-            console.error("[ApiService.getActiveEvents]", err);
-            throw err;
-        }
+        return ApiService.rejectStub("GET /api/v1/events");
     }
 
     /**
@@ -670,51 +460,7 @@ export class ApiService {
      * Returns the leg matching the leg_number
      */
     static async getEventLegByNumber(meta: MetaInfo, eventId: string, legNumber: number): Promise<TourLegResponse> {
-        try {
-            const res = await fetch(`${API_URL}/api/v1/events/${eventId}/legs`, {
-                method: "GET",
-                headers: generateMetaHeaders(meta),
-            });
-
-            if (res.status === 401) {
-                const message = await res.text();
-                throw new UnauthorizedError(message || "Unauthorized");
-            }
-
-            if (res.status === 403) {
-                const body = await res.json() as any;
-                const errorMessage = body.error?.message || body.message || "Access denied";
-                throw new PermissionDeniedError(errorMessage);
-            }
-
-            if (!res.ok) {
-                // Try to parse error response
-                try {
-                    const body = await res.json() as any;
-                    const errorMessage = body.error?.message || body.message || `Failed to fetch event legs: ${res.status} ${res.statusText}`;
-                    throw new Error(errorMessage);
-                } catch (parseErr) {
-                    // If parsing fails, use status text
-                    throw new Error(`Failed to fetch event legs: ${res.status} ${res.statusText}`);
-                }
-            }
-
-            const response: ApiResponse<TourLegResponse[]> = await res.json() as ApiResponse<TourLegResponse[]>;
-
-            if (!response.result) {
-                throw new Error("No data received in API response");
-            }
-
-            const leg = response.result.find(l => l.leg_number === legNumber);
-            if (!leg) {
-                throw new Error(`Leg number ${legNumber} not found in event`);
-            }
-
-            return leg;
-        } catch (err) {
-            console.error("[ApiService.getEventLegByNumber]", err);
-            throw err;
-        }
+        return ApiService.rejectStub(`GET /api/v1/events/${eventId}/legs`);
     }
 
     /**
@@ -727,41 +473,7 @@ export class ApiService {
         legId: string,
         additionalData: Record<string, any>
     ): Promise<TourLegResponse> {
-        try {
-            const res = await fetch(`${API_URL}/api/v1/events/${eventId}/legs/${legId}/additional-data`, {
-                method: "PATCH",
-                headers: {
-                    ...generateMetaHeaders(meta),
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ additional_data: additionalData })
-            });
-
-            if (res.status === 401) {
-                const message = await res.text();
-                throw new UnauthorizedError(message || "Unauthorized");
-            }
-
-            if (res.status === 403) {
-                const body = await res.json() as ApiResponse<any>;
-                throw new PermissionDeniedError(body.message || "Forbidden");
-            }
-
-            if (!res.ok) {
-                throw new Error(`Failed to update leg additional data: ${res.status} ${res.statusText}`);
-            }
-
-            const response: ApiResponse<TourLegResponse> = await res.json() as ApiResponse<TourLegResponse>;
-
-            if (!response.result) {
-                throw new Error("No data received in API response");
-            }
-
-            return response.result;
-        } catch (err) {
-            console.error("[ApiService.updateEventLegAdditionalData]", err);
-            throw err;
-        }
+        return ApiService.rejectStub(`PATCH /api/v1/events/${eventId}/legs/${legId}/additional-data`);
     }
 
     static async reportOccupiedIFC(meta: MetaInfo, claimedIfc: string, note?: string): Promise<{ id: string }> {

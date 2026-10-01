@@ -102,8 +102,8 @@ This document describes standards for new work across the Infinite Experiment wo
 - Dev Prometheus scrapes Politburo at `host.docker.internal:8080/metrics` and Comrade Bot at `host.docker.internal:9091/metrics`.
 - `labour-bureau/start-dev.sh` is the tmux/dev-session launcher and should keep Politburo logs available at `/tmp/politburo.log` for Promtail.
 - Use `go tool air -c .air.toml` from `politburo/`; avoid stale `air.toml` references.
-- Production deployment flows through `labour-bureau/prod/deploy-services.sh politburo|comrade-bot|jobhunt|all`.
-- Production env examples live in `labour-bureau/prod/env/*.env.example`; Politburo DB config uses `PG_*` variables, not `DATABASE_URL`.
+- Production deployment flows through `infra/prod/deploy-services.sh politburo|comrade-bot|all`.
+- Production env examples live in `infra/prod/env/*.env.example`; Politburo DB config uses `PG_*` variables, not `DATABASE_URL`.
 - Preserve current port expectations unless intentionally changing runtime shape: Politburo `8080`, Comrade Bot metrics `9091`, Grafana `3000`, Prometheus `9090`, Loki `3100`, Promtail `9080`, Postgres `5432`, Redis `6379`, pgAdmin `5050`, Swagger Editor `8081`.
 - Politburo health is `/healthCheck` on port `8080`; Comrade Bot health is `/healthz` on metrics port `9091`.
 - Add Politburo metrics through `infra/metrics.MetricsRegistry`; do not create a second Prometheus registry.

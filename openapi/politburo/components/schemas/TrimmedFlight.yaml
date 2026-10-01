@@ -1,0 +1,17 @@
+type: object
+required: [flightId, callsign, latitude, longitude, heading]
+properties:
+  flightId:
+    type: string
+    description: Encrypted marker token, not the raw Infinite Flight id.
+  callsign:
+    type: string
+  latitude:
+    type: number
+    format: double
+  longitude:
+    type: number
+    format: double
+  heading:
+    type: number
+    format: double

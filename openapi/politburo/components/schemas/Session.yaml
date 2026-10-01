@@ -1,0 +1,40 @@
+type: object
+required:
+  - id
+  - name
+  - worldType
+  - type
+  - minimumGradeLevel
+  - userCount
+  - minimumAppVersion
+  - maxUsers
+  - normalizedName
+  - timestamp
+properties:
+  id:
+    type: string
+    format: uuid
+  name:
+    type: string
+  worldType:
+    type: integer
+  type:
+    type: integer
+  minimumGradeLevel:
+    type: integer
+  userCount:
+    type: integer
+  minimumAppVersion:
+    type: string
+  maximumAppVersion:
+    type: string
+    nullable: true
+  maxUsers:
+    type: integer
+  normalizedName:
+    type: string
+    description: Lowercase underscore form of the session name for filters.
+  timestamp:
+    type: string
+    format: date-time
+    description: UTC time when this session row was last refreshed into cache.
