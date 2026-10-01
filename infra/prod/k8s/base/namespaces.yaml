@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ie-data
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ie-apps
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ie-observability

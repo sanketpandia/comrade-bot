@@ -1,0 +1,65 @@
+name: Discord notify
+description: Post CI/CD status to a Discord channel webhook
+
+inputs:
+  webhook-url:
+    description: Discord webhook URL
+    required: true
+  title:
+    description: Embed title
+    required: true
+  status:
+    description: success or failure
+    required: true
+  job-name:
+    description: GitHub Actions job name
+    required: false
+    default: ''
+  details:
+    description: Extra embed description
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Post to Discord
+      shell: bash
+      env:
+        WEBHOOK_URL: ${{ inputs.webhook-url }}
+        TITLE: ${{ inputs.title }}
+        STATUS: ${{ inputs.status }}
+        JOB_NAME: ${{ inputs.job-name }}
+        DETAILS: ${{ inputs.details }}
+        REPO: ${{ github.repository }}
+        REF: ${{ github.ref_name }}
+        SHA: ${{ github.sha }}
+        ACTOR: ${{ github.actor }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        if [ -z "$WEBHOOK_URL" ]; then
+          echo "No webhook URL; skipping."
+          exit 0
+        fi
+        if [ "$STATUS" = "success" ]; then
+          COLOR=3066993
+          ICON="✅"
+        else
+          COLOR=15158332
+          ICON="❌"
+        fi
+        SHORT_SHA="${SHA:0:7}"
+        DESC="${DETAILS}"
+        if [ -n "$JOB_NAME" ]; then
+          DESC="${DESC}\nJob: ${JOB_NAME}"
+        fi
+        DESC="${DESC}\nBranch: ${REF} · \`${SHORT_SHA}\` · ${ACTOR}\n[View run](${RUN_URL})"
+        PAYLOAD=$(jq -n \
+          --arg title "${ICON} ${TITLE}" \
+          --arg description "$DESC" \
+          --argjson color "$COLOR" \
+          '{embeds: [{title: $title, description: $description, color: $color}]}')
+        curl -fsS -X POST "$WEBHOOK_URL" \
+          -H 'Content-Type: application/json' \
+          -d "$PAYLOAD"

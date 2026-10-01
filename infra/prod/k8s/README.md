@@ -1,0 +1,213 @@
+# k3s production (lalquila)
+
+Single-node **k3s** stack for politburo, comrade-bot, Postgres, Redis, and observability. Images come from **GHCR**; deploys run on the **self-hosted** GitHub Actions runner on the VPS.
+
+**New server from scratch?** Follow [`docs/infra/ubuntu-22.04-production-bootstrap.md`](../../../docs/infra/ubuntu-22.04-production-bootstrap.md) (Ubuntu 22.04, DNS, k3s, Caddy, runner, secrets, smoke tests).
+
+## Layout
+
+```
+infra/prod/k8s/
+├── base/                 # Namespaces, workloads, Services
+│   ├── data/             # Postgres + Redis (ie-data)
+│   ├── observability/    # Prometheus, Loki, Grafana, Promtail (ie-observability)
+│   └── apps/             # politburo + comrade-bot (ie-apps)
+└── overlays/prod/        # ConfigMaps from infra/prod/observability + apply entrypoint
+```
+
+| Namespace | Services |
+|-----------|----------|
+| `ie-data` | `postgres`, `redis` |
+| `ie-apps` | `politburo` (:8080 on `127.0.0.1` via hostPort), `comrade-bot` |
+| `ie-observability` | `prometheus`, `loki`, `grafana` (:3000 on `127.0.0.1`), `promtail` DaemonSet |
+
+Host **Caddy** (native `caddy.service`) proxies public HTTPS to `127.0.0.1:8080` and `127.0.0.1:3000` — sync [`../edge/Caddyfile`](../edge/Caddyfile) to `/etc/caddy/Caddyfile`.
+
+## Prerequisites
+
+- Ubuntu 22.04+ VPS (lalquila), ≥ 4 GB RAM (8 GB recommended)
+- Mounted data disk (e.g. Hetzner `/mnt/HC_Volume_*`)
+- Ports **80/443** for Caddy; **do not** expose k3s API (6443) publicly
+- GitHub repo secrets (see [CI/CD secrets](#cicd-secrets))
+
+## 1. Install k3s
+
+```bash
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server \
+  --disable traefik \
+  --write-kubeconfig-mode 644" sh -
+
+sudo kubectl get nodes
+```
+
+### PVC data on mounted disk
+
+Default **local-path** stores under `/var/lib/rancher/k3s/storage`. To use a mounted volume:
+
+```bash
+# Example: point local-path at Hetzner volume (adjust path)
+sudo mkdir -p /mnt/HC_Volume_12345/k3s-storage
+sudo mkdir -p /etc/rancher/k3s
+sudo tee /etc/rancher/k3s/config.yaml <<'EOF'
+kubelet-arg:
+  - "root-dir=/var/lib/kubelet"
+EOF
+# Follow k3s docs to patch local-path-provisioner helper pod path to /mnt/HC_Volume_12345/k3s-storage
+```
+
+Verify PVCs bind before relying on production data.
+
+## 2. Self-hosted runner (`runner` user)
+
+1. GitHub → **Settings → Actions → Runners → New self-hosted runner** (Linux x64).
+2. Install under `/home/runner/actions-runner` as user `runner`.
+3. Labels: `self-hosted`, `linux`, `prod`.
+4. **Kubeconfig** for the runner:
+
+```bash
+sudo mkdir -p /home/runner/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml /home/runner/.kube/config
+sudo chown -R runner:runner /home/runner/.kube
+sudo chmod 600 /home/runner/.kube/config
+```
+
+Optional: use GitHub secret `KUBECONFIG_B64` instead (deploy workflow writes `~/.kube/config` per job).
+
+### Runner hooks (optional)
+
+```bash
+# /etc/systemd/system/actions.runner.*.service.d/override.conf
+[Service]
+Environment=ACTIONS_RUNNER_HOOK_JOB_STARTED=/home/runner/hooks/job-started.sh
+```
+
+`job-started.sh`: `umask 077`, verify `kubectl cluster-info` — **no secrets in hook scripts**.
+
+## 3. Kubernetes secrets (bootstrap once)
+
+Create secrets **before** app pods start. Use production values from [`../env/`](../env/) templates.
+
+```bash
+cd /path/to/comrade-bot
+
+# Postgres (keys must match StatefulSet)
+kubectl create namespace ie-data --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n ie-data create secret generic postgres-credentials \
+  --from-literal=POSTGRES_DB=infinite \
+  --from-literal=POSTGRES_USER=ieuser \
+  --from-literal=POSTGRES_PASSWORD='…'
+
+kubectl -n ie-data create secret generic redis-credentials \
+  --from-literal=REDIS_PASSWORD='…'
+
+# Politburo — use cluster DNS for data tier
+kubectl create namespace ie-apps --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n ie-apps create secret generic politburo-env \
+  --from-env-file=../env/politburo.env
+kubectl -n ie-apps patch secret politburo-env --type merge -p \
+  '{"stringData":{"PG_HOST":"postgres.ie-data.svc.cluster.local","REDIS_HOST":"redis.ie-data.svc.cluster.local"}}'
+
+# Comrade-bot — in-cluster API
+kubectl -n ie-apps create secret generic comrade-bot-env \
+  --from-env-file=../env/comrade-bot.env
+kubectl -n ie-apps patch secret comrade-bot-env --type merge -p \
+  '{"stringData":{"API_URL":"http://politburo.ie-apps.svc.cluster.local:8080"}}'
+
+# Grafana
+kubectl create namespace ie-observability --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n ie-observability create secret generic grafana-credentials \
+  --from-literal=GRAFANA_ADMIN_PASSWORD='…'
+
+# GHCR pull (private packages)
+kubectl -n ie-apps create secret docker-registry ghcr-cred \
+  --docker-server=ghcr.io \
+  --docker-username=GITHUB_USER \
+  --docker-password=GITHUB_PAT_WITH_read_packages
+```
+
+Edit [`base/kustomization.yaml`](base/kustomization.yaml) `images.newName` if your GHCR owner is not `infinite-experiment`.
+
+## 4. Apply manifests
+
+From repo root (or clone on the server):
+
+```bash
+bash infra/prod/k8s/apply.sh
+```
+
+(`apply.sh` uses `kustomize build --load-restrictor LoadRestrictionsNone` so ConfigMaps can source files under `infra/prod/observability/`.)
+
+## 5. Migrate Postgres from Podman
+
+While Podman `db` still runs on `127.0.0.1:5432`:
+
+```bash
+podman exec db pg_dump -U ieuser -Fc infinite > /tmp/infinite.dump
+
+# After cluster Postgres is Ready:
+kubectl -n ie-data exec -it postgres-0 -- pg_restore -U ieuser -d infinite --clean --if-exists < /tmp/infinite.dump
+# Or copy dump into pod and pg_restore locally
+```
+
+Apply SQL migrations if needed:
+
+```bash
+for f in services/politburo/migrations/*.sql; do
+  kubectl -n ie-data exec -i postgres-0 -- psql -U ieuser -d infinite -f - < "$f"
+done
+```
+
+When verified:
+
+```bash
+podman stop db redis
+podman rm db redis
+```
+
+## 6. Caddy (native systemd)
+
+```bash
+sudo cp infra/prod/edge/Caddyfile /etc/caddy/Caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+```
+
+Preserve existing ACME data under `/var/lib/caddy` (or your current path).
+
+## 7. Smoke tests
+
+- `curl -sS http://127.0.0.1:8080/health/live`
+- `https://comradebot.cc/public/…` via Caddy
+- Discord bot responds
+- `https://monitor.comradebot.cc` → Grafana
+- Prometheus targets: politburo + comrade-bot UP (in-cluster)
+
+## CD / CI secrets
+
+| Secret | Purpose |
+|--------|---------|
+| `DISCORD_WEBHOOK_URL` | CI/CD Discord notifications |
+| `GHCR_PULL_TOKEN` | Optional PAT to refresh `ghcr-cred` in deploy jobs |
+| `KUBECONFIG_B64` | Optional; deploy job writes kubeconfig instead of on-disk file |
+
+Deploy jobs use GitHub **Environment** `production` and `runs-on: [self-hosted, linux, prod]`.
+
+## Operations
+
+```bash
+kubectl -n ie-apps get deploy,pods,svc
+kubectl -n ie-apps rollout status deployment/politburo
+kubectl -n ie-data logs postgres-0
+kubectl -n ie-observability port-forward svc/prometheus 9090:9090
+```
+
+Rollback image:
+
+```bash
+kubectl -n ie-apps set image deployment/politburo politburo=ghcr.io/OWNER/politburo:PREVIOUS_SHA
+kubectl -n ie-apps rollout status deployment/politburo
+```
+
+## Notifications
+
+See [`../../../docs/infra/ci-notifications.md`](../../../docs/infra/ci-notifications.md).

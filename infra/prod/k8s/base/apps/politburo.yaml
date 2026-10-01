@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: politburo
+  namespace: ie-apps
+  labels:
+    app: politburo
+spec:
+  ports:
+    - port: 8080
+      targetPort: http
+      name: http
+  selector:
+    app: politburo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: politburo
+  namespace: ie-apps
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: politburo
+  template:
+    metadata:
+      labels:
+        app: politburo
+    spec:
+      imagePullSecrets:
+        - name: ghcr-cred
+      containers:
+        - name: politburo
+          image: politburo:main
+          ports:
+            - containerPort: 8080
+              hostIP: 127.0.0.1
+              hostPort: 8080
+              name: http
+          envFrom:
+            - secretRef:
+                name: politburo-env
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30

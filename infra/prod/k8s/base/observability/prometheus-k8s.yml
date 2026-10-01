@@ -1,0 +1,26 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'politburo-prod'
+    env: 'production'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+scrape_configs:
+  - job_name: politburo
+    static_configs:
+      - targets: ['politburo.ie-apps.svc.cluster.local:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 5s
+
+  - job_name: comrade-bot
+    static_configs:
+      - targets: ['comrade-bot.ie-apps.svc.cluster.local:9091']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 5s
