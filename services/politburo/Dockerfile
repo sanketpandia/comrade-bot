@@ -8,7 +8,9 @@ WORKDIR /repo
 
 COPY cicd/tools/go.mod cicd/tools/go.sum ./cicd/tools/
 RUN cd cicd/tools && go mod download
-COPY Makefile cicd/Makefile cicd/codegen ./cicd/
+COPY Makefile ./
+COPY cicd/Makefile ./cicd/
+COPY cicd/codegen ./cicd/codegen/
 COPY openapi ./openapi
 COPY services/politburo/go.mod services/politburo/go.sum ./services/politburo/
 RUN make -C cicd generate-politburo generate-infinite-flight
