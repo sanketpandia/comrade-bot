@@ -51,8 +51,7 @@ go run ./cmd/politburo
 ```
 
 ```sh
-curl http://localhost:8082/health/live
-curl http://localhost:8082/health/ready
+curl http://localhost:8082/health/status
 curl http://localhost:8082/metrics
 curl -H "X-API-Key: $API_KEY" \
   'http://localhost:8082/api/v1/game/sessions/active?history=false'

@@ -176,7 +176,7 @@ Preserve existing ACME data under `/var/lib/caddy` (or your current path).
 
 ## 7. Smoke tests
 
-- `curl -sS http://127.0.0.1:8080/health/live`
+- `curl -sS http://127.0.0.1:8080/health/status`
 - `https://comradebot.cc/public/…` via Caddy
 - Discord bot responds
 - `https://monitor.comradebot.cc` → Grafana
@@ -222,6 +222,8 @@ kubectl -n ie-observability rollout restart daemonset/promtail
 | `KUBECONFIG_B64` | Optional; deploy job writes kubeconfig instead of on-disk file |
 
 Deploy jobs use GitHub **Environment** `production` and `runs-on: [self-hosted, linux, prod]`.
+
+**Discord slash commands** are not updated on every deploy. Opt in via merge commit `[sync-cmds]` or **Actions → Discord bot CI → Run workflow** (see [`docs/discord-bot/DEPLOYMENT.md`](../../../docs/discord-bot/DEPLOYMENT.md)). The `sync-discord-commands` job runs [`../scripts/k8s-sync-discord-commands.sh`](../scripts/k8s-sync-discord-commands.sh) on the prod runner.
 
 ## Operations
 

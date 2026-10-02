@@ -39,24 +39,25 @@ export class ApiService {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
         try {
-            const res = await fetch(`${API_URL}/health/live`, {
+            const res = await fetch(`${API_URL}/health/status`, {
                 method: "GET",
                 headers: generateMetaHeaders(metainfo),
                 signal: controller.signal,
             });
-            if (!res.ok) {
-                throw new Error(`Failed to fetch health/live: ${res.status} ${res.statusText}`);
-            }
             const data = await res.json() as {
                 status?: string;
                 started_at?: string;
                 uptime?: string;
-                services?: HealthApiResponse["services"];
+                services?: Record<string, string>;
             };
+            if (res.status !== 200 && res.status !== 503) {
+                throw new Error(`Failed to fetch health/status: ${res.status} ${res.statusText}`);
+            }
             return {
                 status: data.status ?? "unknown",
                 up_since: data.started_at ?? "",
                 uptime: data.uptime ?? "",
+                httpStatus: res.status,
                 services: data.services ?? {},
             };
         } catch (err) {

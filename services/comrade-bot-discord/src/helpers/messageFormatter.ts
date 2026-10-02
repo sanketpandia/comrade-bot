@@ -2,13 +2,19 @@ import { AlignmentEnum, AsciiTable3 } from "ascii-table3";
 import { FlightHistoryRecord, HealthApiResponse, InitRegistrationResponse, InitServerResponse, UserDetailsData, ApiResponse, PilotStatsData } from "../types/Responses";
 
 export class MessageFormatters {
+  private static healthServiceLabel(value: string | undefined): string {
+    const normalized = String(value ?? "").toLowerCase();
+    if (normalized === "active" || normalized === "ok") {
+      return "ACTIVE";
+    }
+    return "DOWN";
+  }
+
   static generateHealthString(data: HealthApiResponse): string {
     if (!data) return "No data.";
     let msg = `**Bot Status:**\n**Status:** ${data.status.toUpperCase()}\n**Uptime:** ${data.uptime}\n\n**Services:**\n`;
     for (const [svc, status] of Object.entries(data.services)) {
-      msg += `- **${svc}**: ${status.status.toUpperCase()}`;
-      if (status.details) msg += ` (${status.details})`;
-      msg += `\n`;
+      msg += `- **${svc}**: ${MessageFormatters.healthServiceLabel(status)}\n`;
     }
     return msg;
   }

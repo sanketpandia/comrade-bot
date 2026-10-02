@@ -33,7 +33,7 @@ func TestAPIKeyAuthSkipsNonAPIPaths(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/health/live", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/health/status", nil))
 	if !called || recorder.Code != http.StatusNoContent {
 		t.Fatalf("health pass-through failed: called=%v status=%d", called, recorder.Code)
 	}

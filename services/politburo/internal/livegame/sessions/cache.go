@@ -18,3 +18,11 @@ type Snapshot struct {
 	LastCached time.Time                `json:"lastCached"`
 	History    []Snapshot               `json:"history,omitempty"`
 }
+
+// SnapshotFresh reports whether lastCached is within the scheduled refresh window.
+func SnapshotFresh(lastCached, now time.Time) bool {
+	if lastCached.IsZero() {
+		return false
+	}
+	return now.Sub(lastCached) <= RefreshInterval
+}

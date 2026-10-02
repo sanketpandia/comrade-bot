@@ -8,6 +8,7 @@ on:
       - 'cicd/**'
       - 'Makefile'
       - '.github/workflows/discord-bot.yml'
+      - 'infra/prod/scripts/k8s-sync-discord-commands.sh'
   push:
     branches: [main]
     paths:
@@ -16,12 +17,28 @@ on:
       - 'cicd/**'
       - 'Makefile'
       - '.github/workflows/discord-bot.yml'
+      - 'infra/prod/scripts/k8s-sync-discord-commands.sh'
+  workflow_dispatch:
+    inputs:
+      sync_discord_commands:
+        description: Push slash commands to Discord (global)
+        type: boolean
+        default: true
+      image_tag:
+        description: GHCR tag for command sync (e.g. main or commit SHA). Used for commands-only runs.
+        type: string
+        default: main
+      commands_only:
+        description: Skip test/build/deploy; only run command sync
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   test:
+    if: github.event_name != 'workflow_dispatch' || inputs.commands_only != true
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -41,6 +58,7 @@ jobs:
           npm run api:generate
           npm test
           npm run build
+          npm run commands:validate
 
       - name: Discord notify
         if: always() && failure()
@@ -54,6 +72,10 @@ jobs:
   production-image:
     runs-on: ubuntu-latest
     needs: test
+    if: |
+      always() &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped') &&
+      (github.event_name != 'workflow_dispatch' || inputs.commands_only != true)
     permissions:
       contents: read
       packages: write
@@ -147,3 +169,80 @@ jobs:
           status: ${{ job.status }}
           job-name: deploy
           details: ${{ needs.production-image.outputs.image }}
+
+  sync-discord-commands:
+    needs: [production-image, deploy]
+    if: |
+      always() &&
+      (
+        (github.event_name == 'workflow_dispatch' && inputs.sync_discord_commands) ||
+        (github.event_name == 'push' && contains(github.event.head_commit.message, '[sync-cmds]'))
+      ) &&
+      (
+        (github.event_name == 'workflow_dispatch' && inputs.commands_only) ||
+        needs.production-image.result == 'success'
+      ) &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        needs.deploy.result == 'success'
+      )
+    runs-on: [self-hosted, linux, prod]
+    environment: production
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure kubeconfig from secret
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+        run: |
+          if [ -z "${KUBECONFIG_B64}" ]; then
+            echo "KUBECONFIG_B64 not set; using runner kubeconfig"
+            exit 0
+          fi
+          mkdir -p "$HOME/.kube"
+          echo "$KUBECONFIG_B64" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Ensure GHCR imagePullSecret
+        env:
+          GHCR_USER: ${{ github.repository_owner }}
+          GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        run: |
+          if [ -z "${GHCR_TOKEN}" ]; then
+            echo "GHCR_PULL_TOKEN not set; skipping imagePullSecret refresh"
+            exit 0
+          fi
+          kubectl create secret docker-registry ghcr-cred -n ie-apps \
+            --docker-server=ghcr.io \
+            --docker-username="$GHCR_USER" \
+            --docker-password="$GHCR_TOKEN" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Resolve container image
+        id: image
+        env:
+          GHCR_PREFIX: ghcr.io/${{ github.repository_owner }}
+        run: |
+          OWNER_LC=$(echo "$GHCR_PREFIX" | tr '[:upper:]' '[:lower:]')
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.commands_only }}" = "true" ]; then
+            echo "image=${OWNER_LC}/comrade-bot:${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=${{ needs.production-image.outputs.image }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sync Discord slash commands
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: bash infra/prod/scripts/k8s-sync-discord-commands.sh
+
+      - name: Discord notify
+        if: always() && (failure() || success())
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: Comrade-bot command sync (lalquila)
+          status: ${{ job.status }}
+          job-name: sync-discord-commands
+          details: ${{ steps.image.outputs.image }}

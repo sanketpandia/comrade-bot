@@ -11,6 +11,7 @@ This guide explains how to deploy slash commands for Comrade Bot.
 | **Shell Script** | `./deploy.sh local` | Works in dev and prod |
 | **Docker Container** | `docker exec comrade-bot /app/deploy.sh local` | Running in Docker |
 | **Discord Command** | `/rollout mode:local` | Quick updates via Discord (god-mode only) |
+| **Production (k3s CI)** | `[sync-cmds]` in merge commit or Actions workflow | Opt-in global sync after deploy (see below) |
 
 ## Overview
 
@@ -78,16 +79,12 @@ The `/rollout` command is restricted to god-mode users only.
 
 ### Setting Up God-Mode
 
-1. Set the `GOD_MODE` environment variable in `politburo/.env`:
-
-```bash
-GOD_MODE=your_discord_user_id
-```
+1. Add your Discord user ID to `PLATFORM_OPERATOR_DISCORD_IDS` in Politburo config (comma-separated if multiple operators).
 
 2. The bot verifies god-mode access via the backend API endpoint:
    - `GET /api/v1/admin/verify-god`
 
-3. Only the Discord user matching the `GOD_MODE` ID can use `/rollout`
+3. Only Discord users listed in `PLATFORM_OPERATOR_DISCORD_IDS` can use `/rollout`
 
 ---
 
@@ -153,6 +150,40 @@ npm run deploy:local
 
 ---
 
+## Production (k3s / GitHub Actions)
+
+Rolling out the comrade-bot **container** (`.github/workflows/discord-bot.yml` deploy job) does **not** update Discord slash command definitions. Command sync is **opt-in**.
+
+### Opt in on merge to `main`
+
+Include `[sync-cmds]` in the **merge commit message**. When the workflow runs (bot-related path filters), it will:
+
+1. Build and push the image (on push to `main`)
+2. Roll out the deployment on the self-hosted prod runner
+3. Run the **sync-discord-commands** job: a short-lived Kubernetes Job in `ie-apps` that runs `node dist/deploy-commands.js global` using the same GHCR image tag as the build and credentials from the `comrade-bot-env` secret
+
+If you merge without `[sync-cmds]`, only the bot image is updated; run sync manually when command schemas change.
+
+### Manual sync (Actions)
+
+**Actions → Discord bot CI → Run workflow**
+
+| Input | Purpose |
+|-------|---------|
+| **Sync Discord commands** | Run global command deploy (default on) |
+| **Commands only** | Skip test, image build, and app deploy; only sync |
+| **Image tag** | GHCR tag when **commands only** (e.g. `main` or a commit SHA) |
+
+Use **commands only** to push slash definitions from an already-published image without redeploying pods.
+
+On the server, the runner invokes [`infra/prod/scripts/k8s-sync-discord-commands.sh`](../../infra/prod/scripts/k8s-sync-discord-commands.sh).
+
+### Break-glass
+
+If CI is unavailable, operators can still use `/rollout mode:global` (god-mode) or run the sync script locally with `kubectl` access and `IMAGE` set.
+
+---
+
 ## Deployment Flow
 
 ### First-Time Setup
@@ -160,7 +191,7 @@ npm run deploy:local
 ```bash
 # 1. Set environment variables in .env
 GUILD_ID=your_test_server_id
-GOD_MODE=your_discord_user_id
+# Politburo: PLATFORM_OPERATOR_DISCORD_IDS for /rollout
 
 # 2. Deploy commands locally for testing
 npm run deploy:local
@@ -181,9 +212,9 @@ npm run deploy:local
 
 # 3. Test in Discord
 
-# 4. Once verified, use /rollout in Discord:
-#    - For dev server: /rollout mode:local
-#    - For all servers: /rollout mode:global
+# 4. For production k3s: merge with [sync-cmds] when slash schemas changed
+#    Or use Actions → Discord bot CI (see Production section above)
+#    Dev break-glass: /rollout mode:local or mode:global (god-mode)
 ```
 
 ---
@@ -238,11 +269,7 @@ npm run deploy:local
 
 ### `/rollout` command not working
 
-1. Verify god-mode is configured:
-   ```bash
-   # In politburo/.env
-   GOD_MODE=your_discord_user_id
-   ```
+1. Verify god-mode is configured (`PLATFORM_OPERATOR_DISCORD_IDS` in Politburo includes your Discord user ID)
 
 2. Check bot logs for authentication errors
 
@@ -321,7 +348,7 @@ docker exec comrade-bot npm run deploy:global
 
 ## Architecture
 
-The `/rollout` command uses the **DeploymentService** which runs inside the bot process:
+The `/rollout` command uses **CommandDeploymentService**, which runs inside the bot process:
 
 ```
 Discord /rollout command

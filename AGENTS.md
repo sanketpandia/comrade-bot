@@ -28,7 +28,7 @@ Full map and known traps: `.claude/commands/architecture.md`. Agents in `.claude
 - `docs/standards.md` and much of `docs/politburo/**`, `docs/infra/**` still describe the old multi-repo layout (`labour-bureau/`, `api/openapi/`, Vizburo, `internal/routes`). Verify against code.
 - Identity/membership/operator `/api/v1` routes are hand-mounted in `server.go` and missing from OpenAPI; new JSON routes go through the spec.
 - The bot still calls legacy endpoints the rewrite does not serve (`/healthCheck`, `/pireps/*`, `/events/*`, `/pilot/stats`, …), and doesn't use the generated TS types yet.
-- Ports differ: dev Politburo `8082`, prod `8080`. k8s/compose health probes use `/health/live` and `/health/ready`. Prod `politburo.env.example` may lack `SIGNED_LINK_SECRET` (required outside local).
+- Ports differ: dev Politburo `8082`, prod `8080`. k8s/compose health probes use `/health/status` (15s). Prod `politburo.env.example` may lack `SIGNED_LINK_SECRET` (required outside local).
 - Production deploy: GHCR images + self-hosted runner (`runs-on: [self-hosted, linux, prod]`, environment `production`); bootstrap [`infra/prod/k8s/README.md`](infra/prod/k8s/README.md). lalquila uses **native** `caddy.service`, not Podman `caddy-rootful`.
 - Grafana dashboards and Promtail pipelines partly target legacy metrics/labels and Zap log keys; Politburo now logs `slog` JSON.
 - Migrations are manual SQL; the `politburo_next` DB must be created by hand in dev.
@@ -39,6 +39,17 @@ Full map and known traps: `.claude/commands/architecture.md`. Agents in `.claude
 - Entry: `infra/dev/start-dev.sh` — Compose in tmux window 1; bot and Politburo on the host in windows 2–3.
 - Backing services: `docker compose -f infra/dev/docker-compose.dev.yml up` from `infra/dev/`.
 - Ports: Politburo `8082`, bot metrics `9091`, Postgres `5432`, Redis `6379`, Swagger UI `8081`, Prometheus `9090`, Grafana `3000`.
+
+## Git hooks
+
+Optional pre-push checks (same path filters as Politburo, Discord bot, and OpenAPI CI):
+
+```sh
+make hooks-install   # once per clone: git config core.hooksPath .githooks
+make pre-push        # same script, without pushing
+```
+
+Skip for one push: `git push --no-verify` or `SKIP_PREPUSH=1 git push`.
 
 ## Code generation
 

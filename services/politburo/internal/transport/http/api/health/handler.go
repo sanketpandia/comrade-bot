@@ -2,54 +2,98 @@ package health
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 	"time"
 
+	"infinite-experiment/politburo/internal/cache"
+	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
 
+const (
+	serviceDatabase = "database"
+	serviceCache    = "cache"
+	serviceSessions = "infinite-flight"
+	stateActive     = "active"
+	stateDown       = "down"
+)
+
 type Handler struct {
-	db        *sql.DB
-	redis     redisPinger
-	startedAt time.Time
+	db              dbPinger
+	cache           cacheReader
+	monitorSessions bool
+	startedAt       time.Time
+	now             func() time.Time
 }
 
-type redisPinger interface {
+type dbPinger interface {
+	PingContext(context.Context) error
+}
+
+type cacheReader interface {
 	Ping(context.Context) error
+	GetJSON(context.Context, string, any) error
 }
 
-func NewHandler(db *sql.DB, redis redisPinger, startedAt time.Time) *Handler {
-	return &Handler{db: db, redis: redis, startedAt: startedAt}
+func NewHandler(db dbPinger, cacheStore cacheReader, monitorSessions bool, startedAt time.Time) *Handler {
+	return &Handler{
+		db:              db,
+		cache:           cacheStore,
+		monitorSessions: monitorSessions,
+		startedAt:       startedAt,
+		now:             time.Now,
+	}
 }
 
-func (h *Handler) GetLiveness(w http.ResponseWriter, _ *http.Request) {
-	response.WriteJSON(w, http.StatusOK, map[string]any{
-		"status":     "ok",
-		"started_at": h.startedAt,
-		"uptime":     time.Since(h.startedAt).Round(time.Second).String(),
-	})
-}
-
-func (h *Handler) GetReadiness(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
+
+	services := map[string]string{
+		serviceDatabase: stateDown,
+		serviceCache:    stateDown,
+		serviceSessions: stateDown,
+	}
+	body := map[string]any{
+		"started_at": h.startedAt,
+		"uptime":     time.Since(h.startedAt).Round(time.Second).String(),
+		"services":   services,
+	}
+
 	if err := h.db.PingContext(ctx); err != nil {
-		response.WriteJSON(w, http.StatusServiceUnavailable, map[string]any{
-			"status":   "not_ready",
-			"services": map[string]string{"postgres": "down"},
-		})
+		body["status"] = stateDown
+		response.WriteJSON(w, http.StatusServiceUnavailable, body)
 		return
 	}
-	if err := h.redis.Ping(ctx); err != nil {
-		response.WriteJSON(w, http.StatusServiceUnavailable, map[string]any{
-			"status":   "not_ready",
-			"services": map[string]string{"postgres": "ok", "redis": "down"},
-		})
+	services[serviceDatabase] = stateActive
+
+	if err := h.cache.Ping(ctx); err != nil {
+		body["status"] = stateDown
+		response.WriteJSON(w, http.StatusServiceUnavailable, body)
 		return
 	}
-	response.WriteJSON(w, http.StatusOK, map[string]any{
-		"status":   "ready",
-		"services": map[string]string{"postgres": "ok", "redis": "ok"},
-	})
+	services[serviceCache] = stateActive
+
+	if !h.monitorSessions || h.sessionsActive(ctx) {
+		services[serviceSessions] = stateActive
+	} else {
+		body["status"] = stateDown
+		response.WriteJSON(w, http.StatusServiceUnavailable, body)
+		return
+	}
+
+	body["status"] = "ok"
+	response.WriteJSON(w, http.StatusOK, body)
+}
+
+func (h *Handler) sessionsActive(ctx context.Context) bool {
+	if !h.monitorSessions {
+		return true
+	}
+
+	snapshot := gamesessions.Snapshot{}
+	if err := h.cache.GetJSON(ctx, cache.KeyActiveSessions, &snapshot); err != nil {
+		return false
+	}
+	return gamesessions.SnapshotFresh(snapshot.LastCached, h.now().UTC())
 }
