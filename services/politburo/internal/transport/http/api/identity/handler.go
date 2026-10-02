@@ -1,13 +1,16 @@
 package identity
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	"infinite-experiment/politburo/internal/access/auth"
@@ -222,26 +225,19 @@ func (h *Handler) ResolveOperatorReport(w http.ResponseWriter, r *http.Request) 
 		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "report id required")
 		return
 	}
-	report, err := h.reports.GetByID(r.Context(), reportID)
-	if err != nil || report == nil {
-		response.WriteError(w, http.StatusNotFound, "NOT_FOUND", "report not found")
-		return
-	}
-	switch report.Kind {
-	case reports.KindOccupiedIFC:
-		err = h.operator.ResolveOccupiedIFC(r.Context(), reportID, claims.DsUserID)
-	case reports.KindMigrateDiscordServer:
-		err = h.operator.ResolveGuildMigration(r.Context(), reportID, claims.DsUserID)
-	default:
-		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "unsupported report kind")
-		return
-	}
+	err := reports.ResolveOpenReport(r.Context(), h.reports, h.operator, reportID, claims.DsUserID)
 	if err != nil {
-		if errors.Is(err, operator.ErrOccupantNotFound) {
+		switch {
+		case errors.Is(err, reports.ErrReportNotFound):
+			response.WriteError(w, http.StatusNotFound, "NOT_FOUND", "report not found")
+		case errors.Is(err, reports.ErrUnsupportedReportKind):
+			response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "unsupported report kind")
+		case errors.Is(err, operator.ErrOccupantNotFound):
 			response.WriteError(w, http.StatusNotFound, "OCCUPANT_NOT_FOUND", "no user linked to claimed IFC")
 			return
+		default:
+			response.WriteError(w, http.StatusInternalServerError, "RESOLVE_FAILED", "failed to resolve report")
 		}
-		response.WriteError(w, http.StatusInternalServerError, "RESOLVE_FAILED", "failed to resolve report")
 		return
 	}
 	response.WriteJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"resolved": true}})
@@ -275,9 +271,11 @@ func (h *Handler) BanUser(w http.ResponseWriter, r *http.Request, _ politburoapi
 	}
 	result, err := h.operator.BanDiscordUser(r.Context(), target, claims.DsUserID, reason)
 	if err != nil {
+		logUserBanFailure(r.Context(), claims.DsUserID, target, err)
 		writeBanUserError(w, err)
 		return
 	}
+	logUserBanSuccess(r.Context(), claims.DsUserID, result.DiscordUserID, result.UserDeleted, reason)
 	response.WriteJSON(w, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"success":         true,
@@ -381,4 +379,41 @@ func writeBanUserError(w http.ResponseWriter, err error) {
 	default:
 		response.WriteError(w, http.StatusInternalServerError, "BAN_FAILED", "failed to ban user")
 	}
+}
+
+func logUserBanSuccess(ctx context.Context, operatorDiscordID, targetDiscordID string, userDeleted bool, reason string) {
+	args := []any{
+		"operator_discord_id", operatorDiscordID,
+		"target_discord_id", targetDiscordID,
+		"user_deleted", userDeleted,
+		"reason", truncateLogReason(reason, 200),
+	}
+	if requestID := chimiddleware.GetReqID(ctx); requestID != "" {
+		args = append(args, "request_id", requestID)
+	}
+	slog.Info("user_ban", args...)
+}
+
+func logUserBanFailure(ctx context.Context, operatorDiscordID, targetDiscordID string, err error) {
+	args := []any{
+		"operator_discord_id", operatorDiscordID,
+		"target_discord_id", targetDiscordID,
+	}
+	if requestID := chimiddleware.GetReqID(ctx); requestID != "" {
+		args = append(args, "request_id", requestID)
+	}
+	if errors.Is(err, operator.ErrInvalidDiscordID) {
+		args = append(args, "error_code", "INVALID_REQUEST")
+		slog.Info("user_ban", args...)
+		return
+	}
+	args = append(args, "error", err)
+	slog.Error("user_ban", args...)
+}
+
+func truncateLogReason(reason string, maxLen int) string {
+	if maxLen <= 0 || len(reason) <= maxLen {
+		return reason
+	}
+	return reason[:maxLen] + "..."
 }

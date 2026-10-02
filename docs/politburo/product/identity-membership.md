@@ -173,7 +173,7 @@ The archive is for disputes and forensics. It is not VA-visible history.
 | Assign roles, transfer administrator | No (too easy to get wrong in a modal) | Administrator |
 | Change proletariat callsign, remove proletariat | No | Bourgeoisie or administrator |
 | Datasource, prefixes/suffixes, preferred server | No | Administrator |
-| Report occupied IFC | From the register failure | Operator queue |
+| Report occupied IFC | From the register failure | Operator queue at `/operator/reports` (SSR); optional JSON `GET/POST /api/v1/operator/reports*` for API-key or session operators—no Discord bot client yet |
 | Report guild migration | Report issue | Operator rebinds guild |
 | Ban + delete (export, then vanish) | No | Operator only |
 

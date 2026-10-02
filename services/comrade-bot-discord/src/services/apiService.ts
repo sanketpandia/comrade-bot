@@ -148,6 +148,12 @@ export class ApiService {
                 if (res.status === 401) {
                     throw new UnauthorizedError(message || "Unauthorized");
                 }
+                logger.warn("registration_rejected", {
+                    operation: "initiate_registration",
+                    status: res.status,
+                    code,
+                    discord_user_id: meta.discordId,
+                });
                 this.throwCreateUserError(res.status, code, message);
             }
             
