@@ -10,23 +10,30 @@ Politburo has two container entry points:
   separate build stage, and the final non-root Alpine image contains only the
   application binary and CA certificates.
 
-The GitHub Actions workflow builds the `ci` target and then the complete
-production image. On push to `main`, images are published to GHCR as
-`ghcr.io/<owner>/politburo:<git-sha>` and `ghcr.io/<owner>/comrade-bot:<git-sha>`
-(with a floating `:main` tag). Deployment should pull those tags rather than
-building on the production host.
+The GitHub Actions workflow [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)
+uses path filters to run only the jobs that match changed files.
 
-## GitHub Actions (path filters)
+On **pull requests** (GitHub-hosted `ubuntu-latest`):
 
-Workflows run only when matching paths change (monorepo isolation):
+- Contract changes: `make openapi-bundle-check`.
+- Politburo: Docker `ci` target on [`Dockerfile.dev`](../../../services/politburo/Dockerfile.dev), plus a non-pushing build of the production [`Dockerfile`](../../../services/politburo/Dockerfile).
+- Comrade-bot: `npm ci`, `npm run api:generate`, `npm test`, `npm run build`, `npm run commands:validate`, plus a non-pushing production image build.
 
-| Workflow | Triggers on |
-|----------|-------------|
-| [`.github/workflows/openapi.yml`](../../../.github/workflows/openapi.yml) | `openapi/**`, `cicd/**`, root `Makefile` |
-| [`.github/workflows/politburo.yml`](../../../.github/workflows/politburo.yml) | `services/politburo/**`, `openapi/**`, `cicd/**`, `Makefile` |
-| [`.github/workflows/discord-bot.yml`](../../../.github/workflows/discord-bot.yml) | `services/comrade-bot-discord/**`, `openapi/**`, `cicd/**`, `Makefile` |
+On **push to `main`** (self-hosted prod runner): build and push GHCR images only
+for affected services, then roll out deployments. No test jobs on `main`.
 
-Politburo tests use `docker build --target ci` on [`Dockerfile.dev`](../../../services/politburo/Dockerfile.dev) (generate + `go test` + build). The Discord bot runs `npm ci`, `npm run api:generate`, `npm test`, and `npm run build`. Production images build on every matching PR and push; **GHCR push** runs only on `push` to `main` after tests pass.
+Images are published as `ghcr.io/<owner>/politburo:<git-sha>` and
+`ghcr.io/<owner>/comrade-bot:<git-sha>` (with a floating `:main` tag).
+Deployment should pull those tags rather than building on the production host.
+
+## Path filter outputs (`changes` job)
+
+| Output | Triggers on |
+|--------|-------------|
+| `contract` | `openapi/**`, `cicd/**`, root `Makefile` |
+| `politburo` | `services/politburo/**`, `openapi/**`, `cicd/**`, `Makefile`, `.github/workflows/ci.yml` |
+| `bot` | `services/comrade-bot-discord/**`, `openapi/**`, `cicd/**`, `Makefile`, `.github/workflows/ci.yml`, `infra/prod/scripts/k8s-sync-discord-commands.sh` |
+| `infra` | `infra/prod/k8s/**`, `.github/workflows/ci.yml` |
 
 ## Development
 

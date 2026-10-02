@@ -1,0 +1,24 @@
+name: Kubeconfig setup
+description: Configure kubectl from KUBECONFIG_B64 or use the runner default kubeconfig
+
+inputs:
+  kubeconfig-b64:
+    description: Base64-encoded kubeconfig (optional)
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Configure kubeconfig
+      shell: bash
+      env:
+        KUBECONFIG_B64: ${{ inputs.kubeconfig-b64 }}
+      run: |
+        if [ -z "${KUBECONFIG_B64}" ]; then
+          echo "KUBECONFIG_B64 not set; using runner kubeconfig"
+          exit 0
+        fi
+        mkdir -p "$HOME/.kube"
+        echo "$KUBECONFIG_B64" | base64 -d > "$HOME/.kube/config"
+        chmod 600 "$HOME/.kube/config"

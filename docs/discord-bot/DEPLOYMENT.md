@@ -152,7 +152,7 @@ npm run deploy:local
 
 ## Production (k3s / GitHub Actions)
 
-Rolling out the comrade-bot **container** (`.github/workflows/discord-bot.yml` deploy job) does **not** update Discord slash command definitions. Command sync is **opt-in**.
+Rolling out the comrade-bot **container** (`.github/workflows/ci.yml` `deploy_comrade_bot` job) does **not** update Discord slash command definitions. Command sync is **opt-in**.
 
 ### Opt in on merge to `main`
 
@@ -166,7 +166,7 @@ If you merge without `[sync-cmds]`, only the bot image is updated; run sync manu
 
 ### Manual sync (Actions)
 
-**Actions → Discord bot CI → Run workflow**
+**Actions → CI/CD → Run workflow**
 
 | Input | Purpose |
 |-------|---------|
@@ -213,7 +213,7 @@ npm run deploy:local
 # 3. Test in Discord
 
 # 4. For production k3s: merge with [sync-cmds] when slash schemas changed
-#    Or use Actions → Discord bot CI (see Production section above)
+#    Or use Actions → CI/CD (see Production section above)
 #    Dev break-glass: /rollout mode:local or mode:global (god-mode)
 ```
 

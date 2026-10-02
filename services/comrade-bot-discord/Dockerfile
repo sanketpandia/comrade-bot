@@ -19,6 +19,7 @@ WORKDIR /repo/services/comrade-bot-discord
 RUN npm ci
 
 COPY openapi /repo/openapi
+COPY cicd/codegen /repo/cicd/codegen
 COPY services/comrade-bot-discord/tsconfig.json ./
 COPY services/comrade-bot-discord/src ./src
 COPY services/comrade-bot-discord/assets ./assets

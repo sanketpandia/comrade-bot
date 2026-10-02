@@ -223,7 +223,7 @@ kubectl -n ie-observability rollout restart daemonset/promtail
 
 Deploy jobs use GitHub **Environment** `production` and `runs-on: [self-hosted, linux, prod]`.
 
-**Discord slash commands** are not updated on every deploy. Opt in via merge commit `[sync-cmds]` or **Actions → Discord bot CI → Run workflow** (see [`docs/discord-bot/DEPLOYMENT.md`](../../../docs/discord-bot/DEPLOYMENT.md)). The `sync-discord-commands` job runs [`../scripts/k8s-sync-discord-commands.sh`](../scripts/k8s-sync-discord-commands.sh) on the prod runner.
+**Discord slash commands** are not updated on every deploy. Opt in via merge commit `[sync-cmds]` or **Actions → CI/CD → Run workflow** (see [`docs/discord-bot/DEPLOYMENT.md`](../../../docs/discord-bot/DEPLOYMENT.md)). The `sync_discord_commands` job runs [`../scripts/k8s-sync-discord-commands.sh`](../scripts/k8s-sync-discord-commands.sh) on the prod runner.
 
 ## Operations
 
