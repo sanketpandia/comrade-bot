@@ -3,7 +3,6 @@ package gameflights
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -18,6 +17,7 @@ import (
 
 type cacheStub struct {
 	flights  domainflights.Snapshot
+	records  map[string]domainflights.Flight
 	names    []string
 	namesErr error
 	err      error
@@ -38,8 +38,30 @@ func (s cacheStub) GetJSON(_ context.Context, key string, destination any) error
 		*(destination.(*domainflights.Snapshot)) = s.flights
 		return nil
 	default:
+		if s.records != nil {
+			for id, flight := range s.records {
+				if key == cache.KeyFlightRecord(id) {
+					*(destination.(*domainflights.Flight)) = flight
+					return nil
+				}
+			}
+		}
 		return cache.ErrMiss
 	}
+}
+
+func flightsFixture(lastCached time.Time, flights ...domainflights.Flight) (domainflights.Snapshot, map[string]domainflights.Flight) {
+	tracks := make(map[string]domainflights.FlightMotion, len(flights))
+	records := make(map[string]domainflights.Flight, len(flights))
+	for i := range flights {
+		if flights[i].FlightID == "" {
+			flights[i].FlightID = "c34118e7-cbdd-4e22-8751-0cda93e41d75"
+		}
+		id := flights[i].FlightID
+		tracks[id] = domainflights.MotionFromFlight(flights[i])
+		records[id] = flights[i]
+	}
+	return domainflights.Snapshot{LastCached: lastCached, Tracks: tracks}, records
 }
 
 func (cacheStub) SetJSON(context.Context, string, any, time.Duration) error { return nil }
@@ -76,332 +98,16 @@ func stringPtr(value string) *string {
 	return &value
 }
 
-func TestGetActiveFlightsReturnsCachedFlights(t *testing.T) {
-	lastCached := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
-	handler := testHandler(cacheStub{
-		names: []string{"casual"},
-		flights: domainflights.Snapshot{
-			LastCached: lastCached,
-			Result:     []domainflights.Flight{sampleFlight(domainflights.PilotStateNameInBackground), sampleFlight(domainflights.PilotStateNameActive)},
-		},
-	})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual", nil), defaultQuery("casual", nil))
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
-	}
-	var body struct {
-		Data struct {
-			AvailableFilters []struct {
-				Name    string          `json:"name"`
-				Type    string          `json:"type"`
-				Current json.RawMessage `json:"current"`
-				Options []string        `json:"options"`
-			} `json:"availableFilters"`
-			Result []domainflights.Flight `json:"result"`
-			Meta   struct {
-				RefreshIntervalMins int `json:"refreshIntervalMins"`
-			} `json:"meta"`
-			Pagination struct {
-				TotalLength int `json:"totalLength"`
-				PageLength  int `json:"pageLength"`
-				PageNumber  int `json:"pageNumber"`
-			} `json:"pagination"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if len(body.Data.AvailableFilters) != 3 {
-		t.Fatalf("filters = %#v", body.Data.AvailableFilters)
-	}
-	if body.Data.AvailableFilters[0].Name != "pilotState" || body.Data.AvailableFilters[0].Type != "multi" || len(body.Data.AvailableFilters[0].Options) == 0 {
-		t.Fatalf("pilotState filter = %#v", body.Data.AvailableFilters[0])
-	}
-	if body.Data.AvailableFilters[1].Name != "userName" || body.Data.AvailableFilters[1].Type != "string" || string(body.Data.AvailableFilters[1].Current) != `""` || body.Data.AvailableFilters[1].Options != nil {
-		t.Fatalf("userName filter = %#v", body.Data.AvailableFilters[1])
-	}
-	if body.Data.AvailableFilters[2].Name != "callSign" || body.Data.AvailableFilters[2].Type != "string" || string(body.Data.AvailableFilters[2].Current) != `""` || body.Data.AvailableFilters[2].Options != nil {
-		t.Fatalf("callSign filter = %#v", body.Data.AvailableFilters[2])
-	}
-	if len(body.Data.Result) != 2 || body.Data.Meta.RefreshIntervalMins != 1 {
-		t.Fatalf("body = %#v", body.Data)
-	}
-	if body.Data.Pagination.TotalLength != 2 || body.Data.Pagination.PageLength != domainflights.DefaultPageLength || body.Data.Pagination.PageNumber != domainflights.DefaultPageNumber {
-		t.Fatalf("pagination = %#v", body.Data.Pagination)
-	}
-}
-
-func TestGetActiveFlightsFiltersPilotState(t *testing.T) {
-	handler := testHandler(cacheStub{
-		names: []string{"casual"},
-		flights: domainflights.Snapshot{
-			LastCached: time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC),
-			Result:     []domainflights.Flight{sampleFlight(domainflights.PilotStateNameInBackground), sampleFlight(domainflights.PilotStateNameActive)},
-		},
-	})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual&pilotState=active", nil), defaultQuery("casual", []string{domainflights.PilotStateNameActive}))
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
-	}
-	var body struct {
-		Data struct {
-			Result []domainflights.Flight `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if len(body.Data.Result) != 1 || body.Data.Result[0].Normalized.PilotState != domainflights.PilotStateNameActive {
-		t.Fatalf("result = %#v", body.Data.Result)
-	}
-	var paginated struct {
-		Data struct {
-			Pagination struct {
-				TotalLength int `json:"totalLength"`
-				PageLength  int `json:"pageLength"`
-				PageNumber  int `json:"pageNumber"`
-			} `json:"pagination"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(recorder.Body.Bytes(), &paginated); err != nil {
-		t.Fatalf("decode pagination: %v", err)
-	}
-	if paginated.Data.Pagination.TotalLength != 1 || paginated.Data.Pagination.PageLength != domainflights.DefaultPageLength || paginated.Data.Pagination.PageNumber != domainflights.DefaultPageNumber {
-		t.Fatalf("pagination = %#v", paginated.Data.Pagination)
-	}
-}
-
-func TestGetActiveFlightsRejectsUnknownServer(t *testing.T) {
-	handler := testHandler(cacheStub{names: []string{"casual"}})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=expert", nil), defaultQuery("expert", nil))
-	if recorder.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d", recorder.Code)
-	}
-}
-
-func TestGetActiveFlightsRejectsInvalidPilotState(t *testing.T) {
-	handler := testHandler(cacheStub{names: []string{"casual"}})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual&pilotState=flying", nil), defaultQuery("casual", []string{"flying"}))
-	if recorder.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d", recorder.Code)
-	}
-}
-
-func TestGetActiveFlightsRequiresServerID(t *testing.T) {
-	handler := testHandler(cacheStub{})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active", nil), defaultQuery("", nil))
-	if recorder.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d", recorder.Code)
-	}
-}
-
-func TestGetActiveFlightsReturnsServiceUnavailableOnCacheMiss(t *testing.T) {
-	handler := testHandler(cacheStub{names: []string{"casual"}, err: cache.ErrMiss})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual", nil), defaultQuery("casual", nil))
-	if recorder.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d", recorder.Code)
-	}
-}
-
-func TestGetActiveFlightsRejectsSnapshotWithoutTimestamp(t *testing.T) {
-	handler := testHandler(cacheStub{names: []string{"casual"}, flights: domainflights.Snapshot{}})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual", nil), defaultQuery("casual", nil))
-	if recorder.Code != http.StatusInternalServerError {
-		t.Fatalf("status = %d", recorder.Code)
-	}
-}
-
-func TestGetActiveFlightsTreatsNamesReadError(t *testing.T) {
-	handler := testHandler(cacheStub{namesErr: errors.New("redis down")})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual", nil), defaultQuery("casual", nil))
-	if recorder.Code != http.StatusInternalServerError {
-		t.Fatalf("status = %d", recorder.Code)
-	}
-}
-
-func decodePagination(t *testing.T, recorder *httptest.ResponseRecorder) (resultCount, totalLength, pageLength, pageNumber int) {
-	t.Helper()
-	var body struct {
-		Data struct {
-			Result     []domainflights.Flight `json:"result"`
-			Pagination struct {
-				TotalLength int `json:"totalLength"`
-				PageLength  int `json:"pageLength"`
-				PageNumber  int `json:"pageNumber"`
-			} `json:"pagination"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	return len(body.Data.Result), body.Data.Pagination.TotalLength, body.Data.Pagination.PageLength, body.Data.Pagination.PageNumber
-}
-
-func TestGetActiveFlightsDefaultsToPageSizeFifty(t *testing.T) {
-	flights := make([]domainflights.Flight, 60)
-	for i := range flights {
-		flights[i] = sampleFlight(domainflights.PilotStateNameActive)
-	}
-	handler := testHandler(cacheStub{
-		names: []string{"casual"},
-		flights: domainflights.Snapshot{
-			LastCached: time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC),
-			Result:     flights,
-		},
-	})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual", nil), defaultQuery("casual", nil))
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
-	}
-	resultCount, totalLength, pageLength, pageNumber := decodePagination(t, recorder)
-	if resultCount != 50 || totalLength != 60 || pageLength != 50 || pageNumber != 1 {
-		t.Fatalf("resultCount=%d totalLength=%d pageLength=%d pageNumber=%d", resultCount, totalLength, pageLength, pageNumber)
-	}
-}
-
-func TestGetActiveFlightsPaginatesResults(t *testing.T) {
-	flights := make([]domainflights.Flight, 60)
-	for i := range flights {
-		flights[i] = sampleFlight(domainflights.PilotStateNameActive)
-		flights[i].Callsign = "flight-" + string(rune('A'+i%26))
-	}
-	handler := testHandler(cacheStub{
-		names: []string{"casual"},
-		flights: domainflights.Snapshot{
-			LastCached: time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC),
-			Result:     flights,
-		},
-	})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual&pageNumber=2&pageLength=10", nil), Query{ServerID: "casual", PageNumber: 2, PageLength: 10})
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
-	}
-	resultCount, totalLength, pageLength, pageNumber := decodePagination(t, recorder)
-	if resultCount != 10 || totalLength != 60 || pageLength != 10 || pageNumber != 2 {
-		t.Fatalf("resultCount=%d totalLength=%d pageLength=%d pageNumber=%d", resultCount, totalLength, pageLength, pageNumber)
-	}
-}
-
-func TestGetActiveFlightsReturnsEmptyPagePastEnd(t *testing.T) {
-	handler := testHandler(cacheStub{
-		names: []string{"casual"},
-		flights: domainflights.Snapshot{
-			LastCached: time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC),
-			Result:     []domainflights.Flight{sampleFlight(domainflights.PilotStateNameActive)},
-		},
-	})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual&pageNumber=3&pageLength=50", nil), Query{ServerID: "casual", PageNumber: 3, PageLength: 50})
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
-	}
-	resultCount, totalLength, pageLength, pageNumber := decodePagination(t, recorder)
-	if resultCount != 0 || totalLength != 1 || pageLength != 50 || pageNumber != 3 {
-		t.Fatalf("resultCount=%d totalLength=%d pageLength=%d pageNumber=%d", resultCount, totalLength, pageLength, pageNumber)
-	}
-}
-
-func TestGetActiveFlightsRejectsInvalidPage(t *testing.T) {
-	handler := testHandler(cacheStub{names: []string{"casual"}})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual&pageNumber=0", nil), Query{ServerID: "casual", PageNumber: 0, PageLength: domainflights.DefaultPageLength})
-	if recorder.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d", recorder.Code)
-	}
-}
-
-func TestGetActiveFlightsRejectsInvalidPageLength(t *testing.T) {
-	handler := testHandler(cacheStub{names: []string{"casual"}})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual&pageLength=0", nil), Query{ServerID: "casual", PageNumber: domainflights.DefaultPageNumber, PageLength: 0})
-	if recorder.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d", recorder.Code)
-	}
-}
-
-func TestGetActiveFlightsFiltersUserNameAndCallSign(t *testing.T) {
-	swiss := sampleFlight(domainflights.PilotStateNameActive)
-	swiss.Username = stringPtr("Hantder_Broncano_Jar")
-	swiss.Callsign = "Swiss 39 Heavy"
-	lufthansa := sampleFlight(domainflights.PilotStateNameActive)
-	lufthansa.Username = stringPtr("OtherPilot")
-	lufthansa.Callsign = "Lufthansa 123"
-	anonymous := sampleFlight(domainflights.PilotStateNameActive)
-	anonymous.Callsign = "N123AB"
-	handler := testHandler(cacheStub{
-		names: []string{"casual"},
-		flights: domainflights.Snapshot{
-			LastCached: time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC),
-			Result:     []domainflights.Flight{swiss, lufthansa, anonymous},
-		},
-	})
-
-	t.Run("userName", func(t *testing.T) {
-		query := defaultQuery("casual", nil)
-		query.UserName = "hantder"
-		recorder := httptest.NewRecorder()
-		handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual&userName=hantder", nil), query)
-		if recorder.Code != http.StatusOK {
-			t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
-		}
-		resultCount, totalLength, _, _ := decodePagination(t, recorder)
-		if resultCount != 1 || totalLength != 1 {
-			t.Fatalf("resultCount=%d totalLength=%d", resultCount, totalLength)
-		}
-		var body struct {
-			Data struct {
-				Result           []domainflights.Flight `json:"result"`
-				AvailableFilters []struct {
-					Name    string          `json:"name"`
-					Current json.RawMessage `json:"current"`
-					Options []string        `json:"options"`
-				} `json:"availableFilters"`
-			} `json:"data"`
-		}
-		if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
-			t.Fatalf("decode: %v", err)
-		}
-		if body.Data.Result[0].Callsign != "Swiss 39 Heavy" {
-			t.Fatalf("result = %#v", body.Data.Result)
-		}
-		if string(body.Data.AvailableFilters[1].Current) != `"hantder"` || body.Data.AvailableFilters[1].Options != nil {
-			t.Fatalf("userName filter = %#v", body.Data.AvailableFilters[1])
-		}
-	})
-
-	t.Run("callSign", func(t *testing.T) {
-		query := defaultQuery("casual", nil)
-		query.CallSign = "swiss"
-		recorder := httptest.NewRecorder()
-		handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual&callSign=swiss", nil), query)
-		if recorder.Code != http.StatusOK {
-			t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
-		}
-		resultCount, totalLength, _, _ := decodePagination(t, recorder)
-		if resultCount != 1 || totalLength != 1 {
-			t.Fatalf("resultCount=%d totalLength=%d", resultCount, totalLength)
-		}
-	})
-}
-
 func TestGetTrimmedActiveFlightsReturnsMarkersWithoutPaging(t *testing.T) {
 	lastCached := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
+	active := sampleFlight(domainflights.PilotStateNameActive)
+	bg := sampleFlight(domainflights.PilotStateNameInBackground)
+	bg.FlightID = "flight-bg"
+	snapshot, records := flightsFixture(lastCached, active, bg)
 	handler := testHandler(cacheStub{
-		names: []string{"casual"},
-		flights: domainflights.Snapshot{
-			LastCached: lastCached,
-			Result:     []domainflights.Flight{sampleFlight(domainflights.PilotStateNameActive), sampleFlight(domainflights.PilotStateNameInBackground)},
-		},
+		names:   []string{"casual"},
+		flights: snapshot,
+		records: records,
 	})
 	recorder := httptest.NewRecorder()
 	handler.GetTrimmedActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/trimmed?serverId=casual", nil), Query{ServerID: "casual"})
@@ -450,12 +156,11 @@ func TestGetTrimmedActiveFlightsReturnsMarkersWithoutPaging(t *testing.T) {
 func TestGetActiveFlightResolvesEncryptedMarker(t *testing.T) {
 	lastCached := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
 	flight := sampleFlight(domainflights.PilotStateNameActive)
+	snapshot, records := flightsFixture(lastCached, flight)
 	handler := testHandler(cacheStub{
-		names: []string{"casual"},
-		flights: domainflights.Snapshot{
-			LastCached: lastCached,
-			Result:     []domainflights.Flight{flight},
-		},
+		names:   []string{"casual"},
+		flights: snapshot,
+		records: records,
 	})
 	token, err := domainflights.NewTokens(testFlightSecret).Encode(domainflights.MarkerToken{
 		FlightID: flight.FlightID,

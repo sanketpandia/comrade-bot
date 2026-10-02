@@ -15,7 +15,7 @@ Single binary `cmd/politburo`. Jobs off unless `JOBS_ENABLED=true` and
 |---|---|
 | `GET /health/status` | Live |
 | `GET /api/v1/game/sessions/active` | Live, Redis |
-| `GET /api/v1/game/flights/active` | Live, Redis, filter + page |
+| `GET /api/v1/game/flights/active/{normalizedServerName}` | Live motion tracks from Redis, page |
 | `GET /api/v1/game/flights/active/trimmed` | Live, map markers, encrypted `flightId` |
 | `GET /api/v1/game/flights/active/detail` | Live, resolve encrypted id |
 | `POST /api/v1/signed-link` | Live, Discord user header, mints `/auth/login?token=` |

@@ -20,6 +20,9 @@ const (
 	// PrefixGameFlightsActive namespaces per-server active-flight snapshots.
 	PrefixGameFlightsActive = PrefixGameFlights + "active:"
 
+	// PrefixGameFlightsRecord namespaces per-flight enriched flight records.
+	PrefixGameFlightsRecord = PrefixGameFlights + "record:"
+
 	// PrefixAuth namespaces short-lived authentication cache entries.
 	PrefixAuth = "auth:"
 
@@ -47,4 +50,8 @@ func KeySession(sessionID string) string {
 
 func KeyActiveFlights(normalizedName string) string {
 	return PrefixGameFlightsActive + normalizedName
+}
+
+func KeyFlightRecord(flightID string) string {
+	return PrefixGameFlightsRecord + flightID
 }

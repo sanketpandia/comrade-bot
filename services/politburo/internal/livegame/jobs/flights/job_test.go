@@ -73,6 +73,16 @@ func (s *cacheStub) write(key string) (cacheWrite, bool) {
 	return cacheWrite{}, false
 }
 
+func (s *cacheStub) writesTo(key string) int {
+	count := 0
+	for _, write := range s.writes {
+		if write.key == key {
+			count++
+		}
+	}
+	return count
+}
+
 func withSessions(sessions []infiniteflight.Session) map[string]any {
 	return map[string]any{
 		cache.KeyActiveSessions: gamesessions.Snapshot{Result: sessions, LastCached: time.Now().UTC()},
@@ -101,7 +111,7 @@ func TestJobRunSkipsWhenSessionsMissing(t *testing.T) {
 	}
 }
 
-func TestJobRunCachesFullSnapshot(t *testing.T) {
+func TestJobRunCachesMotionSnapshot(t *testing.T) {
 	liveryID := "df597aaf-456c-4878-9d84-45201f2aae74"
 	store := &cacheStub{data: withSessions([]infiniteflight.Session{{ID: "session-1", Name: "Casual", NormalizedName: "casual"}})}
 	job := New(flightsClientStub{bySession: map[string][]infiniteflight.Flight{
@@ -124,15 +134,49 @@ func TestJobRunCachesFullSnapshot(t *testing.T) {
 		t.Fatalf("ttl = %s", write.ttl)
 	}
 	snapshot := write.value.(gameflights.Snapshot)
-	if !snapshot.LastCached.Equal(now) || len(snapshot.Result) != 1 {
+	if !snapshot.LastCached.Equal(now) || len(snapshot.Tracks) != 1 {
 		t.Fatalf("snapshot = %#v", snapshot)
 	}
-	flight := snapshot.Result[0]
-	if flight.AircraftName != "A350" || flight.LiveryName != "Swiss" || flight.Normalized.Speed != "526 kts" {
-		t.Fatalf("flight = %#v", flight)
+	motion := snapshot.Tracks["f1"]
+	if motion.Speed != 526 {
+		t.Fatalf("motion = %#v", motion)
 	}
-	if flight.PathSync == nil || flight.PathSync.FPLSyncRequired {
-		t.Fatalf("pathSync = %#v", flight.PathSync)
+	if store.writesTo(cache.KeyFlightRecord("f1")) != 0 {
+		t.Fatal("flight record should not be written while EnableFlightRecordWrites is false")
+	}
+}
+
+func TestJobRunFastPathOnSecondTick(t *testing.T) {
+	liveryID := "df597aaf-456c-4878-9d84-45201f2aae74"
+	upstream := infiniteflight.Flight{
+		FlightID: "f1", Callsign: "Swiss", Speed: 100, LiveryID: liveryID,
+		PilotState: gameflights.PilotStateInBackground, LastReport: "2026-08-15 05:09:53Z",
+	}
+	motion := gameflights.MotionFromUpstream(upstream)
+	prior := gameflights.Flight{
+		FlightID: "f1", Callsign: "Swiss", Speed: 100, AircraftName: "A350", LiveryName: "Swiss",
+		PathSync: &gameflights.PathSync{},
+	}
+	now := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
+	store := &cacheStub{data: withSessions([]infiniteflight.Session{{ID: "session-1", NormalizedName: "casual"}})}
+	store.data[cache.KeyActiveFlights("casual")] = gameflights.Snapshot{
+		LastCached: now.Add(-time.Minute),
+		Tracks:     map[string]gameflights.FlightMotion{"f1": motion},
+	}
+	store.data[cache.KeyFlightRecord("f1")] = prior
+
+	job := New(flightsClientStub{bySession: map[string][]infiniteflight.Flight{"session-1": {upstream}}}, store, testLookup(liveryID, "A350", "Swiss"), metrics.NewRegistry())
+	job.now = func() time.Time { return now }
+
+	if err := job.Run(context.Background()); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	write, ok := store.write(cache.KeyActiveFlights("casual"))
+	if !ok {
+		t.Fatal("missing motion snapshot write")
+	}
+	if len(write.value.(gameflights.Snapshot).Tracks) != 1 {
+		t.Fatalf("tracks = %#v", write.value)
 	}
 }
 
@@ -142,7 +186,7 @@ func TestJobRunContinuesAfterSessionError(t *testing.T) {
 		{ID: "good", NormalizedName: "casual"},
 	})}
 	job := New(flightsClientStub{
-		bySession: map[string][]infiniteflight.Flight{"good": {{FlightID: "f1", Callsign: "ok"}}},
+		bySession: map[string][]infiniteflight.Flight{"good": {{FlightID: "f1", Callsign: "ok", LastReport: "2026-08-15 05:09:53Z"}}},
 		errByID:   map[string]error{"bad": errors.New("upstream")},
 	}, store, gameliveries.NewLookup(nil), metrics.NewRegistry())
 	if err := job.Run(context.Background()); err != nil {
@@ -160,6 +204,7 @@ func TestJobRunWarnsAtCap(t *testing.T) {
 	upstream := make([]infiniteflight.Flight, gameflights.MaxFlightsPerRequest)
 	for i := range upstream {
 		upstream[i].FlightID = "flight-" + strconv.Itoa(i)
+		upstream[i].LastReport = "2026-08-15 05:09:53Z"
 	}
 	store := &cacheStub{data: withSessions([]infiniteflight.Session{{ID: "session-1", NormalizedName: "casual"}})}
 	job := New(flightsClientStub{bySession: map[string][]infiniteflight.Flight{"session-1": upstream}}, store, gameliveries.NewLookup(nil), metrics.NewRegistry())
@@ -171,7 +216,7 @@ func TestJobRunWarnsAtCap(t *testing.T) {
 		t.Fatalf("missing write")
 	}
 	snapshot := write.value.(gameflights.Snapshot)
-	if len(snapshot.Result) != gameflights.MaxFlightsPerRequest {
-		t.Fatalf("result length = %d", len(snapshot.Result))
+	if len(snapshot.Tracks) != gameflights.MaxFlightsPerRequest {
+		t.Fatalf("tracks length = %d", len(snapshot.Tracks))
 	}
 }

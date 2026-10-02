@@ -1,0 +1,19 @@
+type: object
+required: [flightId, callsign, latitude, longitude, speed]
+properties:
+  flightId:
+    type: string
+    format: uuid
+    description: Infinite Flight flight identifier.
+  callsign:
+    type: string
+    description: Aircraft callsign from the latest upstream poll.
+  latitude:
+    type: number
+    format: double
+  longitude:
+    type: number
+    format: double
+  speed:
+    type: integer
+    description: Ground speed in knots (rounded).

@@ -1,6 +1,7 @@
 package gameflights
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -29,6 +30,15 @@ type Query struct {
 	PageLength  int
 }
 
+// ActiveFlightTrack is a motion-only row from the per-server tracks snapshot.
+type ActiveFlightTrack struct {
+	FlightID  string  `json:"flightId"`
+	Callsign  string  `json:"callsign"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+	Speed     int     `json:"speed"`
+}
+
 type TrimmedFlight struct {
 	FlightID  string  `json:"flightId"`
 	Callsign  string  `json:"callsign"`
@@ -41,37 +51,68 @@ func NewHandler(cacheStore cache.Store, secret []byte, metricsRegistry *metrics.
 	return &Handler{cache: cacheStore, tokens: domainflights.NewTokens(secret), metrics: metricsRegistry}
 }
 
-func (h *Handler) GetActiveFlights(w http.ResponseWriter, r *http.Request, query Query) {
-	if query.PageNumber < 1 {
-		response.WriteError(w, http.StatusBadRequest, "INVALID_QUERY_FILTER", "pageNumber must be at least 1")
-		return
-	}
-	if query.PageLength < 1 {
-		response.WriteError(w, http.StatusBadRequest, "INVALID_QUERY_FILTER", "pageLength must be at least 1")
+func (h *Handler) GetActiveFlights(w http.ResponseWriter, r *http.Request, normalizedServerName string) {
+	if normalizedServerName == "" {
+		response.WriteError(w, http.StatusBadRequest, "INVALID_QUERY_FILTER", "normalizedServerName is required")
 		return
 	}
 
-	loaded, ok := h.loadFiltered(w, r, query)
+	if !h.knownServer(r, w, normalizedServerName) {
+		return
+	}
+
+	pageNumber, pageLength, err := domainflights.ParsePaginationQuery(r.URL.Query())
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "INVALID_QUERY_FILTER", err.Error())
+		return
+	}
+
+	snapshot, ok := h.readSnapshot(w, r, normalizedServerName)
 	if !ok {
 		return
 	}
 
-	totalLength := len(loaded.result)
-	paged := domainflights.Paginate(loaded.result, query.PageNumber, query.PageLength)
-	h.logFilterUsage("active", query, loaded.selected, totalLength)
+	tracks := activeTracksFromSnapshot(snapshot)
+	filtered := applyActiveFlightFilters(tracks)
+	totalLength := len(filtered)
+	paged := domainflights.Paginate(filtered, pageNumber, pageLength)
 
-	response.WriteJSON(w, http.StatusOK, cachedresponse.Response[domainflights.Flight]{
-		Data: cachedresponse.Data[domainflights.Flight]{
-			AvailableFilters: loaded.filters,
+	response.WriteJSON(w, http.StatusOK, cachedresponse.Response[ActiveFlightTrack]{
+		Data: cachedresponse.Data[ActiveFlightTrack]{
+			AvailableFilters: []cachedresponse.Filter{},
 			Result:           paged,
-			Meta:             loaded.meta,
+			Meta: cachedresponse.Meta{
+				LastCached:          snapshot.LastCached,
+				RefreshIntervalMins: int(domainflights.RefreshInterval / time.Minute),
+			},
 			Pagination: &cachedresponse.Pagination{
 				TotalLength: totalLength,
-				PageLength:  query.PageLength,
-				PageNumber:  query.PageNumber,
+				PageLength:  pageLength,
+				PageNumber:  pageNumber,
 			},
 		},
 	})
+}
+
+func activeTracksFromSnapshot(snapshot domainflights.Snapshot) []ActiveFlightTrack {
+	ids := domainflights.SortedTrackFlightIDs(snapshot.Tracks)
+	out := make([]ActiveFlightTrack, 0, len(ids))
+	for _, id := range ids {
+		motion := snapshot.Tracks[id]
+		out = append(out, ActiveFlightTrack{
+			FlightID:  id,
+			Callsign:  motion.Callsign,
+			Latitude:  motion.Latitude,
+			Longitude: motion.Longitude,
+			Speed:     motion.Speed,
+		})
+	}
+	return out
+}
+
+// applyActiveFlightFilters is a stub until filter metadata and query params are wired.
+func applyActiveFlightFilters(tracks []ActiveFlightTrack) []ActiveFlightTrack {
+	return tracks
 }
 
 func (h *Handler) GetTrimmedActiveFlights(w http.ResponseWriter, r *http.Request, query Query) {
@@ -122,23 +163,24 @@ func (h *Handler) GetActiveFlight(w http.ResponseWriter, r *http.Request, flight
 	if !ok {
 		return
 	}
-	for _, flight := range snapshot.Result {
-		if flight.FlightID != token.FlightID {
-			continue
-		}
-		slog.Info("active flight detail", "serverId", token.ServerID)
-		response.WriteJSON(w, http.StatusOK, map[string]any{
-			"data": map[string]any{
-				"result": flight,
-				"meta": cachedresponse.Meta{
-					LastCached:          snapshot.LastCached,
-					RefreshIntervalMins: int(domainflights.RefreshInterval / time.Minute),
-				},
-			},
-		})
+	if !trackContains(snapshot.Tracks, token.FlightID) {
+		response.WriteError(w, http.StatusNotFound, "FLIGHT_NOT_FOUND", "flight is not in the current snapshot")
 		return
 	}
-	response.WriteError(w, http.StatusNotFound, "FLIGHT_NOT_FOUND", "flight is not in the current snapshot")
+	flight, ok := h.loadFlightRecord(w, r, token.FlightID)
+	if !ok {
+		return
+	}
+	slog.Info("active flight detail", "serverId", token.ServerID)
+	response.WriteJSON(w, http.StatusOK, map[string]any{
+		"data": map[string]any{
+			"result": flight,
+			"meta": cachedresponse.Meta{
+				LastCached:          snapshot.LastCached,
+				RefreshIntervalMins: int(domainflights.RefreshInterval / time.Minute),
+			},
+		},
+	})
 }
 
 type loadedFlights struct {
@@ -181,9 +223,9 @@ func (h *Handler) loadFiltered(w http.ResponseWriter, r *http.Request, query Que
 		return loadedFlights{}, false
 	}
 
-	result := snapshot.Result
-	if result == nil {
-		result = make([]domainflights.Flight, 0)
+	result, ok := h.loadFlightsFromTracks(r.Context(), w, snapshot)
+	if !ok {
+		return loadedFlights{}, false
 	}
 	if len(selected) > 0 || query.UserName != "" || query.CallSign != "" {
 		filtered := make([]domainflights.Flight, 0, len(result))
@@ -233,10 +275,50 @@ func (h *Handler) readSnapshot(w http.ResponseWriter, r *http.Request, serverID 
 		response.WriteError(w, http.StatusInternalServerError, "ACTIVE_FLIGHTS_CACHE_UNAVAILABLE", "active flights cache is unavailable")
 		return domainflights.Snapshot{}, false
 	}
-	if snapshot.Result == nil {
-		snapshot.Result = make([]domainflights.Flight, 0)
+	if snapshot.Tracks == nil {
+		snapshot.Tracks = make(map[string]domainflights.FlightMotion)
 	}
 	return snapshot, true
+}
+
+func trackContains(tracks map[string]domainflights.FlightMotion, flightID string) bool {
+	if tracks == nil {
+		return false
+	}
+	_, ok := tracks[flightID]
+	return ok
+}
+
+func (h *Handler) loadFlightRecord(w http.ResponseWriter, r *http.Request, flightID string) (domainflights.Flight, bool) {
+	flight := domainflights.Flight{}
+	if err := h.cache.GetJSON(r.Context(), cache.KeyFlightRecord(flightID), &flight); err != nil {
+		if errors.Is(err, cache.ErrMiss) {
+			response.WriteError(w, http.StatusNotFound, "FLIGHT_NOT_FOUND", "flight record is not in the cache")
+			return domainflights.Flight{}, false
+		}
+		slog.Error("read flight record cache", "error", err, "flightId", flightID)
+		response.WriteError(w, http.StatusInternalServerError, "ACTIVE_FLIGHTS_CACHE_UNAVAILABLE", "active flights cache is unavailable")
+		return domainflights.Flight{}, false
+	}
+	return flight, true
+}
+
+func (h *Handler) loadFlightsFromTracks(ctx context.Context, w http.ResponseWriter, snapshot domainflights.Snapshot) ([]domainflights.Flight, bool) {
+	ids := domainflights.SortedTrackFlightIDs(snapshot.Tracks)
+	result := make([]domainflights.Flight, 0, len(ids))
+	for _, id := range ids {
+		flight := domainflights.Flight{}
+		if err := h.cache.GetJSON(ctx, cache.KeyFlightRecord(id), &flight); err != nil {
+			if errors.Is(err, cache.ErrMiss) {
+				continue
+			}
+			slog.Error("read flight record cache", "error", err, "flightId", id)
+			response.WriteError(w, http.StatusInternalServerError, "ACTIVE_FLIGHTS_CACHE_UNAVAILABLE", "active flights cache is unavailable")
+			return nil, false
+		}
+		result = append(result, flight)
+	}
+	return result, true
 }
 
 func flightFilters(selected []string, userName, callSign string) []cachedresponse.Filter {

@@ -8,13 +8,16 @@ const (
 	RefreshInterval      = time.Minute
 	GameActiveFlightTTL  = 3 * 24 * time.Hour
 	MaxFlightsPerRequest = 5000
+	MaxPageLength        = 5000
 	DefaultPageLength    = 50
 	DefaultPageNumber    = 1
+	FPLSyncInterval      = 5 * time.Minute
 	lastReportLayout     = "2006-01-02 15:04:05Z07:00"
 )
 
 type PathSync struct {
-	FPLSyncRequired bool `json:"fplSyncRequired"`
+	FPLSyncRequired bool      `json:"fplSyncRequired"`
+	LastFPLSyncAt   time.Time `json:"lastFPLSyncAt,omitempty"`
 }
 
 type Normalized struct {
@@ -50,7 +53,15 @@ type Flight struct {
 	PathSync            *PathSync  `json:"pathSync,omitempty"`
 }
 
+type FlightMotion struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+	Speed     int     `json:"speed"`
+	Callsign  string  `json:"callsign"`
+}
+
+// Snapshot is the per-server motion index written to game:flights:active:<server>.
 type Snapshot struct {
-	Result     []Flight  `json:"result"`
-	LastCached time.Time `json:"lastCached"`
+	Tracks     map[string]FlightMotion `json:"tracks,omitempty"`
+	LastCached time.Time               `json:"lastCached"`
 }

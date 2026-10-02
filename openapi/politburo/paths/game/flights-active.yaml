@@ -1,59 +1,41 @@
 get:
   operationId: getActiveFlights
-  summary: Read cached active Infinite Flight flights for a server
+  summary: Read cached active flight motion tracks for a server
   tags: [Game]
   security:
     - ApiKeyAuth: []
     - CookieAuth: []
   parameters:
-    - name: serverId
-      in: query
+    - name: normalizedServerName
+      in: path
       required: true
-      description: Normalized session name (for example casual).
-      schema:
-        type: string
-    - name: pilotState
-      in: query
-      style: form
-      explode: true
-      description: Restrict results to one or more pilot states.
-      schema:
-        type: array
-        items:
-          $ref: "../../components/schemas/PilotStateName.yaml"
-    - name: userName
-      in: query
-      description: Restrict results to flights whose username contains this value.
-      schema:
-        type: string
-    - name: callSign
-      in: query
-      description: Restrict results to flights whose callsign contains this value.
+      description: Normalized Infinite Flight session name (for example casual).
       schema:
         type: string
     - name: pageNumber
       in: query
-      description: 1-based page of filtered flights to return.
+      description: 1-based page of flight tracks to return.
       schema:
         type: integer
         minimum: 1
         default: 1
     - name: pageLength
       in: query
-      description: Number of flights per page.
+      description: Number of flights per page (max 5000).
       schema:
         type: integer
         minimum: 1
+        maximum: 5000
         default: 50
   responses:
     "200":
-      description: The latest cached active flights for the server
+      description: The latest cached motion tracks for active flights on the server
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ActiveFlightsResponse.yaml"
     "400":
-      description: An invalid filter value was supplied
+      description: An invalid query value was supplied
       content:
         application/json:
           schema:

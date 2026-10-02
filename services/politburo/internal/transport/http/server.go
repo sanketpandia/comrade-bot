@@ -13,7 +13,6 @@ import (
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	"infinite-experiment/politburo/internal/app"
-	domainflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/transport/http/api/gameflights"
 	"infinite-experiment/politburo/internal/transport/http/api/gamesessions"
 	"infinite-experiment/politburo/internal/transport/http/api/health"
@@ -158,8 +157,8 @@ func (h apiHandler) GetActiveSessions(w stdhttp.ResponseWriter, r *stdhttp.Reque
 	h.sessions.GetActiveSessions(w, r)
 }
 
-func (h apiHandler) GetActiveFlights(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.GetActiveFlightsParams) {
-	h.flights.GetActiveFlights(w, r, flightsQuery(params.ServerId, params.PilotState, params.UserName, params.CallSign, pageValue(params.PageNumber, domainflights.DefaultPageNumber), pageValue(params.PageLength, domainflights.DefaultPageLength)))
+func (h apiHandler) GetActiveFlights(w stdhttp.ResponseWriter, r *stdhttp.Request, normalizedServerName string, _ politburoapi.GetActiveFlightsParams) {
+	h.flights.GetActiveFlights(w, r, normalizedServerName)
 }
 
 func (h apiHandler) GetTrimmedActiveFlights(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.GetTrimmedActiveFlightsParams) {
@@ -236,13 +235,6 @@ func godRouteMiddleware(application *app.App) []func(stdhttp.Handler) stdhttp.Ha
 		appmiddleware.RequireDiscordBotContext(),
 		appmiddleware.RequirePlatformOperator(application.Config.PlatformOperatorDiscordIDs),
 	}
-}
-
-func pageValue(value *int, fallback int) int {
-	if value == nil {
-		return fallback
-	}
-	return *value
 }
 
 func stringValue(value *string) string {
