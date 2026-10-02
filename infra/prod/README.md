@@ -6,6 +6,8 @@ Application images: `ghcr.io/<github-owner>/politburo:<sha>` and `comrade-bot:<s
 
 **Fresh Ubuntu 22.04 VPS:** [`docs/infra/ubuntu-22.04-production-bootstrap.md`](../../docs/infra/ubuntu-22.04-production-bootstrap.md).
 
+**Day-2 ops (secrets, migrations, restarts, when to `git pull`):** [`docs/infra/prod-ops.md`](../../docs/infra/prod-ops.md).
+
 ## k3s (primary)
 
 Manifests and runbook: **[`k8s/README.md`](k8s/README.md)**.
@@ -51,13 +53,7 @@ cp env/*.env.example → env/*.env   # fill secrets
 
 ## Day-to-day (k3s)
 
-| Task | Command |
-|------|---------|
-| Rollout (automatic) | Push to `main` (path-filtered workflows) |
-| Manual image rollout | `kubectl -n ie-apps set image deployment/politburo politburo=ghcr.io/OWNER/politburo:SHA` |
-| Manifest apply | `bash k8s/apply.sh` or workflow **Deploy k8s manifests** |
-| Reload Caddy | `sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy` |
-| Cluster status | `kubectl -n ie-apps get deploy,pods` |
+See **[`docs/infra/prod-ops.md`](../../docs/infra/prod-ops.md)** for secrets, migrations, restarts, and when the server clone needs `git pull`. App image rollouts on `main` are automatic; env files on the VPS stay local and gitignored (`infra/prod/env/*.env`).
 
 ## Public endpoints
 
