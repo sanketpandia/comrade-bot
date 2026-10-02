@@ -1,0 +1,11 @@
+type: string
+description: Machine-readable error code for POST /api/v1/servers failures.
+enum:
+  - INVALID_REQUEST
+  - INVALID_VA_CODE
+  - USER_NOT_FOUND
+  - UNAUTHORIZED
+  - MISSING_DISCORD_CONTEXT
+  - SERVER_ALREADY_VA
+  - VA_CODE_TAKEN
+  - INIT_FAILED

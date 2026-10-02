@@ -5,16 +5,19 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
+
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"infinite-experiment/politburo/internal/community/users"
 )
 
 var (
-	ErrUserNotFound       = errors.New("user not found")
-	ErrServerAlreadyVA    = errors.New("server already registered")
-	ErrCodeTaken          = errors.New("va code taken")
-	ErrInvalidVACode      = errors.New("invalid va code")
+	ErrUserNotFound    = errors.New("user not found")
+	ErrServerAlreadyVA = errors.New("server already registered")
+	ErrCodeTaken       = errors.New("va code taken")
+	ErrInvalidVACode   = errors.New("invalid va code")
 )
 
 type Service struct {
@@ -35,17 +38,23 @@ type InitInput struct {
 }
 
 type InitResult struct {
-	VA           VirtualAirline
+	VA            VirtualAirline
 	SetupRequired bool
 }
 
-func (s *Service) InitServer(ctx context.Context, input InitInput) (*InitResult, error) {
-	code := strings.TrimSpace(input.VACode)
-	if len(code) < 2 || len(code) > 30 {
+func (s *Service) InitServer(ctx context.Context, input InitInput) (result *InitResult, err error) {
+	discordUserID := strings.TrimSpace(input.DiscordUserID)
+	discordServerID := strings.TrimSpace(input.DiscordServerID)
+	code := strings.ToUpper(strings.TrimSpace(input.VACode))
+	defer func() {
+		logVAServerInit(ctx, discordUserID, discordServerID, code, result, err)
+	}()
+
+	if !isValidVACode(code) {
 		return nil, ErrInvalidVACode
 	}
 
-	user, err := s.users.GetByDiscordID(ctx, input.DiscordUserID)
+	user, err := s.users.GetByDiscordID(ctx, discordUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +62,7 @@ func (s *Service) InitServer(ctx context.Context, input InitInput) (*InitResult,
 		return nil, ErrUserNotFound
 	}
 
-	existingServer, err := s.vas.GetByDiscordServerID(ctx, input.DiscordServerID)
+	existingServer, err := s.vas.GetByDiscordServerID(ctx, discordServerID)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +93,7 @@ func (s *Service) InitServer(ctx context.Context, input InitInput) (*InitResult,
 INSERT INTO public.virtual_airlines (name, code, discord_server_id, is_active)
 VALUES ($1, $2, $3, true)
 RETURNING id, name, code, discord_server_id, is_active, created_at, updated_at`,
-		name, code, input.DiscordServerID,
+		name, code, discordServerID,
 	)
 	va, err := scanVA(vaRow)
 	if err != nil {
@@ -108,4 +117,55 @@ VALUES ($1, $2, 'administrator'::public.va_role, true)`,
 
 func (s *Service) RebindDiscordServer(ctx context.Context, vaID, newDiscordServerID string) error {
 	return s.vas.RebindDiscordServer(ctx, vaID, newDiscordServerID)
+}
+
+func isValidVACode(code string) bool {
+	if len(code) < 3 || len(code) > 5 {
+		return false
+	}
+	for _, r := range code {
+		if (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func logVAServerInit(ctx context.Context, discordUserID, discordServerID, vaCode string, result *InitResult, err error) {
+	args := []any{
+		"discord_user_id", discordUserID,
+		"discord_server_id", discordServerID,
+		"va_code", vaCode,
+		"result", vaServerInitResult(result, err),
+	}
+	if requestID := chimiddleware.GetReqID(ctx); requestID != "" {
+		args = append(args, "request_id", requestID)
+	}
+	if result != nil {
+		args = append(args, "va_id", result.VA.ID)
+	}
+	if err == nil || vaServerInitResult(result, err) != "failed" {
+		slog.Info("va_server_init", args...)
+		return
+	}
+	args = append(args, "error", err)
+	slog.Error("va_server_init", args...)
+}
+
+func vaServerInitResult(result *InitResult, err error) string {
+	if err == nil && result != nil {
+		return "created"
+	}
+	switch {
+	case errors.Is(err, ErrUserNotFound):
+		return "user_not_found"
+	case errors.Is(err, ErrServerAlreadyVA):
+		return "server_already_va"
+	case errors.Is(err, ErrCodeTaken):
+		return "code_taken"
+	case errors.Is(err, ErrInvalidVACode):
+		return "invalid_code"
+	default:
+		return "failed"
+	}
 }

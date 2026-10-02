@@ -9,7 +9,6 @@ import {
     InitRegistrationResponse, 
     ApiResponse, 
     FlightHistoryPage, 
-    InitServerResponse, 
     LiveFlightRecord, 
     UserDetailsData, 
     PilotStatsData, 
@@ -170,54 +169,34 @@ export class ApiService {
         meta: MetaInfo,
         code: string
     ): Promise<InitServerResult> {
+        const apiPath = "/api/v1/servers";
         try {
-            const res = await fetch(`${getPolitburoApiUrl()}/api/v1/server/init`, {
-                method: "POST",
-                headers: generateRegistrationMetaHeaders(meta),
-                body: JSON.stringify({
-                    va_code: code,
-                }),
-            });
-
-            if (res.status === 401) {
-                const message = await res.text(); // plain-text body
-                throw new UnauthorizedError(message || "Unauthorized");
-            }
-
-            if (res.status === 403) {
-                const body = await res.json() as ApiResponse<any>;
-                const errorCode = body.error?.code;
-                throw new PermissionDeniedError(`${errorCode ? `${errorCode}: ` : ""}${body.error?.message || body.message || "Forbidden"}`);
-            }
-
-            if (res.status === 400) {
-                const body = await res.json() as any;
-                const errorCode = body.error?.code;
-                const errorMsg = body.error?.message || body.message || "You must register as a user before initializing a server";
-                throw new Error(`${errorCode ? `${errorCode}: ` : ""}${errorMsg}`);
-            }
-
-            if (res.status === 409) {
-                const body = await res.json() as any;
-                const errorCode = body.error?.code;
-                const errorMsg = body.error?.message || body.message || "This Discord server is already registered as a VA";
-                throw new Error(`${errorCode ? `${errorCode}: ` : ""}${errorMsg}`);
-            }
-
-            if (!res.ok) {
-                throw new Error(`Failed to initialize server: ${res.status} ${res.statusText}`);
-            }
-
-            const response: ApiResponse<InitServerResult> = await res.json() as ApiResponse<InitServerResult>;
-
-            const result = unwrapApiData<InitServerResult>(response as Record<string, unknown>);
-            if (!result) {
-                throw new Error("No data received in API response");
-            }
-            return result;
+            const client = getPolitburoClient(getPolitburoApiUrl());
+            const result = await client.createServer(meta, { va_code: code });
+            return {
+                success: result.success,
+                message: result.message,
+                va_code: result.va_code,
+                setup_required: result.setup_required,
+            };
         } catch (err) {
-            // network/CORS/JSON issues
-            console.error("[ApiService.initiateServerRegistration]", err);
+            if (PolitburoApiError.isPolitburoApiError(err)) {
+                this.logUpstreamAPIFailure(
+                    "initiate_server_registration",
+                    "POST",
+                    apiPath,
+                    err.httpStatus,
+                    String(err.code),
+                    err,
+                );
+                throw err;
+            }
+            logger.error("api_request_failed", {
+                operation: "initiate_server_registration",
+                method: "POST",
+                api_path: apiPath,
+                ...errorFields(err),
+            });
             throw err;
         }
     }

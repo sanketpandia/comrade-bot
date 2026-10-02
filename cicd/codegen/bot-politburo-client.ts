@@ -15,9 +15,12 @@ import { getPolitburoApiKey, getPolitburoApiUrl } from "../helpers/utils";
 
 export type CreateUserRequest = components["schemas"]["CreateUserRequest"];
 export type CreateUserData = components["schemas"]["CreateUserData"];
+export type CreateServerRequest = components["schemas"]["CreateServerRequest"];
+export type CreateServerData = components["schemas"]["CreateServerData"];
 
 export type PolitburoClient = {
     createUser(meta: MetaInfo, body: CreateUserRequest): Promise<CreateUserData>;
+    createServer(meta: MetaInfo, body: CreateServerRequest): Promise<CreateServerData>;
 };
 
 function normalizeBaseUrl(baseUrl: string): string {
@@ -58,6 +61,34 @@ export function createPolitburoClient(
             }
 
             const unwrapped = unwrapApiData<CreateUserData>(
+                data as Record<string, unknown> | undefined,
+            );
+            if (!unwrapped) {
+                throw new Error("No data received in API response");
+            }
+            return unwrapped;
+        },
+
+        async createServer(meta: MetaInfo, body: CreateServerRequest): Promise<CreateServerData> {
+            const { data, error, response } = await client.POST("/api/v1/servers", {
+                params: {
+                    header: {
+                        "X-Discord-User-Id": meta.userId,
+                        "X-Discord-Server-Id": meta.discordId,
+                    },
+                },
+                body,
+                headers: {
+                    "X-API-Key": getPolitburoApiKey(),
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if (!response.ok) {
+                throw PolitburoApiError.fromBody(response.status, error ?? data);
+            }
+
+            const unwrapped = unwrapApiData<CreateServerData>(
                 data as Record<string, unknown> | undefined,
             );
             if (!unwrapped) {

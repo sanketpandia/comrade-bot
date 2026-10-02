@@ -243,7 +243,7 @@
             "type": "loki",
             "uid": "P8E80F9AEF21F6940"
           },
-          "expr": "{container_name=\"politburo\"} | json | endpoint=~\".*/server/init\"",
+          "expr": "{container_name=\"politburo\"} | json | endpoint=~\".*/api/v1/servers\"",
           "refId": "A"
         }
       ],

@@ -1,0 +1,16 @@
+type: object
+required: [success, message, va_code, setup_required, va_id]
+properties:
+  success:
+    type: boolean
+  message:
+    type: string
+  va_code:
+    type: string
+  setup_required:
+    type: boolean
+    description: True when Vizburo basic setup is still required.
+  va_id:
+    type: string
+    format: uuid
+    description: Internal virtual airline id.

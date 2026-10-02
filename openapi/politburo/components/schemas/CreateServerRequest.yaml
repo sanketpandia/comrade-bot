@@ -1,0 +1,11 @@
+type: object
+required: [va_code]
+properties:
+  va_code:
+    type: string
+    pattern: ^[A-Z0-9]{3,5}$
+    description: Short unique identifier for the virtual airline (e.g. IFE, DAL).
+  display_name:
+    type: string
+    maxLength: 100
+    description: Optional display name; defaults to va_code when omitted.

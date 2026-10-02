@@ -32,6 +32,8 @@ paths:
     $ref: "./paths/auth/signed-link.yaml"
   /api/v1/users:
     $ref: "./paths/users/create.yaml"
+  /api/v1/servers:
+    $ref: "./paths/servers/create.yaml"
   /api/v1/admin/verify-god:
     $ref: "./paths/admin/verify-god.yaml"
   /api/v1/admin/users/ban:
@@ -105,6 +107,16 @@ components:
       $ref: "./components/schemas/CreateUserData.yaml"
     CreateUserResponse:
       $ref: "./components/schemas/CreateUserResponse.yaml"
+    CreateServerErrorCode:
+      $ref: "./components/schemas/CreateServerErrorCode.yaml"
+    CreateServerErrorResponse:
+      $ref: "./components/schemas/CreateServerErrorResponse.yaml"
+    CreateServerRequest:
+      $ref: "./components/schemas/CreateServerRequest.yaml"
+    CreateServerData:
+      $ref: "./components/schemas/CreateServerData.yaml"
+    CreateServerResponse:
+      $ref: "./components/schemas/CreateServerResponse.yaml"
     VerifyGodData:
       $ref: "./components/schemas/VerifyGodData.yaml"
     VerifyGodResponse:

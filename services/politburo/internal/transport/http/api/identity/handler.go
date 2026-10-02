@@ -152,35 +152,38 @@ func (h *Handler) Join(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) InitServer(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateServer(w http.ResponseWriter, r *http.Request, _ politburoapi.CreateServerParams) {
 	claims, ok := auth.ClaimsFromContext(r.Context())
 	if !ok {
 		response.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
 		return
 	}
-	var body initServerBody
+	var body politburoapi.CreateServerRequest
 	if err := decodeJSON(r, &body); err != nil {
 		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
-	code := firstNonEmpty(body.VACode, body.VaCode)
+	displayName := ""
+	if body.DisplayName != nil {
+		displayName = strings.TrimSpace(*body.DisplayName)
+	}
 	result, err := h.vaInit.InitServer(r.Context(), virtualairlines.InitInput{
 		DiscordUserID:   claims.DsUserID,
 		DiscordServerID: claims.DsServerID,
-		VACode:          code,
-		DisplayName:     body.DisplayName,
+		VACode:          strings.TrimSpace(body.VaCode),
+		DisplayName:     displayName,
 	})
 	if err != nil {
-		writeInitServerError(w, err)
+		writeCreateServerError(w, err)
 		return
 	}
 	response.WriteJSON(w, http.StatusOK, map[string]any{
 		"data": map[string]any{
-			"success":         true,
-			"message":         "Virtual airline initialized",
-			"va_code":         result.VA.Code,
-			"setup_required":  result.SetupRequired,
-			"va_id":           result.VA.ID,
+			"success":        true,
+			"message":        "Virtual airline initialized",
+			"va_code":        result.VA.Code,
+			"setup_required": result.SetupRequired,
+			"va_id":          result.VA.ID,
 		},
 	})
 }
@@ -289,12 +292,6 @@ type joinBody struct {
 	Callsign string `json:"callsign"`
 }
 
-type initServerBody struct {
-	VACode      string `json:"va_code"`
-	VaCode      string `json:"vaCode"`
-	DisplayName string `json:"display_name"`
-}
-
 type occupiedIFCBody struct {
 	ClaimedIFC string `json:"claimedIfc"`
 	ClaimedIfc string `json:"claimed_ifc"`
@@ -357,7 +354,7 @@ func writeJoinError(w http.ResponseWriter, err error) {
 	}
 }
 
-func writeInitServerError(w http.ResponseWriter, err error) {
+func writeCreateServerError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, virtualairlines.ErrUserNotFound):
 		response.WriteError(w, http.StatusBadRequest, "USER_NOT_FOUND", "You must register as a user before initializing a server")

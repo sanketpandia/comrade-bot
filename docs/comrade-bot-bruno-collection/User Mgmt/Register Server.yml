@@ -1,0 +1,29 @@
+info:
+  name: Register Server
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{POLITBURO_BASE_URL}}/api/v1/servers"
+  headers:
+    - name: accept
+      value: application/json
+      disabled: true
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "va_code": "TEST",
+        "display_name": "Test VA"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
