@@ -19,8 +19,9 @@ On **pull requests** (GitHub-hosted `ubuntu-latest`):
 - Politburo: Docker `ci` target on [`Dockerfile.dev`](../../../services/politburo/Dockerfile.dev), plus a non-pushing build of the production [`Dockerfile`](../../../services/politburo/Dockerfile).
 - Comrade-bot: `npm ci`, `npm run api:generate`, `npm test`, `npm run build`, `npm run commands:validate`, plus a non-pushing production image build.
 
-On **push to `main`** (self-hosted prod runner): build and push GHCR images only
-for affected services, then roll out deployments. No test jobs on `main`.
+On **push to `main`**: build and push GHCR images on GitHub-hosted runners
+(only for affected services), then roll out deployments on the self-hosted prod
+runner. No test jobs on `main`.
 
 Images are published as `ghcr.io/<owner>/politburo:<git-sha>` and
 `ghcr.io/<owner>/comrade-bot:<git-sha>` (with a floating `:main` tag).
