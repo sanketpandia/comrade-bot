@@ -37,7 +37,7 @@ jobs:
         if: always() && (failure() || success())
         uses: ./.github/actions/discord-notify
         with:
-          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL || secrets.WEBHOOK_URL || vars.DISCORD_WEBHOOK_URL || vars.WEBHOOK_URL }}
           title: k8s manifest apply (lalquila)
           status: ${{ job.status }}
           job-name: apply
