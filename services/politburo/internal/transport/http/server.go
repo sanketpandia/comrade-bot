@@ -86,7 +86,7 @@ func (s *Server) router() stdhttp.Handler {
 
 	healthHandler := health.NewHandler(s.app.DB, s.app.Cache, s.app.Config.Jobs.Enabled, s.app.StartedAt)
 	sessionsHandler := gamesessions.NewHandler(s.app.Cache)
-	flightsHandler := gameflights.NewHandler(s.app.Cache, s.app.Config.Auth.SignedLinkSecret)
+	flightsHandler := gameflights.NewHandler(s.app.Cache, s.app.Config.Auth.SignedLinkSecret, s.app.Metrics)
 	signedLinkHandler := signedlink.NewHandler(s.app.Users, s.app.Tickets, s.app.Resolver, s.app.VALookup, s.app.Config.Auth.UIBaseURL)
 	identityHandler := identity.NewHandler(
 		s.app.Registration, s.app.Membership, s.app.VAInit, s.app.Status,
@@ -154,8 +154,8 @@ func (h apiHandler) GetHealthStatus(w stdhttp.ResponseWriter, r *stdhttp.Request
 	h.health.GetStatus(w, r)
 }
 
-func (h apiHandler) GetActiveSessions(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.GetActiveSessionsParams) {
-	h.sessions.GetActiveSessions(w, r, params.History)
+func (h apiHandler) GetActiveSessions(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.sessions.GetActiveSessions(w, r)
 }
 
 func (h apiHandler) GetActiveFlights(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.GetActiveFlightsParams) {

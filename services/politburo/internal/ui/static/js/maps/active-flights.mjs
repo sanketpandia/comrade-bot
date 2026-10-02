@@ -102,7 +102,7 @@ async function loadSessions() {
     if (!value) continue;
     const option = document.createElement('option');
     option.value = value;
-    option.textContent = session.name || value;
+    option.textContent = value.replaceAll('_', ' ');
     serverSelect.append(option);
   }
   if (serverSelect.options.length === 0) {

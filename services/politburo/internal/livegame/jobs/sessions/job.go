@@ -33,15 +33,6 @@ func (j *Job) Run(ctx context.Context) error {
 		return fmt.Errorf("refresh sessions: %w", err)
 	}
 
-	var existingSnapshot gamesessions.Snapshot
-	hasExistingSnapshot := true
-	if err := j.cache.GetJSON(ctx, cache.KeyActiveSessions, &existingSnapshot); err != nil {
-		// A failed read must not prevent fresh upstream data from replacing a
-		// missing, expired, corrupt, or temporarily unavailable cache entry.
-		hasExistingSnapshot = false
-		slog.Warn("failed to read existing sessions from cache; resetting history", "error", err)
-	}
-
 	// time.Time marshals as an ISO 8601/RFC 3339 timestamp. Capture it once so
 	// every session and its enclosing snapshot have the same refresh time.
 	refreshedAt := j.now().UTC()
@@ -50,20 +41,6 @@ func (j *Job) Run(ctx context.Context) error {
 	snapshot := gamesessions.Snapshot{
 		Result:     sessions,
 		LastCached: refreshedAt,
-	}
-	if hasExistingSnapshot && !existingSnapshot.LastCached.IsZero() {
-		snapshot.History = make([]gamesessions.Snapshot, 0, len(existingSnapshot.History)+1)
-		for _, historicalSnapshot := range existingSnapshot.History {
-			// History entries must remain flat instead of recursively embedding
-			// all of their predecessors.
-			historicalSnapshot.History = nil
-			snapshot.History = append(snapshot.History, historicalSnapshot)
-		}
-		existingSnapshot.History = nil
-		snapshot.History = append(snapshot.History, existingSnapshot)
-		if len(snapshot.History) > 50 {
-			snapshot.History = snapshot.History[len(snapshot.History)-50:]
-		}
 	}
 
 	if err := j.cache.SetJSON(ctx, cache.KeyActiveSessions, snapshot, gamesessions.CacheTTL); err != nil {
@@ -87,8 +64,7 @@ func (j *Job) Run(ctx context.Context) error {
 }
 
 // prepareCurrentSessions creates a new result slice containing only the latest
-// upstream value for each session. Historical data is managed solely through
-// Snapshot.History and must never leak into Snapshot.Result.
+// upstream value for each session.
 func prepareCurrentSessions(upstream []infiniteflight.Session, refreshedAt time.Time) []infiniteflight.Session {
 	current := make([]infiniteflight.Session, 0, len(upstream))
 	indexes := make(map[string]int, len(upstream))

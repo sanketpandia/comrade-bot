@@ -13,6 +13,7 @@ import (
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
+	"infinite-experiment/politburo/internal/metrics"
 )
 
 type flightsClientStub struct {
@@ -78,9 +79,20 @@ func withSessions(sessions []infiniteflight.Session) map[string]any {
 	}
 }
 
+func testLookup(liveryID string, aircraftName, liveryName string) *gameliveries.Lookup {
+	if liveryID == "" {
+		return gameliveries.NewStaticLookup(nil, nil)
+	}
+	return gameliveries.NewStaticLookup(map[string]gameliveries.AircraftLivery{
+		liveryID: {
+			LiveryID: liveryID, DisplayAircraftName: aircraftName, DisplayLiveryName: liveryName,
+		},
+	}, nil)
+}
+
 func TestJobRunSkipsWhenSessionsMissing(t *testing.T) {
 	store := &cacheStub{data: map[string]any{}}
-	job := New(flightsClientStub{}, store)
+	job := New(flightsClientStub{}, store, gameliveries.NewLookup(nil), metrics.NewRegistry())
 	if err := job.Run(context.Background()); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -92,10 +104,9 @@ func TestJobRunSkipsWhenSessionsMissing(t *testing.T) {
 func TestJobRunCachesFullSnapshot(t *testing.T) {
 	liveryID := "df597aaf-456c-4878-9d84-45201f2aae74"
 	store := &cacheStub{data: withSessions([]infiniteflight.Session{{ID: "session-1", Name: "Casual", NormalizedName: "casual"}})}
-	store.data[cache.KeyLivery(liveryID)] = gameliveries.Livery{ID: liveryID, AircraftName: "A350", LiveryName: "Swiss"}
 	job := New(flightsClientStub{bySession: map[string][]infiniteflight.Flight{
 		"session-1": {{FlightID: "f1", Callsign: "Swiss 39 Heavy", Speed: 525.6, LiveryID: liveryID, LastReport: "2026-08-15 05:09:53Z", PilotState: 3}},
-	}}, store)
+	}}, store, testLookup(liveryID, "A350", "Swiss"), metrics.NewRegistry())
 	now := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
 	job.now = func() time.Time { return now }
 
@@ -120,76 +131,8 @@ func TestJobRunCachesFullSnapshot(t *testing.T) {
 	if flight.AircraftName != "A350" || flight.LiveryName != "Swiss" || flight.Normalized.Speed != "526 kts" {
 		t.Fatalf("flight = %#v", flight)
 	}
-	if flight.PathSync == nil || flight.PathSync.FPLSyncRequired || flight.History != nil {
-		t.Fatalf("pathSync/history = %#v", flight)
-	}
-}
-
-func TestJobRunAppendsHistoryUnderFlightKey(t *testing.T) {
-	existing := gameflights.Snapshot{
-		LastCached: time.Date(2026, time.August, 15, 5, 59, 0, 0, time.UTC),
-		Result: []gameflights.Flight{{
-			FlightID: "f1", Callsign: "prior", Speed: 400,
-			PathSync: &gameflights.PathSync{FPLSyncRequired: false},
-			History:  []gameflights.Flight{{FlightID: "f1", Callsign: "older"}},
-		}},
-	}
-	store := &cacheStub{data: withSessions([]infiniteflight.Session{{ID: "session-1", NormalizedName: "casual"}})}
-	store.data[cache.KeyActiveFlights("casual")] = existing
-	job := New(flightsClientStub{bySession: map[string][]infiniteflight.Flight{
-		"session-1": {{FlightID: "f1", Callsign: "current", Speed: 410}},
-	}}, store)
-	if err := job.Run(context.Background()); err != nil {
-		t.Fatalf("Run() error = %v", err)
-	}
-	snapshotWrite, ok := store.write(cache.KeyActiveFlights("casual"))
-	if !ok {
-		t.Fatalf("missing snapshot write")
-	}
-	snapshot := snapshotWrite.value.(gameflights.Snapshot)
-	if snapshot.Result[0].History != nil {
-		t.Fatalf("snapshot still embeds history = %#v", snapshot.Result[0].History)
-	}
-	historyWrite, ok := store.write(cache.KeyFlightHistory("f1"))
-	if !ok {
-		t.Fatalf("missing history write; writes = %#v", store.writes)
-	}
-	if historyWrite.ttl != gameflights.GameActiveFlightTTL {
-		t.Fatalf("history ttl = %s", historyWrite.ttl)
-	}
-	history := historyWrite.value.(gameflights.HistorySnapshot)
-	if len(history.Result) != 2 {
-		t.Fatalf("history = %#v", history.Result)
-	}
-	newest := history.Result[1]
-	if newest.Callsign != "prior" || newest.History != nil || newest.PathSync != nil {
-		t.Fatalf("historical copy = %#v", newest)
-	}
-}
-
-func TestJobRunAppendsToExistingHistoryKey(t *testing.T) {
-	existing := gameflights.Snapshot{
-		LastCached: time.Date(2026, time.August, 15, 5, 59, 0, 0, time.UTC),
-		Result:     []gameflights.Flight{{FlightID: "f1", Callsign: "prior", Speed: 400}},
-	}
-	store := &cacheStub{data: withSessions([]infiniteflight.Session{{ID: "session-1", NormalizedName: "casual"}})}
-	store.data[cache.KeyActiveFlights("casual")] = existing
-	store.data[cache.KeyFlightHistory("f1")] = gameflights.HistorySnapshot{
-		Result: []gameflights.Flight{{FlightID: "f1", Callsign: "older"}},
-	}
-	job := New(flightsClientStub{bySession: map[string][]infiniteflight.Flight{
-		"session-1": {{FlightID: "f1", Callsign: "current", Speed: 410}},
-	}}, store)
-	if err := job.Run(context.Background()); err != nil {
-		t.Fatalf("Run() error = %v", err)
-	}
-	historyWrite, ok := store.write(cache.KeyFlightHistory("f1"))
-	if !ok {
-		t.Fatalf("missing history write")
-	}
-	history := historyWrite.value.(gameflights.HistorySnapshot)
-	if len(history.Result) != 2 || history.Result[0].Callsign != "older" || history.Result[1].Callsign != "prior" {
-		t.Fatalf("history = %#v", history.Result)
+	if flight.PathSync == nil || flight.PathSync.FPLSyncRequired {
+		t.Fatalf("pathSync = %#v", flight.PathSync)
 	}
 }
 
@@ -201,7 +144,7 @@ func TestJobRunContinuesAfterSessionError(t *testing.T) {
 	job := New(flightsClientStub{
 		bySession: map[string][]infiniteflight.Flight{"good": {{FlightID: "f1", Callsign: "ok"}}},
 		errByID:   map[string]error{"bad": errors.New("upstream")},
-	}, store)
+	}, store, gameliveries.NewLookup(nil), metrics.NewRegistry())
 	if err := job.Run(context.Background()); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -219,7 +162,7 @@ func TestJobRunWarnsAtCap(t *testing.T) {
 		upstream[i].FlightID = "flight-" + strconv.Itoa(i)
 	}
 	store := &cacheStub{data: withSessions([]infiniteflight.Session{{ID: "session-1", NormalizedName: "casual"}})}
-	job := New(flightsClientStub{bySession: map[string][]infiniteflight.Flight{"session-1": upstream}}, store)
+	job := New(flightsClientStub{bySession: map[string][]infiniteflight.Flight{"session-1": upstream}}, store, gameliveries.NewLookup(nil), metrics.NewRegistry())
 	if err := job.Run(context.Background()); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}

@@ -1,16 +1,12 @@
-// Package liveries defines the shared cache contract for Infinite Flight liveries.
+// Package liveries defines aircraft livery catalog storage and lookup.
 package liveries
 
 import "time"
 
 const (
-	RefreshSchedule = "0 0 * * * *"
-	CacheTTL        = 24 * time.Hour
+	RefreshSchedule = "0 */30 * * * *"
+	RefreshInterval = 30 * time.Minute
 )
 
-type Livery struct {
-	ID           string `json:"id"`
-	AircraftID   string `json:"aircraftId"`
-	AircraftName string `json:"aircraftName"`
-	LiveryName   string `json:"liveryName"`
-}
+// UnrecognizedLiveryName is used when only aircraft_id matches the catalog.
+const UnrecognizedLiveryName = "Unrecognized"

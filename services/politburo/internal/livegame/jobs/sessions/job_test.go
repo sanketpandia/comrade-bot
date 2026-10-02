@@ -92,9 +92,6 @@ func TestJobRunFetchesSessions(t *testing.T) {
 	if snapshot.Result[0].NormalizedName != "casual" {
 		t.Fatalf("normalized name = %q, want casual", snapshot.Result[0].NormalizedName)
 	}
-	if len(snapshot.History) != 0 {
-		t.Fatalf("history = %#v, want empty history after cache miss", snapshot.History)
-	}
 	encoded, err := json.Marshal(snapshot.Result[0])
 	if err != nil {
 		t.Fatalf("marshal session: %v", err)
@@ -109,36 +106,6 @@ func TestJobRunFetchesSessions(t *testing.T) {
 	sessionNames, ok := names.value.([]string)
 	if !ok || len(sessionNames) != 1 || sessionNames[0] != "casual" {
 		t.Fatalf("session names = %#v", names.value)
-	}
-}
-
-func TestJobRunAppendsFlatHistory(t *testing.T) {
-	older := gamesessions.Snapshot{LastCached: time.Date(2026, time.August, 13, 9, 0, 0, 0, time.UTC)}
-	existing := gamesessions.Snapshot{
-		LastCached: time.Date(2026, time.August, 14, 9, 0, 0, 0, time.UTC),
-		History: []gamesessions.Snapshot{{
-			LastCached: older.LastCached,
-			History:    []gamesessions.Snapshot{{LastCached: older.LastCached.Add(-time.Hour)}},
-		}},
-	}
-	cacheStore := &cacheStub{existing: &existing}
-	job := New(sessionsClientStub{}, cacheStore)
-
-	if err := job.Run(context.Background()); err != nil {
-		t.Fatalf("Run() error = %v", err)
-	}
-	active, ok := cacheStore.write(cache.KeyActiveSessions)
-	if !ok {
-		t.Fatalf("missing write for %q", cache.KeyActiveSessions)
-	}
-	snapshot := active.value.(gamesessions.Snapshot)
-	if len(snapshot.History) != 2 {
-		t.Fatalf("history length = %d, want 2", len(snapshot.History))
-	}
-	for i, historicalSnapshot := range snapshot.History {
-		if len(historicalSnapshot.History) != 0 {
-			t.Fatalf("history[%d] recursively contains history", i)
-		}
 	}
 }
 
@@ -174,53 +141,17 @@ func TestJobRunKeepsOnlyLatestSessionPerID(t *testing.T) {
 			t.Fatalf("session was not enriched consistently: %#v", session)
 		}
 	}
-	if len(snapshot.History) != 1 || len(snapshot.History[0].Result) != 1 {
-		t.Fatalf("history = %#v, want prior snapshot only", snapshot.History)
-	}
 }
 
-func TestJobRunCapsHistoryAtFifty(t *testing.T) {
-	history := make([]gamesessions.Snapshot, 50)
-	for i := range history {
-		history[i].LastCached = time.Date(2026, time.August, 1, 0, i, 0, 0, time.UTC)
-	}
-	existing := gamesessions.Snapshot{
-		LastCached: time.Date(2026, time.August, 14, 9, 0, 0, 0, time.UTC),
-		History:    history,
-	}
-	cacheStore := &cacheStub{existing: &existing}
-	job := New(sessionsClientStub{}, cacheStore)
-
-	if err := job.Run(context.Background()); err != nil {
-		t.Fatalf("Run() error = %v", err)
-	}
-	active, ok := cacheStore.write(cache.KeyActiveSessions)
-	if !ok {
-		t.Fatalf("missing write for %q", cache.KeyActiveSessions)
-	}
-	snapshot := active.value.(gamesessions.Snapshot)
-	if len(snapshot.History) != 50 {
-		t.Fatalf("history length = %d, want 50", len(snapshot.History))
-	}
-	if !snapshot.History[49].LastCached.Equal(existing.LastCached) {
-		t.Fatalf("newest history timestamp = %s, want %s", snapshot.History[49].LastCached, existing.LastCached)
-	}
-}
-
-func TestJobRunResetsHistoryAfterCacheReadFailure(t *testing.T) {
+func TestJobRunSucceedsAfterCacheReadFailure(t *testing.T) {
 	cacheStore := &cacheStub{getError: errors.New("redis unavailable")}
 	job := New(sessionsClientStub{sessions: []infiniteflight.Session{{Name: "Casual"}}}, cacheStore)
 
 	if err := job.Run(context.Background()); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	active, ok := cacheStore.write(cache.KeyActiveSessions)
-	if !ok {
+	if _, ok := cacheStore.write(cache.KeyActiveSessions); !ok {
 		t.Fatalf("missing write for %q", cache.KeyActiveSessions)
-	}
-	snapshot := active.value.(gamesessions.Snapshot)
-	if len(snapshot.History) != 0 {
-		t.Fatalf("history = %#v, want empty history after read failure", snapshot.History)
 	}
 }
 

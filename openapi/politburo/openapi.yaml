@@ -57,12 +57,12 @@ components:
       $ref: "./components/schemas/ActiveSessionsResponse.yaml"
     ActiveSessionsData:
       $ref: "./components/schemas/ActiveSessionsData.yaml"
+    ActiveSession:
+      $ref: "./components/schemas/ActiveSession.yaml"
     AvailableFilter:
       $ref: "./components/schemas/AvailableFilter.yaml"
     CacheMetadata:
       $ref: "./components/schemas/CacheMetadata.yaml"
-    SessionHistorySnapshot:
-      $ref: "./components/schemas/SessionHistorySnapshot.yaml"
     ErrorResponse:
       $ref: "./components/schemas/ErrorResponse.yaml"
     GenerateSignedLinkRequest:

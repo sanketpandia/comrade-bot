@@ -1,9 +1,7 @@
 package flights
 
 import (
-	"encoding/json"
 	"math"
-	"strings"
 	"testing"
 	"time"
 
@@ -33,7 +31,7 @@ func TestMapFlightNormalizesAndEnriches(t *testing.T) {
 		VirtualOrganization: &org,
 		PilotState:          PilotStateInBackground,
 		IsConnected:         false,
-	}, infiniteflight.Session{ID: "session-1", NormalizedName: "casual"}, &gameliveries.Livery{
+	}, infiniteflight.Session{ID: "session-1", NormalizedName: "casual"}, &gameliveries.ResolvedNames{
 		AircraftName: "Airbus A350", LiveryName: "Swiss",
 	}, nil, fallback)
 
@@ -72,47 +70,17 @@ func TestMapFlightPreservesNamesOnLiveryMiss(t *testing.T) {
 }
 
 func TestUpsertFlightsCreatesMissingEntries(t *testing.T) {
-	result := UpsertFlights(nil, []Flight{{FlightID: "f1", Callsign: "new", History: []Flight{{Callsign: "leak"}}, PathSync: &PathSync{}}})
-	if len(result) != 1 || result[0].Callsign != "new" || result[0].History != nil {
+	result := UpsertFlights(nil, []Flight{{FlightID: "f1", Callsign: "new", PathSync: &PathSync{}}})
+	if len(result) != 1 || result[0].Callsign != "new" {
 		t.Fatalf("created = %#v", result)
 	}
 }
 
-func TestUpsertFlightsPreservesNamesWithoutEmbeddingHistory(t *testing.T) {
-	existing := []Flight{{FlightID: "f1", Callsign: "prior", AircraftName: "A320", LiveryName: "BA", History: []Flight{{Callsign: "older"}}, PathSync: &PathSync{FPLSyncRequired: false}}}
+func TestUpsertFlightsPreservesNames(t *testing.T) {
+	existing := []Flight{{FlightID: "f1", Callsign: "prior", AircraftName: "A320", LiveryName: "BA", PathSync: &PathSync{FPLSyncRequired: false}}}
 	mapped := []Flight{{FlightID: "f1", Callsign: "current", PathSync: &PathSync{FPLSyncRequired: false}}}
 	result := UpsertFlights(existing, mapped)
-	if len(result) != 1 || result[0].AircraftName != "A320" || result[0].LiveryName != "BA" || result[0].History != nil {
+	if len(result) != 1 || result[0].AircraftName != "A320" || result[0].LiveryName != "BA" {
 		t.Fatalf("upserted = %#v", result[0])
-	}
-}
-
-func TestNextHistoryCapsAtTwentyFive(t *testing.T) {
-	history := make([]Flight, MaxHistory)
-	for i := range history {
-		history[i].Callsign = "old"
-		history[i].Speed = i
-	}
-	prior := Flight{FlightID: "f1", Callsign: "prior", Speed: 400, History: history, PathSync: &PathSync{FPLSyncRequired: false}}
-	result := NextHistory(history, prior)
-	if len(result) != MaxHistory {
-		t.Fatalf("history length = %d", len(result))
-	}
-	if result[MaxHistory-1].Callsign != "prior" || result[MaxHistory-1].History != nil || result[MaxHistory-1].PathSync != nil {
-		t.Fatalf("newest history = %#v", result[MaxHistory-1])
-	}
-	if result[0].Speed != 1 {
-		t.Fatalf("oldest retained speed = %d, want 1", result[0].Speed)
-	}
-}
-
-func TestFlightHistoryOmitsNestedPathSync(t *testing.T) {
-	result := NextHistory(nil, Flight{FlightID: "f1", Callsign: "prior", PathSync: &PathSync{FPLSyncRequired: false}})
-	encoded, err := json.Marshal(result[0])
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
-	if got := string(encoded); strings.Contains(got, `"history"`) || strings.Contains(got, `"pathSync"`) {
-		t.Fatalf("historical JSON = %s", encoded)
 	}
 }

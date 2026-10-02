@@ -10,8 +10,9 @@ not run migrations at startup.
 - **Auth:** `api_keys`
 - **Identity / membership:** `users`, `virtual_airlines`, `va_user_roles`, `banned_discord_ids`
 - **Operator:** `platform_reports`, `user_deletion_archives`
+- **Livegame catalog:** `game_aircraft_liveries` (see `001_game_aircraft_liveries.sql`)
 
-Game session and flight data live in **Redis** (jobs), not in Postgres.
+Active session and flight snapshots live in **Redis** (jobs). The aircraft livery catalog is in Postgres and synced from the Infinite Flight bulk liveries API.
 
 Apply to an **empty** database:
 
