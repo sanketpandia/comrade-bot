@@ -204,7 +204,7 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       needs.changes.outputs.politburo == 'true'
-    runs-on: [self-hosted, linux, prod]
+    runs-on: ubuntu-latest
     environment: production
     permissions:
       contents: read
@@ -265,7 +265,7 @@ jobs:
           needs.pr_bot_test.result == 'success'
         )
       )
-    runs-on: [self-hosted, linux, prod]
+    runs-on: ubuntu-latest
     environment: production
     permissions:
       contents: read
