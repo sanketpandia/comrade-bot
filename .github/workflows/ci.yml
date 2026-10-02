@@ -167,16 +167,11 @@ jobs:
 
   notify_pr_failure:
     needs:
-      pr_contract:
-        optional: true
-      pr_politburo_test:
-        optional: true
-      pr_politburo_image:
-        optional: true
-      pr_bot_test:
-        optional: true
-      pr_bot_image:
-        optional: true
+      - pr_contract
+      - pr_politburo_test
+      - pr_politburo_image
+      - pr_bot_test
+      - pr_bot_image
     if: |
       always() &&
       !cancelled() &&
@@ -253,14 +248,13 @@ jobs:
 
   image_comrade_bot:
     needs:
-      changes:
-        optional: true
-      pr_bot_test:
-        optional: true
+      - changes
+      - pr_bot_test
     if: |
       always() &&
       !cancelled() &&
       needs.changes.result == 'success' &&
+      (needs.pr_bot_test.result == 'success' || needs.pr_bot_test.result == 'skipped') &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.bot == 'true') ||
         (
@@ -425,10 +419,8 @@ jobs:
 
   sync_discord_commands:
     needs:
-      image_comrade_bot:
-        optional: true
-      deploy_comrade_bot:
-        optional: true
+      - image_comrade_bot
+      - deploy_comrade_bot
     if: |
       always() &&
       !cancelled() &&
