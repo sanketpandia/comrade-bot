@@ -24,6 +24,13 @@ func TestMotionFromUpstreamIncludesCallsign(t *testing.T) {
 	}
 }
 
+func TestMotionFromUpstreamRoundsTrack(t *testing.T) {
+	motion := MotionFromUpstream(infiniteflight.Flight{Track: 329.16})
+	if motion.Track != 329.2 {
+		t.Fatalf("track = %v", motion.Track)
+	}
+}
+
 func TestMotionEqual(t *testing.T) {
 	a := FlightMotion{Latitude: 1, Longitude: 2, Speed: 3}
 	b := FlightMotion{Latitude: 1, Longitude: 2, Speed: 3}

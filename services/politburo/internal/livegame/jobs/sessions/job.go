@@ -43,7 +43,7 @@ func (j *Job) Run(ctx context.Context) error {
 		LastCached: refreshedAt,
 	}
 
-	if err := j.cache.SetJSON(ctx, cache.KeyActiveSessions, snapshot, gamesessions.CacheTTL); err != nil {
+	if err := j.cache.SetJSON(ctx, cache.KeyActiveSessions, snapshot, cache.SessionsCacheTTL); err != nil {
 		return fmt.Errorf("cache sessions: %w", err)
 	}
 

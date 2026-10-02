@@ -13,6 +13,7 @@ func MotionFromUpstream(upstream infiniteflight.Flight) FlightMotion {
 		Longitude: math.Round(upstream.Longitude*10000) / 10000,
 		Speed:     int(math.Round(upstream.Speed)),
 		Callsign:  upstream.Callsign,
+		Track:     math.Round(upstream.Track*10) / 10,
 	}
 }
 
@@ -22,6 +23,7 @@ func MotionFromFlight(flight Flight) FlightMotion {
 		Longitude: flight.Longitude,
 		Speed:     flight.Speed,
 		Callsign:  flight.Callsign,
+		Track:     flight.Track,
 	}
 }
 

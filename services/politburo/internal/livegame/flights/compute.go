@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	gameflights "infinite-experiment/politburo/internal/livegame/flights"
-	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
+	"infinite-experiment/politburo/internal/livegame/infiniteflight"
+	"infinite-experiment/politburo/internal/metrics"
 )
 
 type FlightComputeDecision struct {
@@ -16,28 +16,33 @@ type FlightComputeDecision struct {
 }
 
 type FlightComputeResult struct {
-	Flight   gameflights.Flight
+	Flight   Flight
 	Decision FlightComputeDecision
 }
 
-func (j *Job) computeFlight(
-	_ context.Context,
+type ComputeDeps struct {
+	Lookup  *gameliveries.Lookup
+	Metrics *metrics.Registry
+}
+
+func ComputeFlight(
+	deps ComputeDeps,
 	session infiniteflight.Session,
 	upstream infiniteflight.Flight,
-	prior *gameflights.Flight,
-	priorMotion gameflights.FlightMotion,
+	prior *Flight,
+	priorMotion FlightMotion,
 	hasPriorMotion bool,
 	refreshedAt time.Time,
 ) FlightComputeResult {
-	var priorPathSync *gameflights.PathSync
+	var priorPathSync *PathSync
 	if prior != nil {
 		priorPathSync = prior.PathSync
 	}
 
-	fplSync := gameflights.FPLSyncDue(upstream.PilotState, priorPathSync, refreshedAt)
-	motion := gameflights.MotionFromUpstream(upstream)
+	fplSync := FPLSyncDue(upstream.PilotState, priorPathSync, refreshedAt)
+	motion := MotionFromUpstream(upstream)
 
-	if prior != nil && hasPriorMotion && gameflights.MotionEqual(motion, priorMotion) && !fplSync {
+	if prior != nil && hasPriorMotion && MotionEqual(motion, priorMotion) && !fplSync {
 		return FlightComputeResult{
 			Flight: *prior,
 			Decision: FlightComputeDecision{
@@ -48,9 +53,9 @@ func (j *Job) computeFlight(
 	}
 
 	var resolved *gameliveries.ResolvedNames
-	if gameflights.ShouldResolveLivery(prior, upstream.AircraftID, upstream.LiveryID) {
-		names, outcome := j.lookup.Resolve(upstream.LiveryID, upstream.AircraftID)
-		j.metrics.LiveryResolveTotal.WithLabelValues(string(outcome)).Inc()
+	if ShouldResolveLivery(prior, upstream.AircraftID, upstream.LiveryID) {
+		names, outcome := deps.Lookup.Resolve(upstream.LiveryID, upstream.AircraftID)
+		deps.Metrics.LiveryResolveTotal.WithLabelValues(string(outcome)).Inc()
 		switch outcome {
 		case gameliveries.MatchLivery, gameliveries.MatchAircraftOnly:
 			resolved = &names
@@ -58,10 +63,10 @@ func (j *Job) computeFlight(
 		}
 	}
 
-	flight := gameflights.MapFlight(upstream, session, resolved, prior, refreshedAt)
+	flight := MapFlight(upstream, session, resolved, prior, refreshedAt)
 	pathSync := flight.PathSync
 	if pathSync == nil {
-		pathSync = &gameflights.PathSync{}
+		pathSync = &PathSync{}
 		flight.PathSync = pathSync
 	}
 	pathSync.FPLSyncRequired = fplSync
@@ -80,6 +85,6 @@ func (j *Job) computeFlight(
 	}
 }
 
-func runFPLSync(_ context.Context, _ gameflights.Flight) {
+func RunFPLSync(_ context.Context, _ Flight) {
 	// Placeholder until Infinite Flight flight-plan sync is implemented.
 }

@@ -27,6 +27,25 @@ get:
         minimum: 1
         maximum: 5000
         default: 50
+    - name: pilotState
+      in: query
+      style: form
+      explode: true
+      description: Restrict results to one or more pilot states.
+      schema:
+        type: array
+        items:
+          $ref: "../../components/schemas/PilotStateName.yaml"
+    - name: userName
+      in: query
+      description: Restrict results to flights whose username contains this value.
+      schema:
+        type: string
+    - name: callSign
+      in: query
+      description: Restrict results to flights whose callsign contains this value.
+      schema:
+        type: string
   responses:
     "200":
       description: The latest cached motion tracks for active flights on the server

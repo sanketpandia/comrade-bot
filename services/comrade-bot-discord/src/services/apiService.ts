@@ -9,7 +9,6 @@ import {
     InitRegistrationResponse, 
     ApiResponse, 
     FlightHistoryPage, 
-    LiveFlightRecord, 
     UserDetailsData, 
     PilotStatsData, 
     PirepConfigResponse, 
@@ -204,10 +203,6 @@ export class ApiService {
 
     static async getUserLogbook(meta: MetaInfo, ifcId: string, page: number): Promise<FlightHistoryPage & { response_time: string }> {
         return ApiService.rejectStub(`GET /api/v1/user/${ifcId}/flights?page=${page}`);
-    }
-
-    static async getLiveFlights(meta: MetaInfo): Promise<{ flights: LiveFlightRecord[], responseTime?: string, signedLink?: string }> {
-        return ApiService.rejectStub("GET /api/v1/flights/va");
     }
 
 

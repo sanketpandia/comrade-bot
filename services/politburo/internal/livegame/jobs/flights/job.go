@@ -110,7 +110,10 @@ func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session
 		}
 
 		priorMotion, hasPriorMotion := existing.Tracks[item.FlightID]
-		out := j.computeFlight(ctx, session, item, prior, priorMotion, hasPriorMotion, refreshedAt)
+		out := gameflights.ComputeFlight(gameflights.ComputeDeps{
+			Lookup:  j.lookup,
+			Metrics: j.metrics,
+		}, session, item, prior, priorMotion, hasPriorMotion, refreshedAt)
 
 		if out.Decision.FastPath {
 			stats.fastPath++
@@ -122,7 +125,7 @@ func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session
 		if out.Decision.FPLSync {
 			stats.fplScheduled++
 			j.metrics.FlightsFPLSyncScheduledTotal.WithLabelValues(session.NormalizedName).Inc()
-			runFPLSync(ctx, out.Flight)
+			gameflights.RunFPLSync(ctx, out.Flight)
 		}
 
 		switch {
@@ -132,11 +135,8 @@ func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session
 		case !out.Decision.UpdateFlightRecord:
 			j.metrics.FlightsRecordUpdateTotal.WithLabelValues(session.NormalizedName, "skipped_fast_path").Inc()
 			stats.recordSkipped++
-		case !EnableFlightRecordWrites:
-			j.metrics.FlightsRecordUpdateTotal.WithLabelValues(session.NormalizedName, "skipped_disabled").Inc()
-			stats.recordSkipped++
 		default:
-			if err := j.cache.SetJSON(ctx, cache.KeyFlightRecord(item.FlightID), out.Flight, gameflights.GameActiveFlightTTL); err != nil {
+			if err := j.cache.SetJSON(ctx, cache.KeyFlightRecord(item.FlightID), out.Flight, cache.ActiveFlightsTTL); err != nil {
 				return 0, fmt.Errorf("cache flight record %s: %w", item.FlightID, err)
 			}
 			j.metrics.FlightsRecordUpdateTotal.WithLabelValues(session.NormalizedName, "written").Inc()
@@ -163,7 +163,7 @@ func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session
 		j.metrics.FlightsRecordCacheMissTotal.WithLabelValues(session.NormalizedName).Add(float64(stats.recordCacheMisses))
 	}
 
-	if err := j.cache.SetJSON(ctx, cache.KeyActiveFlights(session.NormalizedName), snapshot, gameflights.GameActiveFlightTTL); err != nil {
+	if err := j.cache.SetJSON(ctx, cache.KeyActiveFlights(session.NormalizedName), snapshot, cache.ActiveFlightsTTL); err != nil {
 		return 0, fmt.Errorf("cache flights: %w", err)
 	}
 

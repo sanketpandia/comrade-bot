@@ -19,7 +19,7 @@ Single monorepo (`comrade-bot` on GitHub). Run commands from the directory that 
 - Contract: `openapi/politburo/**` → (Redocly) `openapi/politburo.yaml` (committed) → oapi-codegen Go server + openapi-typescript bot types (both gitignored). Fresh checkouts need `make generate` before building.
 - Politburo Docker builds run only the Go generators and have no Node, so they read the committed bundle.
 - Runtime: bot → Politburo over HTTP (`X-API-Key`, `X-Discord-User-Id`, `X-Discord-Server-Id`); Politburo → Postgres, Redis, Infinite Flight API (jobs only). Prometheus scrapes Politburo and bot `/metrics`; Promtail → Loki → Grafana.
-- Politburo wiring: `internal/app/app.go` (composition root), `internal/transport/http/server.go` (all routes), `internal/livegame/jobs/register.go` (all jobs).
+- Politburo wiring: `internal/app/app.go` (composition root), `internal/transport/http/server.go` (all routes), `internal/jobs/register.go` (all jobs).
 
 Full map and known traps: `.claude/commands/architecture.md`. Agents in `.claude/agents/` (architect → swagger → developer → observability) read it first.
 

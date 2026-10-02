@@ -10,7 +10,6 @@ import { handleInitServerProceed } from "../commands/initServerButtonHandler";
 import { handleRegisterNew, handleRegisterLink } from "../commands/registerButtonHandler";
 import { handleReportOccupiedIFC } from "../commands/reportOccupiedIfcHandler";
 import { handleFlightHistory } from "../commands/logbookHandler";
-import { handleLiveFlights } from "../commands/liveHandler";
 import { logModeSelectionHandler } from "../commands/logModeSelectionHandler";
 import { handleTourFilePirep } from "../commands/tourButtonHandler";
 import { commandMap } from "../configs/commandMap";
@@ -149,14 +148,6 @@ export class InteractionRouter {
 
             // Parse button custom ID: {prefix}_{action}_{param1}_{param2}
             const [prefix, action, ...params] = interaction.customId.split("_");
-
-            // Live flights pagination
-            if (prefix === "live" && (action === "prev" || action === "next")) {
-                const [pageStr] = params;
-                const page = parseInt(pageStr, 10);
-                await handleLiveFlights(wrapped, page);
-                return;
-            }
 
             // Flight history pagination
             if (prefix === "flights" && (action === "prev" || action === "next")) {

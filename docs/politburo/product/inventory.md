@@ -15,9 +15,7 @@ Single binary `cmd/politburo`. Jobs off unless `JOBS_ENABLED=true` and
 |---|---|
 | `GET /health/status` | Live |
 | `GET /api/v1/game/sessions/active` | Live, Redis |
-| `GET /api/v1/game/flights/active/{normalizedServerName}` | Live motion tracks from Redis, page |
-| `GET /api/v1/game/flights/active/trimmed` | Live, map markers, encrypted `flightId` |
-| `GET /api/v1/game/flights/active/detail` | Live, resolve encrypted id |
+| `GET /api/v1/game/flights/active/{normalizedServerName}` | Live tracks from Redis; pagination + filters |
 | `POST /api/v1/signed-link` | Live, Discord user header, mints `/auth/login?token=` |
 
 Nothing else is on the rewrite contract. Bot calls listed below will 404
@@ -40,7 +38,7 @@ false).
 ### Jobs
 
 Sessions (5 min), liveries (1 hour), flights (1 min). Central register:
-`internal/livegame/jobs/register.go`.
+`internal/jobs/register.go`; cron/TTL constants in `internal/cache/`.
 
 ### Postgres usage in code
 

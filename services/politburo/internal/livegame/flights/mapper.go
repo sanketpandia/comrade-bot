@@ -45,7 +45,6 @@ func MapFlight(upstream infiniteflight.Flight, session infiniteflight.Session, n
 		Speed:               speed,
 		VerticalSpeed:       verticalSpeed,
 		Track:               math.Round(upstream.Track*10) / 10,
-		Heading:             math.Round(upstream.Heading*10) / 10,
 		LastReport:          parseLastReport(upstream.LastReport, fallbackReport),
 		PilotState:          upstream.PilotState,
 		IsConnected:         upstream.IsConnected,

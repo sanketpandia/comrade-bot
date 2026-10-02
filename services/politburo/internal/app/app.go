@@ -23,9 +23,11 @@ import (
 	"infinite-experiment/politburo/internal/config"
 	"infinite-experiment/politburo/internal/database"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
-	"infinite-experiment/politburo/internal/livegame/jobs"
+	gameflights "infinite-experiment/politburo/internal/livegame/flights"
+	"infinite-experiment/politburo/internal/jobs"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
-	"infinite-experiment/politburo/internal/livegame/scheduler"
+	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
+	"infinite-experiment/politburo/internal/scheduler"
 	"infinite-experiment/politburo/internal/logging"
 	"infinite-experiment/politburo/internal/metrics"
 	"infinite-experiment/politburo/internal/operations/operator"
@@ -57,6 +59,8 @@ type App struct {
 	VirtualAirlines  *virtualairlines.Repository
 	IFUsers          infiniteflight.UsersClient
 	LiveryLookup     *gameliveries.Lookup
+	FlightsReader    *gameflights.Reader
+	SessionsReader   *gamesessions.Reader
 	closeOnce        sync.Once
 }
 
@@ -131,6 +135,8 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		VirtualAirlines: vaRepo,
 		IFUsers:      ifUsers,
 		LiveryLookup: liveryLookup,
+		FlightsReader:  gameflights.NewReader(cacheStore),
+		SessionsReader: gamesessions.NewReader(cacheStore),
 	}
 	slog.Info("application initialized", "environment", cfg.Environment, "jobs_enabled", cfg.Jobs.Enabled)
 	return application, nil

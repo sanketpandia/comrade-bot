@@ -17,3 +17,7 @@ properties:
   speed:
     type: integer
     description: Ground speed in knots (rounded).
+  track:
+    type: number
+    format: double
+    description: Ground track in degrees clockwise from north (0–360), for map icon rotation.

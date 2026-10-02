@@ -130,7 +130,7 @@ func TestJobRunCachesMotionSnapshot(t *testing.T) {
 	if !ok {
 		t.Fatalf("missing write; writes = %#v", store.writes)
 	}
-	if write.ttl != gameflights.GameActiveFlightTTL {
+	if write.ttl != cache.ActiveFlightsTTL {
 		t.Fatalf("ttl = %s", write.ttl)
 	}
 	snapshot := write.value.(gameflights.Snapshot)
@@ -141,8 +141,8 @@ func TestJobRunCachesMotionSnapshot(t *testing.T) {
 	if motion.Speed != 526 {
 		t.Fatalf("motion = %#v", motion)
 	}
-	if store.writesTo(cache.KeyFlightRecord("f1")) != 0 {
-		t.Fatal("flight record should not be written while EnableFlightRecordWrites is false")
+	if store.writesTo(cache.KeyFlightRecord("f1")) != 1 {
+		t.Fatal("expected flight record write")
 	}
 }
 

@@ -4,9 +4,6 @@ package flights
 import "time"
 
 const (
-	RefreshSchedule      = "0 * * * * *"
-	RefreshInterval      = time.Minute
-	GameActiveFlightTTL  = 3 * 24 * time.Hour
 	MaxFlightsPerRequest = 5000
 	MaxPageLength        = 5000
 	DefaultPageLength    = 50
@@ -41,7 +38,6 @@ type Flight struct {
 	Speed               int        `json:"speed"`
 	VerticalSpeed       float64    `json:"verticalSpeed"`
 	Track               float64    `json:"track"`
-	Heading             float64    `json:"heading"`
 	LastReport          time.Time  `json:"lastReport"`
 	PilotState          int        `json:"pilotState"`
 	IsConnected         bool       `json:"isConnected"`
@@ -58,6 +54,7 @@ type FlightMotion struct {
 	Longitude float64 `json:"longitude"`
 	Speed     int     `json:"speed"`
 	Callsign  string  `json:"callsign"`
+	Track     float64 `json:"track,omitempty"`
 }
 
 // Snapshot is the per-server motion index written to game:flights:active:<server>.

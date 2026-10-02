@@ -24,10 +24,6 @@ paths:
     $ref: "./paths/game/sessions-active.yaml"
   /api/v1/game/flights/active/{normalizedServerName}:
     $ref: "./paths/game/flights-active.yaml"
-  /api/v1/game/flights/active/trimmed:
-    $ref: "./paths/game/flights-active-trimmed.yaml"
-  /api/v1/game/flights/active/detail:
-    $ref: "./paths/game/flights-active-detail.yaml"
   /api/v1/signed-link:
     $ref: "./paths/auth/signed-link.yaml"
   /api/v1/users:
@@ -81,22 +77,6 @@ components:
       $ref: "./components/schemas/ActiveFlightsData.yaml"
     Pagination:
       $ref: "./components/schemas/Pagination.yaml"
-    TrimmedActiveFlightsResponse:
-      $ref: "./components/schemas/TrimmedActiveFlightsResponse.yaml"
-    TrimmedActiveFlightsData:
-      $ref: "./components/schemas/TrimmedActiveFlightsData.yaml"
-    TrimmedFlight:
-      $ref: "./components/schemas/TrimmedFlight.yaml"
-    ActiveFlightResponse:
-      $ref: "./components/schemas/ActiveFlightResponse.yaml"
-    ActiveFlightData:
-      $ref: "./components/schemas/ActiveFlightData.yaml"
-    FlightPathSync:
-      $ref: "./components/schemas/FlightPathSync.yaml"
-    FlightNormalized:
-      $ref: "./components/schemas/FlightNormalized.yaml"
-    Flight:
-      $ref: "./components/schemas/Flight.yaml"
     CreateUserErrorCode:
       $ref: "./components/schemas/CreateUserErrorCode.yaml"
     CreateUserErrorResponse:
