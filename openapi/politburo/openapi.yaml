@@ -2,7 +2,15 @@ openapi: 3.0.3
 info:
   title: Politburo API
   version: 0.1.0
-  description: Authoritative contract for the clean-slate Politburo application.
+  description: |
+    Authoritative JSON contract for Politburo (Infinite Experiment backend).
+
+    **Authentication**
+    - `X-API-Key` — UUID API key for `/api/v1/*` machine clients (Discord bot, integrations).
+    - `X-Discord-User-Id` and `X-Discord-Server-Id` — Discord context on bot-originated requests.
+    - `session_id` cookie — browser session after signed-link login (selected routes).
+
+    **Documentation** — https://sanketpandia.github.io/comrade-bot/api/reference/
 tags:
   - name: Health
     description: Process and dependency readiness.
@@ -15,8 +23,12 @@ tags:
   - name: Admin
     description: Platform operator (god mode) actions.
 servers:
+  - url: https://comradebot.cc
+    description: Production
+  - url: http://localhost:8082
+    description: Local dev (Politburo rewrite)
   - url: http://localhost:8080
-    description: Local rewrite
+    description: Local rewrite default
 paths:
   /health/status:
     $ref: "./paths/health/status.yaml"

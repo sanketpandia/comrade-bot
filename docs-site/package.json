@@ -1,0 +1,8 @@
+{
+  "name": "comrade-bot-docs-site",
+  "private": true,
+  "description": "Vendored ReDoc bundle for GitHub Pages (see cicd/Makefile docs-build).",
+  "devDependencies": {
+    "redoc": "2.5.4"
+  }
+}

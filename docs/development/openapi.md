@@ -20,6 +20,7 @@ CI fails if it is out of date with the sources.
 |----------|--------|
 | Politburo Go server | `services/politburo/internal/api/generated/politburo/server.gen.go` |
 | Swagger UI (local) | `http://localhost:8081` via `make openapi-view` |
+| Public ReDoc (GitHub Pages) | https://sanketpandia.github.io/comrade-bot/api/reference/ via `make docs-build` |
 | Discord bot | `services/comrade-bot-discord/src/generated/politburo-api.ts` |
 
 Generated files are build artifacts (gitignored). Run from the repository root:
