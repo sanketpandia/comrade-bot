@@ -8,7 +8,6 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import { CUSTOM_IDS } from "../configs/constants";
-import { ApiService } from "../services/apiService";
 import { DiscordInteraction } from "../types/DiscordInteraction";
 
 /* ──────────────────────────────────────────────────────────
@@ -29,25 +28,6 @@ export async function execute(interaction: DiscordInteraction) {
   if (!chatInput.guildId) {
     await chatInput.reply({
       content: "❌ `/initserver` must be run inside the Discord server you want to bootstrap. It cannot be used in DMs.",
-      ephemeral: true,
-    });
-    return;
-  }
-
-  const userDetails = await ApiService.getUserDetails(interaction.getMetaInfo());
-
-  if (!userDetails.is_registered && !userDetails.global_user_exists) {
-    await chatInput.reply({
-      content: "👋 Please run `/register` first, then come back to `/initserver` to claim this Discord server for your VA.",
-      ephemeral: true,
-    });
-    return;
-  }
-
-  if (userDetails.current_server?.is_configured_va) {
-    const currentServer = userDetails.current_server;
-    await chatInput.reply({
-      content: `✅ This Discord server is already initialized for **${currentServer.va_name ?? currentServer.va_code ?? "your VA"}**${currentServer.va_code ? ` (${currentServer.va_code})` : ""}. Use \`/dashboard\` to continue setup in Vizburo.`,
       ephemeral: true,
     });
     return;

@@ -1,5 +1,5 @@
 import { AlignmentEnum, AsciiTable3 } from "ascii-table3";
-import { FlightHistoryRecord, HealthApiResponse, InitRegistrationResponse, InitServerResponse, UserDetailsData, ApiResponse, PilotStatsData } from "../types/Responses";
+import { FlightHistoryRecord, HealthApiResponse, InitRegistrationResponse, UserDetailsData, ApiResponse, PilotStatsData } from "../types/Responses";
 
 export class MessageFormatters {
   private static healthServiceLabel(value: string | undefined): string {
@@ -19,14 +19,8 @@ export class MessageFormatters {
     return msg;
   }
 
-  static isInitRegistration(
-    r: InitRegistrationResponse | InitServerResponse
-  ): r is InitRegistrationResponse {
-    return "ifc_id" in r;                // ‹— key that exists only on the user variant
-  }
-
-  static makeRegistrationString(resp: InitRegistrationResponse | InitServerResponse): string {
-    const key = MessageFormatters.isInitRegistration(resp) ? resp.ifc_id : resp.va_code;
+  static makeRegistrationString(resp: InitRegistrationResponse): string {
+    const key = resp.ifc_id;
     const header = resp.status
       ? `✅ Registration successful for **${key}**`
       : `❌ Registration failed for **${key}**`;

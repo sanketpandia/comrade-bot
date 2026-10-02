@@ -118,7 +118,6 @@ func (s *Server) router() stdhttp.Handler {
 		)
 		bot.Get("/api/v1/user/status", identityHandler.Status)
 		bot.Post("/api/v1/memberships/join", identityHandler.Join)
-		bot.Post("/api/v1/server/init", identityHandler.InitServer)
 		bot.Post("/api/v1/reports/occupied-ifc", identityHandler.ReportOccupiedIFC)
 	})
 
@@ -196,6 +195,12 @@ func (h apiHandler) GenerateSignedLink(w stdhttp.ResponseWriter, r *stdhttp.Requ
 func (h apiHandler) CreateUser(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.CreateUserParams) {
 	h.withMiddleware(h.registrationMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.identity.CreateUser(w, r, params)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) CreateServer(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.CreateServerParams) {
+	h.withMiddleware(h.registrationMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.identity.CreateServer(w, r, params)
 	})).ServeHTTP(w, r)
 }
 

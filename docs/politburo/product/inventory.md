@@ -70,7 +70,7 @@ Deployed commands (`src/commands/registry.ts`):
 | `/live` | VA members currently flying | `GET /api/v1/flights/va` |
 | `/stats` | Game + VA + career-mode stats | `GET /api/v1/pilot/stats` |
 | `/dashboard` | Signed portal link | `POST /api/v1/signed-link` (shape still old envelope) |
-| `/initserver` | Admin: bind Discord guild to a VA code | `POST /api/v1/server/init` |
+| `/initserver` | Admin: bind Discord guild to a VA code | `POST /api/v1/servers` |
 | `/events` | List active VA events | `GET /api/v1/events?active_only=true` |
 | `/tour`, `/tour_leg` | Tour legs + extra data | `GET /api/v1/events/...`, `PUT .../additional-data` |
 | `/help` | Local catalog, no API | — |

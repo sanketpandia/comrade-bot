@@ -87,7 +87,6 @@ export const helpCatalog: HelpEntry[] = [
         summary: "Bootstrap this Discord server with a VA Code / ID. Admin only.",
         details: [
             "Collects only your VA Code / ID in Discord; setup continues in Vizburo.",
-            "Admins must run /register first.",
             "Use a desktop browser or desktop view for Basic Setup, including callsign matching.",
         ],
         examples: ["/initserver"],

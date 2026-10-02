@@ -238,7 +238,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (status_code) (rate(politburo_http_requests_total{endpoint=\"/api/v1/server/init\", method=\"POST\"}[$__rate_interval]))",
+          "expr": "sum by (status_code) (rate(politburo_http_requests_total{endpoint=\"/api/v1/servers\", method=\"POST\"}[$__rate_interval]))",
           "legendFormat": "{{status_code}}",
           "refId": "A"
         }
