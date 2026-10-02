@@ -29,6 +29,7 @@ configMapGenerator:
       - logs-errors.json=../../../observability/grafana/provisioning/dashboards/logs-errors.json
       - politburo-background.json=../../../observability/grafana/provisioning/dashboards/politburo-background.json
       - politburo-http.json=../../../observability/grafana/provisioning/dashboards/politburo-http.json
+      - politburo-livegame.json=../../../observability/grafana/provisioning/dashboards/politburo-livegame.json
       - k8s-pod-resources.json=../../../observability/grafana/provisioning/dashboards/k8s-pod-resources.json
 
 generatorOptions:
