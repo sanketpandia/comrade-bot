@@ -59,11 +59,19 @@ jobs:
           npm ci
           npm run build
 
+  notify-failure:
+    needs: generate-and-build
+    if: always() && needs.generate-and-build.result == 'failure'
+    runs-on: ubuntu-latest
+    environment: production
+    continue-on-error: true
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
       - name: Discord notify
-        if: always() && failure()
         uses: ./.github/actions/discord-notify
         with:
-          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL || secrets.WEBHOOK_URL || vars.DISCORD_WEBHOOK_URL || vars.WEBHOOK_URL }}
           title: OpenAPI CI
           status: failure
           job-name: generate-and-build

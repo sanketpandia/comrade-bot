@@ -3,8 +3,9 @@ description: Post CI/CD status to a Discord channel webhook
 
 inputs:
   webhook-url:
-    description: Discord webhook URL
-    required: true
+    description: Discord webhook URL (repository secret, environment secret, or variable)
+    required: false
+    default: ''
   title:
     description: Embed title
     required: true
@@ -39,7 +40,7 @@ runs:
       run: |
         set -euo pipefail
         if [ -z "$WEBHOOK_URL" ]; then
-          echo "No webhook URL; skipping."
+          echo "::warning::Discord notify skipped: no webhook URL (set DISCORD_WEBHOOK_URL or WEBHOOK_URL as a repository or production environment secret/variable)"
           exit 0
         fi
         if [ "$STATUS" = "success" ]; then
@@ -60,6 +61,9 @@ runs:
           --arg description "$DESC" \
           --argjson color "$COLOR" \
           '{embeds: [{title: $title, description: $description, color: $color}]}')
-        curl -fsS -X POST "$WEBHOOK_URL" \
+        if ! curl -fsS -X POST "$WEBHOOK_URL" \
           -H 'Content-Type: application/json' \
-          -d "$PAYLOAD"
+          -d "$PAYLOAD"; then
+          echo "::warning::Discord webhook request failed (deploy/CI still succeeded)"
+          exit 0
+        fi
