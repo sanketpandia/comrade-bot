@@ -35,7 +35,7 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
+              { "color": "green", "value": 0 },
               { "color": "yellow", "value": 120 },
               { "color": "red", "value": 300 }
             ]
@@ -56,7 +56,7 @@
       },
       "targets": [
         {
-          "expr": "time() - politburo_jobs_last_success_timestamp_seconds{job=\"infinite-flight-sessions\"}",
+          "expr": "time() - politburo_jobs_last_success_timestamp_seconds{exported_job=\"infinite-flight-sessions\"}",
           "legendFormat": "sessions",
           "refId": "A"
         }
@@ -72,7 +72,7 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
+              { "color": "green", "value": 0 },
               { "color": "yellow", "value": 120 },
               { "color": "red", "value": 300 }
             ]
@@ -93,7 +93,7 @@
       },
       "targets": [
         {
-          "expr": "time() - politburo_jobs_last_success_timestamp_seconds{job=\"infinite-flight-flights\"}",
+          "expr": "time() - politburo_jobs_last_success_timestamp_seconds{exported_job=\"infinite-flight-flights\"}",
           "legendFormat": "flights",
           "refId": "A"
         }
@@ -109,7 +109,7 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
+              { "color": "green", "value": 0 },
               { "color": "yellow", "value": 3600 },
               { "color": "red", "value": 7200 }
             ]
@@ -130,7 +130,7 @@
       },
       "targets": [
         {
-          "expr": "time() - politburo_jobs_last_success_timestamp_seconds{job=\"infinite-flight-liveries\"}",
+          "expr": "time() - politburo_jobs_last_success_timestamp_seconds{exported_job=\"infinite-flight-liveries\"}",
           "legendFormat": "liveries",
           "refId": "A"
         }
@@ -171,10 +171,24 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 18, "x": 6, "y": 6 },
       "id": 5,
-      "interval": "5m",
+      "interval": "1m",
       "options": {
         "legend": { "displayMode": "table", "placement": "right", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
@@ -193,7 +207,14 @@
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
-          "custom": { "drawStyle": "line", "fillOpacity": 30, "lineWidth": 1, "stacking": { "mode": "normal" } },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 30,
+            "lineWidth": 1,
+            "pointSize": 6,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "normal" }
+          },
           "mappings": [],
           "unit": "short"
         },
@@ -201,7 +222,7 @@
       },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
       "id": 6,
-      "interval": "5m",
+      "interval": "1m",
       "options": {
         "legend": { "displayMode": "table", "placement": "right", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
@@ -226,10 +247,24 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
       "id": 7,
-      "interval": "15m",
+      "interval": "5m",
       "options": {
         "legend": { "displayMode": "table", "placement": "right", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
@@ -246,7 +281,21 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
       "id": 8,
       "interval": "15m",
@@ -293,11 +342,11 @@
       }
     ]
   },
-  "time": { "from": "now-6h", "to": "now" },
+  "time": { "from": "now-3h", "to": "now" },
   "timepicker": {},
-  "timezone": "browser",
+  "timezone": "utc",
   "title": "Infinite Live metrics",
   "uid": "politburo-livegame",
-  "version": 1,
+  "version": 3,
   "weekStart": ""
 }

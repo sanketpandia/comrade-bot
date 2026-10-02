@@ -1,5 +1,5 @@
 name: GHCR imagePullSecret
-description: Refresh ghcr-cred docker-registry secret in ie-apps when GHCR_PULL_TOKEN is set
+description: Optional — refresh ghcr-cred in ie-apps when GHCR_PULL_TOKEN is set (not needed for public GHCR packages)
 
 inputs:
   ghcr-user:

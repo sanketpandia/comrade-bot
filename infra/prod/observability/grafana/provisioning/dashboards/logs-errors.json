@@ -54,7 +54,10 @@
             "axisLabel": "Error Rate (%)",
             "drawStyle": "line",
             "fillOpacity": 10,
-            "lineWidth": 2
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
           },
           "mappings": [],
           "thresholds": {
@@ -90,7 +93,14 @@
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
-          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
           "mappings": [],
           "unit": "percent"
         },
@@ -115,7 +125,21 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 11 },
       "id": 4,
       "interval": "5m",
@@ -135,7 +159,21 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 19 },
       "id": 5,
       "interval": "15m",
@@ -164,5 +202,5 @@
   "timezone": "browser",
   "title": "Logs & Errors",
   "uid": "logs-errors",
-  "version": 1
+  "version": 2
 }

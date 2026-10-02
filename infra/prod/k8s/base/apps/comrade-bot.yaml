@@ -30,11 +30,10 @@ spec:
       labels:
         app: comrade-bot
     spec:
-      imagePullSecrets:
-        - name: ghcr-cred
       containers:
         - name: comrade-bot
           image: comrade-bot:main
+          imagePullPolicy: Always
           envFrom:
             - secretRef:
                 name: comrade-bot-env

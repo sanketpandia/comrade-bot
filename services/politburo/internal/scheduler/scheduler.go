@@ -81,7 +81,22 @@ func (s *Scheduler) Start() {
 	s.start.Do(func() {
 		slog.Info("scheduler starting", "jobs", len(s.jobs))
 		s.cron.Start()
+		s.runAllOnceAsync()
 	})
+}
+
+// runAllOnceAsync warms caches immediately so /health/status can pass before the
+// first cron tick (sessions sync is every five minutes).
+func (s *Scheduler) runAllOnceAsync() {
+	s.mu.Lock()
+	jobs := make([]Job, 0, len(s.jobs))
+	for _, job := range s.jobs {
+		jobs = append(jobs, job)
+	}
+	s.mu.Unlock()
+	for _, job := range jobs {
+		go s.run(job)
+	}
 }
 
 func (s *Scheduler) Stop() {
