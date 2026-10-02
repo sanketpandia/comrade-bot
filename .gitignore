@@ -4,6 +4,9 @@
 !**/.env.example
 !**/.env.*.example
 
+# Filled production env on the VPS (templates: infra/prod/env/*.env.example)
+infra/prod/env/*.env
+
 node_modules/
 **/dist/
 **/.air_tmp/

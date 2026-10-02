@@ -2,6 +2,8 @@
 
 Single-node **k3s** stack for politburo, comrade-bot, Postgres, Redis, and observability. Images come from **GHCR**; deploys run on the **self-hosted** GitHub Actions runner on the VPS.
 
+**Day-2 ops (secrets, migrations, restarts, `git pull`):** [`docs/infra/prod-ops.md`](../../../docs/infra/prod-ops.md).
+
 **New server from scratch?** Follow [`docs/infra/ubuntu-22.04-production-bootstrap.md`](../../../docs/infra/ubuntu-22.04-production-bootstrap.md) (Ubuntu 22.04, DNS, k3s, Caddy, runner, secrets, smoke tests).
 
 ## Layout
@@ -85,7 +87,7 @@ Environment=ACTIONS_RUNNER_HOOK_JOB_STARTED=/home/gitrunner/hooks/job-started.sh
 
 ## 3. Kubernetes secrets (bootstrap once)
 
-Create secrets **before** app pods start. Use production values from [`../env/`](../env/) templates.
+Create secrets **before** app pods start. Copy [`../env/*.env.example`](../env/) → `../env/*.env` on the server (`chmod 600`; `*.env` is gitignored). For k3s, put cluster DNS in app env files (see [prod-ops § Secrets](../../../docs/infra/prod-ops.md)) instead of relying on the patches below long term.
 
 ```bash
 cd /path/to/comrade-bot
@@ -149,7 +151,7 @@ kubectl -n ie-data exec -it postgres-0 -- pg_restore -U ieuser -d infinite --cle
 # Or copy dump into pod and pg_restore locally
 ```
 
-Apply SQL migrations if needed:
+Apply SQL migrations if needed (see [`docs/infra/prod-ops.md`](../../../docs/infra/prod-ops.md) — run **individual** files, not blind loops on existing DBs):
 
 ```bash
 for f in services/politburo/migrations/*.sql; do
