@@ -9,6 +9,9 @@
 #  - window 3 (politburo): Air (optional; prefer VS Code debug instead)
 #
 # Uses Docker by default. For Podman: CONTAINER_CLI=podman ./start-dev.sh
+# If compose fails with "name already in use" or labour-bureau mount paths:
+#   DEV_STACK_CLEAN=1 CONTAINER_CLI=podman ./start-dev.sh
+# or run ./clean-dev-stack.sh first.
 #
 
 set -euo pipefail
@@ -33,7 +36,10 @@ if [ "$confirm" != "y" ]; then
   exit 1
 fi
 
-
+if [ "${DEV_STACK_CLEAN:-}" = "1" ]; then
+  echo "DEV_STACK_CLEAN=1 — running clean-dev-stack.sh first..."
+  bash "${SCRIPT_DIR}/clean-dev-stack.sh"
+fi
 
 tmux new-session -d -s "$SESSION" -n "compose-up"
 tmux send-keys -t "$SESSION":1 "cd \"${SCRIPT_DIR}\" && $COMPOSE_CMD -f docker-compose.dev.yml up" C-m

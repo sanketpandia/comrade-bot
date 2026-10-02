@@ -30,6 +30,19 @@ scrape_configs:
       - targets: ['cadvisor.ie-observability.svc.cluster.local:8080']
     scrape_interval: 15s
     scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [container_label_io_kubernetes_pod_namespace]
+        regex: (.+)
+        target_label: namespace
+        replacement: $1
+      - source_labels: [container_label_io_kubernetes_pod_name]
+        regex: (.+)
+        target_label: pod
+        replacement: $1
+      - source_labels: [container_label_io_kubernetes_container_name]
+        regex: (.+)
+        target_label: container
+        replacement: $1
 
   - job_name: node-exporter
     static_configs:
