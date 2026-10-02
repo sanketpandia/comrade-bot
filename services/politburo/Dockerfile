@@ -38,6 +38,6 @@ COPY --from=build --chown=65532:65532 /out/politburo /usr/local/bin/politburo
 
 USER 65532:65532
 EXPOSE 8082
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget --spider --quiet http://127.0.0.1:${PORT:-8082}/health/live || exit 1
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget --spider --quiet http://127.0.0.1:${PORT:-8082}/health/status || exit 1
 ENTRYPOINT ["/usr/local/bin/politburo"]

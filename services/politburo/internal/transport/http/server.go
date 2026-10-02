@@ -84,7 +84,7 @@ func (s *Server) router() stdhttp.Handler {
 	router.Use(appmiddleware.AccessLog(s.app.Metrics))
 	router.Use(appmiddleware.AuthenticateAPI(s.app.APIKeys, s.app.Sessions))
 
-	healthHandler := health.NewHandler(s.app.DB, s.app.Cache, s.app.StartedAt)
+	healthHandler := health.NewHandler(s.app.DB, s.app.Cache, s.app.Config.Jobs.Enabled, s.app.StartedAt)
 	sessionsHandler := gamesessions.NewHandler(s.app.Cache)
 	flightsHandler := gameflights.NewHandler(s.app.Cache, s.app.Config.Auth.SignedLinkSecret)
 	signedLinkHandler := signedlink.NewHandler(s.app.Users, s.app.Tickets, s.app.Resolver, s.app.VALookup, s.app.Config.Auth.UIBaseURL)
@@ -148,12 +148,8 @@ type apiHandler struct {
 	signedLink *signedlink.Handler
 }
 
-func (h apiHandler) GetLiveness(w stdhttp.ResponseWriter, r *stdhttp.Request) {
-	h.health.GetLiveness(w, r)
-}
-
-func (h apiHandler) GetReadiness(w stdhttp.ResponseWriter, r *stdhttp.Request) {
-	h.health.GetReadiness(w, r)
+func (h apiHandler) GetHealthStatus(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.health.GetStatus(w, r)
 }
 
 func (h apiHandler) GetActiveSessions(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.GetActiveSessionsParams) {

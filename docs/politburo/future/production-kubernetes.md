@@ -209,7 +209,7 @@ This is the most important constraint. Politburo runs scheduled jobs when `JOBS_
 
 ### Probes
 
-Politburo rewrite exposes `/health/live` and `/health/ready` (replace legacy `/healthCheck` in manifests).
+Politburo rewrite exposes `GET /health/status` (uptime plus database/cache readiness; replace legacy `/healthCheck` in manifests).
 
 ```yaml
 # Illustrative — politburo Deployment fragment
@@ -223,16 +223,16 @@ spec:
         - name: politburo
           readinessProbe:
             httpGet:
-              path: /health/ready
+              path: /health/status
               port: 8080
             initialDelaySeconds: 5
-            periodSeconds: 10
+            periodSeconds: 15
           livenessProbe:
             httpGet:
-              path: /health/live
+              path: /health/status
               port: 8080
             initialDelaySeconds: 15
-            periodSeconds: 20
+            periodSeconds: 15
 ```
 
 `readinessProbe` prevents Caddy (or an in-cluster Ingress) from routing to a pod that cannot reach Postgres/Redis.
@@ -400,7 +400,7 @@ The Politburo **rewrite** (single `cmd/politburo` binary, default DB `politburo_
 
 | Topic | Action |
 |---|---|
-| Health paths | Manifests use `/health/live` and `/health/ready`, not legacy `/healthCheck` |
+| Health paths | Manifests use `GET /health/status`, not legacy `/healthCheck` |
 | Port | Container listens on `8080` in prod (configurable via `PORT`); Service targets that port |
 | Vizburo | No separate deployment — UI is the same politburo pod |
 | Jobs | Single replica + `Recreate` is the operational guarantee; `JOBS_ENABLED=true` only on the one politburo pod |

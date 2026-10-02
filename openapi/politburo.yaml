@@ -8,30 +8,19 @@ servers:
   - url: http://localhost:8080
     description: Local rewrite
 paths:
-  /health/live:
+  /health/status:
     get:
-      operationId: getLiveness
-      summary: Report whether the process is alive
+      operationId: getHealthStatus
+      summary: Report process uptime and dependency readiness
       responses:
         '200':
-          description: The process is alive
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HealthResponse'
-  /health/ready:
-    get:
-      operationId: getReadiness
-      summary: Report whether required dependencies are ready
-      responses:
-        '200':
-          description: The application is ready
+          description: The process is up and required dependencies are reachable
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
         '503':
-          description: A required dependency is unavailable
+          description: The process is up but a required dependency is unavailable
           content:
             application/json:
               schema:

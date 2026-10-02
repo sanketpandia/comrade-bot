@@ -5,7 +5,7 @@ separately for reference during migration.
 
 The rewrite is a **single Go binary** (`cmd/politburo`) that serves:
 
-- public ops (`/health/live`, `/health/ready`, `/metrics`)
+- public ops (`/health/status`, `/metrics`)
 - machine JSON API under `/api/v1/...` (OpenAPI contract)
 - server-rendered UI under `/dashboard` and `/static` (not OpenAPI)
 

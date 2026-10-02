@@ -13,7 +13,7 @@ Single binary `cmd/politburo`. Jobs off unless `JOBS_ENABLED=true` and
 
 | Path | Status |
 |---|---|
-| `GET /health/live`, `GET /health/ready` | Live |
+| `GET /health/status` | Live |
 | `GET /api/v1/game/sessions/active` | Live, Redis |
 | `GET /api/v1/game/flights/active` | Live, Redis, filter + page |
 | `GET /api/v1/game/flights/active/trimmed` | Live, map markers, encrypted `flightId` |
@@ -64,7 +64,7 @@ Deployed commands (`src/commands/registry.ts`):
 |---|---|---|
 | `/register` | Global account + optional VA callsign link | `POST /api/v1/user/register`, `GET /api/v1/user/status` |
 | `/status` | Account + current-server membership | `GET /api/v1/user/status` |
-| `/botstatus` | Sanitized ops health | `GET /healthCheck` (old path; rewrite is `/health/ready`) |
+| `/botstatus` | Ops health | `GET /health/status` |
 | `/log` | File a PIREP for the current flight | `GET /api/v1/pireps/config`, `POST /api/v1/pireps/submit` |
 | `/logbook` | Staff lookup of IF flight history | `GET /api/v1/user/{ifcId}/flights` |
 | `/live` | VA members currently flying | `GET /api/v1/flights/va` |

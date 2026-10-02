@@ -33,8 +33,11 @@ export const helpCatalog: HelpEntry[] = [
     {
         name: "botstatus",
         category: "status",
-        summary: "Show sanitized bot/backend operational status.",
-        details: ["Shows only high-level availability and never raw dependency details."],
+        summary: "Show Comrade Bot and backend operational status.",
+        details: [
+            "Reports comrade-bot, backend, database, cache, and Infinite Flight sessions sync.",
+            "Backend is Up when Politburo returns HTTP 200 from GET /health/status.",
+        ],
         examples: ["/botstatus"],
         visible: true,
     },

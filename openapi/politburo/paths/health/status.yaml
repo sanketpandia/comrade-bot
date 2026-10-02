@@ -1,15 +1,15 @@
 get:
-  operationId: getReadiness
-  summary: Report whether required dependencies are ready
+  operationId: getHealthStatus
+  summary: Report process uptime and dependency readiness
   responses:
     "200":
-      description: The application is ready
+      description: The process is up and required dependencies are reachable
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/HealthResponse.yaml"
     "503":
-      description: A required dependency is unavailable
+      description: The process is up but a required dependency is unavailable
       content:
         application/json:
           schema:

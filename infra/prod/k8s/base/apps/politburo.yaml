@@ -45,13 +45,13 @@ spec:
                 name: politburo-env
           readinessProbe:
             httpGet:
-              path: /health/ready
+              path: /health/status
               port: http
             initialDelaySeconds: 10
-            periodSeconds: 10
+            periodSeconds: 15
           livenessProbe:
             httpGet:
-              path: /health/live
+              path: /health/status
               port: http
             initialDelaySeconds: 15
-            periodSeconds: 30
+            periodSeconds: 15

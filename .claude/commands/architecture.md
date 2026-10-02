@@ -102,7 +102,7 @@ HTTP surfaces:
 
 | Mount | Contract | Auth |
 |---|---|---|
-| `/health/live`, `/health/ready` | OpenAPI | public |
+| `/health/status` | OpenAPI | public |
 | `/metrics` | Prometheus | public on host (blocked by Caddy in prod) |
 | `/api/v1/game/**` | OpenAPI | session cookie **or** `X-API-Key` |
 | `/api/v1/signed-link` | OpenAPI | `X-API-Key` (+ `X-Discord-User-Id`) |
@@ -145,14 +145,14 @@ Conventions that are enforced in code today (see `docs/politburo/conventions.md`
 
 **Bot ↔ Politburo drift**
 
-7. `apiService.ts` still calls legacy endpoints the rewrite does not serve: `/healthCheck` (now `/health/live`), `/api/v1/user/{ifcId}/flights`, `/api/v1/flights/va`, `/api/v1/pilot/stats`, `/api/v1/pireps/*`, `/api/v1/events/*`. Treat those commands as broken against the rewrite until ported.
+7. `apiService.ts` still calls legacy endpoints the rewrite does not serve: `/api/v1/user/{ifcId}/flights`, `/api/v1/flights/va`, `/api/v1/pilot/stats`, `/api/v1/pireps/*`, `/api/v1/events/*`. Treat those commands as broken against the rewrite until ported.
 8. Envelopes differ: Politburo returns `{data:...}` / `{error:{code,message}}`; legacy bot code expects `{status,result,message}`. `unwrapApiData` in `apiEnvelope.ts` accepts both, but error paths often still read `body.message`. Request bodies drift too (e.g. signed-link sends `redirect_to`/`ttl_minutes`; the spec field is `redirectTo`). Check the spec when touching a call.
 9. Bot `API_URL` defaults to `:8080`; dev Politburo listens on `:8082`.
 
 **Runtime / infra**
 
 10. Port split: dev Politburo `8082` (config default, Dockerfile `EXPOSE`, dev Prometheus target `localhost:8082`); prod uses `PORT=8080` (compose `127.0.0.1:8080:8080`, prod Prometheus `politburo:8080`). Change both sides together.
-11. `infra/prod/docker-compose.prod.yml` healthcheck hits `/healthCheck`, which the rewrite does not serve; the image `HEALTHCHECK` uses `/health/live`.
+11. Politburo health is `GET /health/status` (Docker/k8s probes and compose healthcheck use the same path at 15s).
 12. `infra/prod/env/politburo.env.example` is legacy: lists `JWT_SECRET`, `GOD_MODE`, `USE_REDIS_CACHE`, `DEBUG` (unused) and omits `SIGNED_LINK_SECRET` (**required outside `APP_ENV=local`**), `UI_BASE_URL`, `PLATFORM_OPERATOR_DISCORD_IDS`, `JOBS_ENABLED`. It also defaults `PG_DB=infinite` while code defaults `politburo_next`.
 13. Migrations are manual. Dev Compose creates DB `infinite`; `politburo_next` must be created and `000_core_schema.sql` applied by hand (see `infra/dev/README.md`). Legacy full schema is in `migrations/archive/`. Never apply `000` to a populated DB.
 14. Promtail pipelines (dev+prod) parse Zap fields (`L`, `T`, `M`, `C`); Politburo now logs slog JSON (`time`, `level`, `msg`). `level` works; timestamp/message extraction does not.

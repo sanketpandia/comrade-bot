@@ -7,10 +7,8 @@ servers:
   - url: http://localhost:8080
     description: Local rewrite
 paths:
-  /health/live:
-    $ref: "./paths/health/live.yaml"
-  /health/ready:
-    $ref: "./paths/health/ready.yaml"
+  /health/status:
+    $ref: "./paths/health/status.yaml"
   /api/v1/game/sessions/active:
     $ref: "./paths/game/sessions-active.yaml"
   /api/v1/game/flights/active:

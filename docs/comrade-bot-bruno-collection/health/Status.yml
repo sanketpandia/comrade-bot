@@ -1,11 +1,11 @@
 info:
-  name: Live
+  name: Status
   type: http
   seq: 1
 
 http:
   method: GET
-  url: "{{politburo-base-url}}/health/live"
+  url: "{{politburo-base-url}}/health/status"
   auth: inherit
 
 settings:
@@ -15,4 +15,4 @@ settings:
   maxRedirects: 5
 
 docs: |-
-  `getLiveness` — report whether the Politburo process is alive.
+  `getHealthStatus` — process uptime plus database and cache readiness.

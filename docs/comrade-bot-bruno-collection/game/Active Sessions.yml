@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: "{{politburo-base-url}}/api/v1/game/flights/active"
+  url: "{{politburo-base-url}}/api/v1/game/sessions/active"
   params:
     - name: history
       value: "false"
