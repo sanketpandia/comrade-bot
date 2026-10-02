@@ -15,3 +15,7 @@ build() {
 
 build | kubectl apply -f -
 echo "Applied kustomize overlay: ${OVERLAY}"
+
+# ConfigMap-only changes do not restart pods; reload observability mounts.
+kubectl rollout restart deployment/prometheus deployment/grafana -n ie-observability
+kubectl rollout status deployment/prometheus deployment/grafana -n ie-observability --timeout=180s
