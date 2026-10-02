@@ -29,6 +29,6 @@ Go code is grouped by **bounded context**. Shared runtime pieces stay at this di
 - **`livegame/*` and `community/*`** must not import `access/session` (cookies/sessions stay in HTTP + access). See [`docs/politburo/conventions.md`](../../../docs/politburo/conventions.md).
 - **Cache keys** only via [`cache/keys.go`](cache/keys.go).
 - **IF Live API** only through [`livegame/infiniteflight`](livegame/infiniteflight/). `community/registration` may use it for logbook proof; do not pull livegame cache packages from community code.
-- **Jobs** register only in [`livegame/jobs/register.go`](livegame/jobs/register.go).
+- **Jobs** register only in [`jobs/register.go`](jobs/register.go). Cron/TTL constants live in [`cache/`](cache/).
 
 Full system map: [`.claude/commands/architecture.md`](../../../.claude/commands/architecture.md).

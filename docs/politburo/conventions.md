@@ -29,7 +29,7 @@ owning scheduled job.
 ## Adding a cache-backed feature
 
 1. Domain package under `internal/livegame/<feature>` (or another bounded context + feature name).
-2. Job under `internal/livegame/jobs/<feature>`; register once in `livegame/jobs.Register`.
+2. Job implementation under `internal/livegame/jobs/<feature>` (or the owning context); register once in `internal/jobs/register.go`. Add Redis keys, TTLs, and cron schedule constants in `internal/cache/` first.
 3. OpenAPI path under `/api/v1/...` in `api/openapi/politburo.yaml`.
 4. Handler under `internal/transport/http/api/...` implementing the generated method.
 5. Cache keys only via `internal/cache/keys.go`.
@@ -47,7 +47,7 @@ them ad hoc.
 
 ## Redis keys
 
-Redis key constants live in `internal/cache/keys.go`. Keys are lowercase,
+Redis key constants live in `internal/cache/keys.go`. Cron schedules and cache TTL/refresh intervals live in `internal/cache/schedules.go` and `internal/cache/cadence.go`. Keys are lowercase,
 colon-delimited, and begin with a bounded domain prefix such as `game:`. Callers
 must use the shared constants or key builders rather than repeating string
 literals.

@@ -60,8 +60,8 @@ export const helpCatalog: HelpEntry[] = [
     {
         name: "live",
         category: "flight",
-        summary: "View current active flights for this VA.",
-        details: ["Requires current-server VA membership."],
+        summary: "Get a signed link to the Politburo live flights map.",
+        details: ["Requires a registered Politburo user account."],
         examples: ["/live"],
         visible: true,
     },

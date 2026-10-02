@@ -191,10 +191,9 @@ function getLongestRouteSegment(segments) {
  * @returns {L.DivIcon} Leaflet DivIcon instance
  */
 function createFlightIcon(flight, color) {
-  const track = flight.track != null ? flight.track : (flight.heading != null ? flight.heading : 0);
-  const rotation = track; // Track is already in degrees from north (0-360)
+  const rotation = flight.track != null ? flight.track : 0;
   
-  // Create SVG for rotatable triangle (heading indicator)
+  // Create SVG for rotatable triangle (track / bearing indicator)
   const selected = flight._selected === true;
   const stroke = selected ? '#f8fafc' : '#0f111a';
   const strokeWidth = selected ? 3 : 2;
@@ -217,7 +216,7 @@ function createFlightIcon(flight, color) {
 }
 
 /**
- * Create a simple circle icon for flights without heading
+ * Create a simple circle icon for flights without track
  * @param {string} color - Color for the marker
  * @returns {L.DivIcon} Leaflet DivIcon instance
  */
@@ -236,6 +235,16 @@ function createCircleIcon(color) {
     popupAnchor: [0, -12]
   });
 }
+
+/** Permanent callsign labels only at this zoom and above (~single-country scale). */
+const MIN_ZOOM_FOR_CALLSIGNS = 6;
+
+const CALLSIGN_TOOLTIP_OPTIONS = {
+  permanent: true,
+  direction: 'right',
+  offset: [10, 0],
+  className: 'flight-tooltip',
+};
 
 /**
  * FlightMap class - Reusable map component for flights and routes
@@ -297,6 +306,59 @@ export class FlightMap {
 
     // Click handler callback
     this.onFlightClickCallback = null;
+    this._showCallsignsPref = true;
+    this.map.on('moveend', () => this._syncCallsignTooltips());
+  }
+
+  _callsignsVisibleAtZoom() {
+    return this.map.getZoom() >= MIN_ZOOM_FOR_CALLSIGNS;
+  }
+
+  _markerInViewport(marker) {
+    const bounds = this.map.getBounds();
+    if (!bounds) {
+      return false;
+    }
+    return bounds.contains(marker.getLatLng());
+  }
+
+  _applyCallsignTooltip(marker, flight) {
+    const wantsLabel = this._showCallsignsPref
+      && this._callsignsVisibleAtZoom()
+      && this._markerInViewport(marker);
+    const callsign = flight?.callsign;
+    if (wantsLabel && callsign) {
+      const tooltip = marker.getTooltip();
+      if (!tooltip) {
+        marker.bindTooltip(callsign, CALLSIGN_TOOLTIP_OPTIONS);
+      } else {
+        tooltip.setContent(callsign);
+        if (!tooltip.isOpen()) {
+          marker.openTooltip();
+        }
+      }
+      return;
+    }
+    if (marker.getTooltip()) {
+      marker.unbindTooltip();
+    }
+  }
+
+  _syncCallsignTooltips() {
+    if (!this._showCallsignsPref || !this._callsignsVisibleAtZoom()) {
+      for (const marker of this.flightMarkers.values()) {
+        if (marker.getTooltip()) {
+          marker.unbindTooltip();
+        }
+      }
+      return;
+    }
+
+    for (const marker of this.flightMarkers.values()) {
+      if (marker._flightData) {
+        this._applyCallsignTooltip(marker, marker._flightData);
+      }
+    }
   }
 
   /**
@@ -304,9 +366,11 @@ export class FlightMap {
    * @param {Array} flights - Array of flight objects with {flightId|flight_id, latitude, longitude, track, ...}
    * @param {Object} options
    * @param {boolean} options.fitBounds - Fit the map to markers (default: true)
+   * @param {boolean} options.showCallsigns - User preference for callsign labels (default: true); still gated by zoom
    */
   addFlights(flights, options = {}) {
-    const { fitBounds = true } = options;
+    const { fitBounds = true, showCallsigns = true } = options;
+    this._showCallsignsPref = showCallsigns;
     this.clearFlights();
 
     if (!Array.isArray(flights) || flights.length === 0) {
@@ -321,7 +385,7 @@ export class FlightMap {
 
     validFlights.forEach(flight => {
       const color = getFlightPhaseColor(flightState(flight));
-      const icon = (flight.track ?? flight.heading) != null 
+      const icon = flight.track != null
         ? createFlightIcon(flight, color)
         : createCircleIcon(color);
 
@@ -331,15 +395,6 @@ export class FlightMap {
       const marker = L.marker(position, {
         icon: icon
       });
-
-      if (flight.callsign) {
-        marker.bindTooltip(flight.callsign, {
-          permanent: true,
-          direction: 'right',
-          offset: [10, 0],
-          className: 'flight-tooltip'
-        });
-      }
 
       marker._flightData = flight;
 
@@ -361,6 +416,7 @@ export class FlightMap {
         maxZoom: 22
       });
     }
+    this._syncCallsignTooltips();
   }
 
   /**

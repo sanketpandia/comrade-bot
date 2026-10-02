@@ -94,7 +94,7 @@ func TestStatusSessionsStaleWhenJobsEnabled(t *testing.T) {
 
 	now := time.Date(2026, 3, 1, 12, 10, 0, 0, time.UTC)
 	handler := NewHandler(stubDB{}, stubCache{snapshot: &gamesessions.Snapshot{
-		LastCached: now.Add(-gamesessions.RefreshInterval - time.Minute),
+		LastCached: now.Add(-cache.SessionsRefreshInterval - time.Minute),
 	}}, true, now)
 	handler.now = func() time.Time { return now }
 

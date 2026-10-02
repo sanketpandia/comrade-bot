@@ -3,6 +3,7 @@ import { FlightMap } from '/static/js/map/flight-map.mjs';
 const POLL_MS = 60_000;
 const FILTER_DEBOUNCE_MS = 300;
 const DEFAULT_SERVER = 'casual';
+const PAGE_LENGTH = 5000;
 
 const form = document.getElementById('maps-filters');
 const serverSelect = document.getElementById('maps-server');
@@ -22,6 +23,7 @@ function readFiltersFromForm() {
     callSign: String(data.get('callSign') || '').trim(),
     userName: String(data.get('userName') || '').trim(),
     pilotState: data.getAll('pilotState').map(String),
+    showCallsigns: data.get('showCallsigns') != null,
   };
 }
 
@@ -34,15 +36,18 @@ function applyFiltersToForm(filters) {
   for (const input of form.querySelectorAll('input[name="pilotState"]')) {
     input.checked = filters.pilotState.includes(input.value);
   }
+  form.elements.showCallsigns.checked = filters.showCallsigns !== false;
 }
 
 function readFiltersFromURL() {
   const params = new URLSearchParams(window.location.search);
+  const showCallsignsParam = params.get('showCallsigns');
   return {
     serverId: (params.get('serverId') || '').trim(),
     callSign: (params.get('callSign') || '').trim(),
     userName: (params.get('userName') || '').trim(),
     pilotState: params.getAll('pilotState'),
+    showCallsigns: showCallsignsParam === null ? true : showCallsignsParam !== '0',
   };
 }
 
@@ -54,6 +59,7 @@ function writeFiltersToURL(filters) {
   }
   if (filters.callSign) params.set('callSign', filters.callSign);
   if (filters.userName) params.set('userName', filters.userName);
+  if (!filters.showCallsigns) params.set('showCallsigns', '0');
   const query = params.toString();
   const next = query ? `${window.location.pathname}?${query}` : window.location.pathname;
   window.history.replaceState(null, '', next);
@@ -122,22 +128,35 @@ async function loadSessions() {
   });
 }
 
-function flightsURL(filters) {
+function flightsURL(filters, pageNumber) {
   const params = new URLSearchParams();
-  params.set('serverId', filters.serverId);
+  params.set('pageNumber', String(pageNumber));
+  params.set('pageLength', String(PAGE_LENGTH));
   for (const state of filters.pilotState) {
     params.append('pilotState', state);
   }
   if (filters.callSign) params.set('callSign', filters.callSign);
   if (filters.userName) params.set('userName', filters.userName);
-  return `/api/v1/game/flights/active/trimmed?${params.toString()}`;
+  const query = params.toString();
+  return `/api/v1/game/flights/active/${encodeURIComponent(filters.serverId)}?${query}`;
 }
 
-function mapFlights(flights) {
-  return flights.map((flight) => ({
-    ...flight,
-    track: flight.heading,
-  }));
+async function fetchAllFlights(filters) {
+  const all = [];
+  let pageNumber = 1;
+  let totalLength = 0;
+  let lastCached = '';
+  for (;;) {
+    const body = await fetchJSON(flightsURL(filters, pageNumber));
+    const page = Array.isArray(body?.data?.result) ? body.data.result : [];
+    all.push(...page);
+    totalLength = body?.data?.pagination?.totalLength ?? all.length;
+    lastCached = body?.data?.meta?.lastCached ?? lastCached;
+    if (all.length >= totalLength || page.length === 0) {
+      return { flights: all, totalLength, lastCached };
+    }
+    pageNumber += 1;
+  }
 }
 
 async function loadFlights() {
@@ -150,12 +169,13 @@ async function loadFlights() {
   }
   writeFiltersToURL(filters);
   try {
-    const body = await fetchJSON(flightsURL(filters));
-    const flights = Array.isArray(body?.data?.result) ? body.data.result : [];
-    const total = body?.data?.count ?? flights.length;
-    map.addFlights(mapFlights(flights), { fitBounds: !fittedOnce && flights.length > 0 });
+    const { flights, totalLength, lastCached } = await fetchAllFlights(filters);
+    map.addFlights(flights, {
+      fitBounds: !fittedOnce && flights.length > 0,
+      showCallsigns: filters.showCallsigns,
+    });
     if (flights.length > 0) fittedOnce = true;
-    setStatus(total, body?.data?.meta?.lastCached);
+    setStatus(totalLength, lastCached);
     setError('');
   } catch (err) {
     map.addFlights([], { fitBounds: false });

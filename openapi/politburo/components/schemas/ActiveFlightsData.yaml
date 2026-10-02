@@ -8,7 +8,7 @@ properties:
   result:
     type: array
     items:
-      $ref: "./Flight.yaml"
+      $ref: "./ActiveFlightTrack.yaml"
   meta:
     $ref: "./CacheMetadata.yaml"
   pagination:

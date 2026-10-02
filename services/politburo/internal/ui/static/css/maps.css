@@ -91,8 +91,21 @@ html, body.maps-page {
   cursor: pointer;
 }
 
-.maps-filters__states input {
+.maps-filters__states input,
+.maps-filters__check input {
   accent-color: var(--accent-primary);
+}
+
+.maps-filters__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 
 .flight-marker {

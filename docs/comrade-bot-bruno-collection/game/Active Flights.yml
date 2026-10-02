@@ -5,27 +5,8 @@ info:
 
 http:
   method: GET
-  url: "{{politburo-base-url}}/api/v1/game/flights/active"
+  url: "{{politburo-base-url}}/api/v1/game/flights/active/{{politburo-server-id}}"
   params:
-    - name: serverId
-      value: "{{politburo-server-id}}"
-      type: query
-      description: Normalized session name (for example casual)
-    - name: pilotState
-      value: active
-      type: query
-      description: Restrict to pilot states (repeat param for multiple values)
-      disabled: true
-    - name: userName
-      value: ""
-      type: query
-      description: Username substring filter
-      disabled: true
-    - name: callSign
-      value: ""
-      type: query
-      description: Callsign substring filter
-      disabled: true
     - name: pageNumber
       value: "1"
       type: query
@@ -43,6 +24,4 @@ settings:
   maxRedirects: 5
 
 docs: |-
-  `getActiveFlights` — paged, filtered active flights for one server (`serverId` required).
-
-  `pilotState` values: `active`, `away_in_flight`, `away_parked`, `in_background`.
+  `getActiveFlights` — paged motion tracks for active flights on one server (`normalizedServerName` path segment).

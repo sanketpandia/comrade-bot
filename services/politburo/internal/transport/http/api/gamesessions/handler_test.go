@@ -35,13 +35,13 @@ func (cacheStub) SetJSON(context.Context, string, any, time.Duration) error { re
 
 func TestGetActiveSessionsReturnsCachedResponse(t *testing.T) {
 	lastCached := time.Date(2026, time.August, 14, 5, 0, 0, 123, time.UTC)
-	handler := NewHandler(cacheStub{snapshot: domainsessions.Snapshot{
+	handler := NewHandler(domainsessions.NewReader(cacheStub{snapshot: domainsessions.Snapshot{
 		Result: []infiniteflight.Session{{
 			ID: "8c772474-bb70-4294-ad40-09f8cbf3b289", Name: "Casual",
 			NormalizedName: "casual", UserCount: 42, Type: 1,
 		}},
 		LastCached: lastCached,
-	}})
+	}}))
 	recorder := httptest.NewRecorder()
 	handler.GetActiveSessions(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/sessions/active", nil))
 
@@ -50,7 +50,7 @@ func TestGetActiveSessionsReturnsCachedResponse(t *testing.T) {
 	}
 	var body struct {
 		Data struct {
-			Result []ActiveSession `json:"result"`
+			Result []activeSession `json:"result"`
 			Meta   struct {
 				LastCached          time.Time `json:"lastCached"`
 				RefreshIntervalMins int       `json:"refreshIntervalMins"`
@@ -76,7 +76,7 @@ func TestGetActiveSessionsReturnsCachedResponse(t *testing.T) {
 }
 
 func TestGetActiveSessionsReturnsServiceUnavailableOnCacheMiss(t *testing.T) {
-	handler := NewHandler(cacheStub{err: cache.ErrMiss})
+	handler := NewHandler(domainsessions.NewReader(cacheStub{err: cache.ErrMiss}))
 	recorder := httptest.NewRecorder()
 	handler.GetActiveSessions(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/sessions/active", nil))
 
@@ -86,7 +86,7 @@ func TestGetActiveSessionsReturnsServiceUnavailableOnCacheMiss(t *testing.T) {
 }
 
 func TestGetActiveSessionsRejectsSnapshotWithoutTimestamp(t *testing.T) {
-	handler := NewHandler(cacheStub{snapshot: domainsessions.Snapshot{}})
+	handler := NewHandler(domainsessions.NewReader(cacheStub{snapshot: domainsessions.Snapshot{}}))
 	recorder := httptest.NewRecorder()
 	handler.GetActiveSessions(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/sessions/active", nil))
 

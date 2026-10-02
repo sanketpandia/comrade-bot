@@ -22,7 +22,6 @@ func TestMapFlightNormalizesAndEnriches(t *testing.T) {
 		Speed:               525.6486,
 		VerticalSpeed:       0.00010479759,
 		Track:               106.800766,
-		Heading:             106.800766,
 		LastReport:          "2026-08-15 05:09:53Z",
 		FlightID:            "c34118e7-cbdd-4e22-8751-0cda93e41d75",
 		UserID:              "0d85b360-92b5-4e62-ac64-41bd1c829772",

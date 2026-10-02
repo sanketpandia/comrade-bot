@@ -16,8 +16,12 @@ type Registry struct {
 	JobLastSuccess         *prometheus.GaugeVec
 	FlightsActive          *prometheus.GaugeVec
 	FlightsByPilotState    *prometheus.GaugeVec
-	LiveryResolveTotal     *prometheus.CounterVec
-	FlightsFilteredTotal   *prometheus.CounterVec
+	LiveryResolveTotal            *prometheus.CounterVec
+	FlightsFilteredTotal          *prometheus.CounterVec
+	FlightsComputeTotal           *prometheus.CounterVec
+	FlightsFPLSyncScheduledTotal  *prometheus.CounterVec
+	FlightsRecordUpdateTotal      *prometheus.CounterVec
+	FlightsRecordCacheMissTotal   *prometheus.CounterVec
 }
 
 func NewRegistry() *Registry {
@@ -108,11 +112,36 @@ func NewRegistry() *Registry {
 		Name:      "flights_filtered_total",
 		Help:      "Flights returned after HTTP query filters on active flight endpoints.",
 	}, []string{"server", "endpoint"})
+	flightsComputeTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "livegame",
+		Name:      "flights_compute_total",
+		Help:      "Per-flight compute outcomes during the flights refresh job (fast_path vs full_compute).",
+	}, []string{"server", "outcome"})
+	flightsFPLSyncScheduledTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "livegame",
+		Name:      "flights_fpl_sync_scheduled_total",
+		Help:      "Flights where compute scheduled an FPL sync on this refresh tick.",
+	}, []string{"server"})
+	flightsRecordUpdateTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "livegame",
+		Name:      "flights_record_update_total",
+		Help:      "Per-flight Redis record write attempts (written, skipped_disabled, skipped_fast_path).",
+	}, []string{"server", "result"})
+	flightsRecordCacheMissTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "livegame",
+		Name:      "flights_record_cache_miss_total",
+		Help:      "Prior enriched flight records missing from cache at compute time.",
+	}, []string{"server"})
 	registry.MustRegister(
 		requests, duration,
 		cacheOperations, cacheDuration, cachePayloadBytes, cacheInserts,
 		jobRuns, jobDuration, jobRunning, jobLastSuccess,
 		flightsActive, flightsByPilotState, liveryResolveTotal, flightsFilteredTotal,
+		flightsComputeTotal, flightsFPLSyncScheduledTotal, flightsRecordUpdateTotal, flightsRecordCacheMissTotal,
 	)
 	return &Registry{
 		Prometheus: registry, Requests: requests, RequestDuration: duration,
@@ -122,5 +151,7 @@ func NewRegistry() *Registry {
 		JobLastSuccess: jobLastSuccess,
 		FlightsActive: flightsActive, FlightsByPilotState: flightsByPilotState,
 		LiveryResolveTotal: liveryResolveTotal, FlightsFilteredTotal: flightsFilteredTotal,
+		FlightsComputeTotal: flightsComputeTotal, FlightsFPLSyncScheduledTotal: flightsFPLSyncScheduledTotal,
+		FlightsRecordUpdateTotal: flightsRecordUpdateTotal, FlightsRecordCacheMissTotal: flightsRecordCacheMissTotal,
 	}
 }

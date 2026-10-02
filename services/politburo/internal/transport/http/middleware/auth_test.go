@@ -81,7 +81,7 @@ func TestAuthenticateAPIAcceptsSessionCookieOnGamePaths(t *testing.T) {
 	}))
 
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil))
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204", recorder.Code)
 	}
@@ -124,12 +124,12 @@ func TestAuthenticateAPIFallsBackToAPIKeyOnGamePaths(t *testing.T) {
 	}))
 
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil))
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", recorder.Code)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil)
 	req.Header.Set(APIKeyHeader, "good")
 	recorder = httptest.NewRecorder()
 	handler.ServeHTTP(recorder, req)
@@ -180,7 +180,7 @@ func TestAuthenticateAPISessionLookupError(t *testing.T) {
 		t.Fatal("next should not run")
 	}))
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil))
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", recorder.Code)
 	}

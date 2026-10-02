@@ -79,7 +79,7 @@ func TestJobRunFetchesSessions(t *testing.T) {
 	if !ok {
 		t.Fatalf("missing write for %q; writes = %#v", cache.KeyActiveSessions, cacheStore.writes)
 	}
-	if active.ttl != gamesessions.CacheTTL {
+	if active.ttl != cache.SessionsCacheTTL {
 		t.Fatalf("cache TTL = %s", active.ttl)
 	}
 	snapshot, ok := active.value.(gamesessions.Snapshot)
@@ -113,7 +113,7 @@ func TestJobRunKeepsOnlyLatestSessionPerID(t *testing.T) {
 	refreshedAt := time.Date(2026, time.August, 14, 19, 5, 0, 0, time.UTC)
 	cacheStore := &cacheStub{existing: &gamesessions.Snapshot{
 		Result:     []infiniteflight.Session{{ID: "casual", UserCount: 100}},
-		LastCached: refreshedAt.Add(-gamesessions.RefreshInterval),
+		LastCached: refreshedAt.Add(-cache.SessionsRefreshInterval),
 	}}
 	job := New(sessionsClientStub{sessions: []infiniteflight.Session{
 		{ID: "casual", Name: "Casual", UserCount: 277},

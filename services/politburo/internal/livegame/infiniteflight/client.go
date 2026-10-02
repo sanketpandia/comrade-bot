@@ -32,7 +32,6 @@ type Flight struct {
 	Speed               float64
 	VerticalSpeed       float64
 	Track               float64
-	Heading             float64
 	LastReport          string
 	FlightID            string
 	UserID              string
@@ -136,14 +135,10 @@ func (c *Client) GetSessionFlights(ctx context.Context, sessionID string) ([]Fli
 
 	flights := make([]Flight, 0, len(response.JSON200.Result))
 	for _, item := range response.JSON200.Result {
-		heading := 0.0
-		if item.Heading != nil {
-			heading = *item.Heading
-		}
 		flights = append(flights, Flight{
 			Username: item.Username, Callsign: item.Callsign, Latitude: item.Latitude,
 			Longitude: item.Longitude, Altitude: item.Altitude, Speed: item.Speed,
-			VerticalSpeed: item.VerticalSpeed, Track: item.Track, Heading: heading,
+			VerticalSpeed: item.VerticalSpeed, Track: item.Track,
 			LastReport: item.LastReport, FlightID: item.FlightId, UserID: item.UserId,
 			AircraftID: item.AircraftId, LiveryID: item.LiveryId,
 			VirtualOrganization: item.VirtualOrganization, PilotState: item.PilotState,

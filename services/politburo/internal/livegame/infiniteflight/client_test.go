@@ -99,7 +99,6 @@ func TestClientGetSessionFlights(t *testing.T) {
 				"userId": "0d85b360-92b5-4e62-ac64-41bd1c829772",
 				"aircraftId": "e258f6d4-4503-4dde-b25c-1fb9067061e2",
 				"liveryId": "df597aaf-456c-4878-9d84-45201f2aae74",
-				"heading": 106.800766,
 				"virtualOrganization": "Infinite Flight Airport Editing Team [IFAET]",
 				"pilotState": 3,
 				"isConnected": false
@@ -118,7 +117,7 @@ func TestClientGetSessionFlights(t *testing.T) {
 	if len(flights) != 1 || flights[0].Callsign != "Swiss 39 Heavy" || flights[0].FlightID != "c34118e7-cbdd-4e22-8751-0cda93e41d75" {
 		t.Fatalf("flights = %#v", flights)
 	}
-	if flights[0].PilotState != 3 || flights[0].IsConnected || flights[0].Heading != 106.800766 {
+	if flights[0].PilotState != 3 || flights[0].IsConnected || flights[0].Track != 106.800766 {
 		t.Fatalf("flight fields = %#v", flights[0])
 	}
 }

@@ -13,42 +13,43 @@ import (
 )
 
 type Handler struct {
-	cache cache.Store
+	reader *domainsessions.Reader
 }
 
-func NewHandler(cacheStore cache.Store) *Handler {
-	return &Handler{cache: cacheStore}
+func NewHandler(reader *domainsessions.Reader) *Handler {
+	return &Handler{reader: reader}
 }
 
-// ActiveSession is the public shape for GET /api/v1/game/sessions/active.
-type ActiveSession struct {
+type activeSession struct {
 	NormalizedName string `json:"normalizedName"`
 	UserCount      int    `json:"userCount"`
 	Type           int    `json:"type"`
 }
 
 func (h *Handler) GetActiveSessions(w http.ResponseWriter, r *http.Request) {
-	snapshot := domainsessions.Snapshot{}
-	if err := h.cache.GetJSON(r.Context(), cache.KeyActiveSessions, &snapshot); err != nil {
+	result, err := h.reader.ListActive(r.Context())
+	if err != nil {
 		status := http.StatusInternalServerError
-		if errors.Is(err, cache.ErrMiss) {
+		code := "ACTIVE_SESSIONS_CACHE_UNAVAILABLE"
+		msg := "active sessions cache is unavailable"
+		switch {
+		case errors.Is(err, domainsessions.ErrCacheMiss):
 			status = http.StatusServiceUnavailable
 			slog.Warn("active sessions cache miss", "error", err)
-		} else {
+		case errors.Is(err, domainsessions.ErrCacheCorrupt):
+			slog.Error("read active sessions cache", "error", "lastCached is missing")
+		case errors.Is(err, domainsessions.ErrCacheRead):
+			slog.Error("read active sessions cache", "error", err)
+		default:
 			slog.Error("read active sessions cache", "error", err)
 		}
-		response.WriteError(w, status, "ACTIVE_SESSIONS_CACHE_UNAVAILABLE", "active sessions cache is unavailable")
-		return
-	}
-	if snapshot.LastCached.IsZero() {
-		slog.Error("read active sessions cache", "error", "lastCached is missing")
-		response.WriteError(w, http.StatusInternalServerError, "ACTIVE_SESSIONS_CACHE_UNAVAILABLE", "active sessions cache is unavailable")
+		response.WriteError(w, status, code, msg)
 		return
 	}
 
-	result := make([]ActiveSession, 0, len(snapshot.Result))
-	for _, session := range snapshot.Result {
-		result = append(result, ActiveSession{
+	sessions := make([]activeSession, 0, len(result.Sessions))
+	for _, session := range result.Sessions {
+		sessions = append(sessions, activeSession{
 			NormalizedName: session.NormalizedName,
 			UserCount:      session.UserCount,
 			Type:           session.Type,
@@ -57,10 +58,10 @@ func (h *Handler) GetActiveSessions(w http.ResponseWriter, r *http.Request) {
 
 	response.WriteJSON(w, http.StatusOK, activeSessionsResponse{
 		Data: activeSessionsData{
-			Result: result,
+			Result: sessions,
 			Meta: cachedresponse.Meta{
-				LastCached:          snapshot.LastCached,
-				RefreshIntervalMins: int(domainsessions.RefreshInterval / time.Minute),
+				LastCached:          result.LastCached,
+				RefreshIntervalMins: int(cache.SessionsRefreshInterval / time.Minute),
 			},
 		},
 	})
@@ -71,6 +72,6 @@ type activeSessionsResponse struct {
 }
 
 type activeSessionsData struct {
-	Result []ActiveSession      `json:"result"`
-	Meta   cachedresponse.Meta  `json:"meta"`
+	Result []activeSession     `json:"result"`
+	Meta   cachedresponse.Meta `json:"meta"`
 }

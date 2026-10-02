@@ -1,16 +1,19 @@
+// Package flights runs the scheduled job that polls Infinite Flight for live
+// flights per active session and writes normalized snapshots to Redis.
 package flights
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
 	gameflights "infinite-experiment/politburo/internal/livegame/flights"
+	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
-	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	"infinite-experiment/politburo/internal/metrics"
 )
 
@@ -32,6 +35,9 @@ func (j *Job) Name() string {
 	return jobName
 }
 
+// Run refreshes cached flight snapshots for every session listed in the active
+// sessions snapshot. Missing session cache is non-fatal; per-session upstream
+// failures are logged and skipped so other servers still refresh.
 func (j *Job) Run(ctx context.Context) error {
 	var sessionsSnapshot gamesessions.Snapshot
 	if err := j.cache.GetJSON(ctx, cache.KeyActiveSessions, &sessionsSnapshot); err != nil {
@@ -60,6 +66,15 @@ func (j *Job) Run(ctx context.Context) error {
 	return nil
 }
 
+type sessionRefreshStats struct {
+	fastPath          int
+	fullCompute       int
+	fplScheduled      int
+	recordWritten     int
+	recordSkipped     int
+	recordCacheMisses int
+}
+
 func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session, refreshedAt time.Time) (int, error) {
 	upstream, err := j.client.GetSessionFlights(ctx, session.ID)
 	if err != nil {
@@ -74,42 +89,93 @@ func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session
 		if err != cache.ErrMiss {
 			slog.Warn("failed to read existing flights snapshot; treating as empty", "server", session.NormalizedName, "error", err)
 		}
-		existing.Result = nil
+		existing.Tracks = nil
 	}
 
-	existingByID := make(map[string]*gameflights.Flight, len(existing.Result))
-	for i := range existing.Result {
-		existingByID[existing.Result[i].FlightID] = &existing.Result[i]
-	}
-
-	mapped := make([]gameflights.Flight, 0, len(upstream))
+	items := dedupeUpstream(upstream)
+	tracks := make(map[string]gameflights.FlightMotion, len(items))
 	pilotStateCounts := map[string]float64{}
-	for _, item := range upstream {
-		names, outcome := j.lookup.Resolve(item.LiveryID, item.AircraftID)
-		j.metrics.LiveryResolveTotal.WithLabelValues(string(outcome)).Inc()
-		var resolved *gameliveries.ResolvedNames
-		if outcome != gameliveries.MatchMiss {
-			resolved = &names
+	stats := sessionRefreshStats{}
+
+	for _, item := range items {
+		var prior *gameflights.Flight
+		var priorFlight gameflights.Flight
+		if err := j.cache.GetJSON(ctx, cache.KeyFlightRecord(item.FlightID), &priorFlight); err != nil {
+			if !errors.Is(err, cache.ErrMiss) {
+				return 0, fmt.Errorf("read flight record %s: %w", item.FlightID, err)
+			}
+			stats.recordCacheMisses++
+		} else {
+			prior = &priorFlight
 		}
-		flight := gameflights.MapFlight(item, session, resolved, existingByID[item.FlightID], refreshedAt)
-		mapped = append(mapped, flight)
-		pilotStateCounts[flight.Normalized.PilotState]++
+
+		priorMotion, hasPriorMotion := existing.Tracks[item.FlightID]
+		out := gameflights.ComputeFlight(gameflights.ComputeDeps{
+			Lookup:  j.lookup,
+			Metrics: j.metrics,
+		}, session, item, prior, priorMotion, hasPriorMotion, refreshedAt)
+
+		if out.Decision.FastPath {
+			stats.fastPath++
+			j.metrics.FlightsComputeTotal.WithLabelValues(session.NormalizedName, "fast_path").Inc()
+		} else {
+			stats.fullCompute++
+			j.metrics.FlightsComputeTotal.WithLabelValues(session.NormalizedName, "full_compute").Inc()
+		}
+		if out.Decision.FPLSync {
+			stats.fplScheduled++
+			j.metrics.FlightsFPLSyncScheduledTotal.WithLabelValues(session.NormalizedName).Inc()
+			gameflights.RunFPLSync(ctx, out.Flight)
+		}
+
+		switch {
+		case out.Decision.FastPath:
+			j.metrics.FlightsRecordUpdateTotal.WithLabelValues(session.NormalizedName, "skipped_fast_path").Inc()
+			stats.recordSkipped++
+		case !out.Decision.UpdateFlightRecord:
+			j.metrics.FlightsRecordUpdateTotal.WithLabelValues(session.NormalizedName, "skipped_fast_path").Inc()
+			stats.recordSkipped++
+		default:
+			if err := j.cache.SetJSON(ctx, cache.KeyFlightRecord(item.FlightID), out.Flight, cache.ActiveFlightsTTL); err != nil {
+				return 0, fmt.Errorf("cache flight record %s: %w", item.FlightID, err)
+			}
+			j.metrics.FlightsRecordUpdateTotal.WithLabelValues(session.NormalizedName, "written").Inc()
+			stats.recordWritten++
+		}
+
+		tracks[item.FlightID] = gameflights.MotionFromUpstream(item)
+		pilotStateCounts[out.Flight.Normalized.PilotState]++
 	}
 
 	snapshot := gameflights.Snapshot{
-		Result:     gameflights.UpsertFlights(existing.Result, mapped),
+		Tracks:     tracks,
 		LastCached: refreshedAt,
 	}
-	if snapshot.Result == nil {
-		snapshot.Result = make([]gameflights.Flight, 0)
-	}
-	j.metrics.FlightsActive.WithLabelValues(session.NormalizedName).Set(float64(len(snapshot.Result)))
-	for state, count := range pilotStateCounts {
-		j.metrics.FlightsByPilotState.WithLabelValues(session.NormalizedName, state).Set(count)
+	if snapshot.Tracks == nil {
+		snapshot.Tracks = make(map[string]gameflights.FlightMotion)
 	}
 
-	if err := j.cache.SetJSON(ctx, cache.KeyActiveFlights(session.NormalizedName), snapshot, gameflights.GameActiveFlightTTL); err != nil {
+	j.metrics.FlightsActive.WithLabelValues(session.NormalizedName).Set(float64(len(tracks)))
+	for _, state := range gameflights.PilotStateNames() {
+		j.metrics.FlightsByPilotState.WithLabelValues(session.NormalizedName, state).Set(pilotStateCounts[state])
+	}
+	if stats.recordCacheMisses > 0 {
+		j.metrics.FlightsRecordCacheMissTotal.WithLabelValues(session.NormalizedName).Add(float64(stats.recordCacheMisses))
+	}
+
+	if err := j.cache.SetJSON(ctx, cache.KeyActiveFlights(session.NormalizedName), snapshot, cache.ActiveFlightsTTL); err != nil {
 		return 0, fmt.Errorf("cache flights: %w", err)
 	}
-	return len(snapshot.Result), nil
+
+	slog.Debug("session flights refresh complete",
+		"server", session.NormalizedName,
+		"upstream", len(items),
+		"fastPath", stats.fastPath,
+		"fullCompute", stats.fullCompute,
+		"fplScheduled", stats.fplScheduled,
+		"recordWritesSkipped", stats.recordSkipped,
+		"recordWrites", stats.recordWritten,
+		"recordCacheMisses", stats.recordCacheMisses,
+	)
+	return len(tracks), nil
 }

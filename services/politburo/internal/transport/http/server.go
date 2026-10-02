@@ -13,7 +13,6 @@ import (
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	"infinite-experiment/politburo/internal/app"
-	domainflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/transport/http/api/gameflights"
 	"infinite-experiment/politburo/internal/transport/http/api/gamesessions"
 	"infinite-experiment/politburo/internal/transport/http/api/health"
@@ -85,8 +84,8 @@ func (s *Server) router() stdhttp.Handler {
 	router.Use(appmiddleware.AuthenticateAPI(s.app.APIKeys, s.app.Sessions))
 
 	healthHandler := health.NewHandler(s.app.DB, s.app.Cache, s.app.Config.Jobs.Enabled, s.app.StartedAt)
-	sessionsHandler := gamesessions.NewHandler(s.app.Cache)
-	flightsHandler := gameflights.NewHandler(s.app.Cache, s.app.Config.Auth.SignedLinkSecret, s.app.Metrics)
+	sessionsHandler := gamesessions.NewHandler(s.app.SessionsReader)
+	flightsHandler := gameflights.NewHandler(s.app.FlightsReader, s.app.Metrics)
 	signedLinkHandler := signedlink.NewHandler(s.app.Users, s.app.Tickets, s.app.Resolver, s.app.VALookup, s.app.Config.Auth.UIBaseURL)
 	identityHandler := identity.NewHandler(
 		s.app.Registration, s.app.Membership, s.app.VAInit, s.app.Status,
@@ -158,34 +157,8 @@ func (h apiHandler) GetActiveSessions(w stdhttp.ResponseWriter, r *stdhttp.Reque
 	h.sessions.GetActiveSessions(w, r)
 }
 
-func (h apiHandler) GetActiveFlights(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.GetActiveFlightsParams) {
-	h.flights.GetActiveFlights(w, r, flightsQuery(params.ServerId, params.PilotState, params.UserName, params.CallSign, pageValue(params.PageNumber, domainflights.DefaultPageNumber), pageValue(params.PageLength, domainflights.DefaultPageLength)))
-}
-
-func (h apiHandler) GetTrimmedActiveFlights(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.GetTrimmedActiveFlightsParams) {
-	h.flights.GetTrimmedActiveFlights(w, r, flightsQuery(params.ServerId, params.PilotState, params.UserName, params.CallSign, 0, 0))
-}
-
-func (h apiHandler) GetActiveFlight(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.GetActiveFlightParams) {
-	h.flights.GetActiveFlight(w, r, params.FlightId)
-}
-
-func flightsQuery(serverID string, pilotState *[]politburoapi.PilotStateName, userName, callSign *string, pageNumber, pageLength int) gameflights.Query {
-	var pilotStates []string
-	if pilotState != nil {
-		pilotStates = make([]string, 0, len(*pilotState))
-		for _, state := range *pilotState {
-			pilotStates = append(pilotStates, string(state))
-		}
-	}
-	return gameflights.Query{
-		ServerID:    serverID,
-		PilotStates: pilotStates,
-		UserName:    stringValue(userName),
-		CallSign:    stringValue(callSign),
-		PageNumber:  pageNumber,
-		PageLength:  pageLength,
-	}
+func (h apiHandler) GetActiveFlights(w stdhttp.ResponseWriter, r *stdhttp.Request, normalizedServerName string, params politburoapi.GetActiveFlightsParams) {
+	h.flights.GetActiveFlights(w, r, normalizedServerName, params)
 }
 
 func (h apiHandler) GenerateSignedLink(w stdhttp.ResponseWriter, r *stdhttp.Request, _ politburoapi.GenerateSignedLinkParams) {
@@ -236,13 +209,6 @@ func godRouteMiddleware(application *app.App) []func(stdhttp.Handler) stdhttp.Ha
 		appmiddleware.RequireDiscordBotContext(),
 		appmiddleware.RequirePlatformOperator(application.Config.PlatformOperatorDiscordIDs),
 	}
-}
-
-func pageValue(value *int, fallback int) int {
-	if value == nil {
-		return fallback
-	}
-	return *value
 }
 
 func stringValue(value *string) string {
