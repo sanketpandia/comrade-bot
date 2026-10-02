@@ -351,6 +351,8 @@ jobs:
   deploy_comrade_bot:
     needs: image_comrade_bot
     if: |
+      always() &&
+      !cancelled() &&
       needs.image_comrade_bot.result == 'success' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
