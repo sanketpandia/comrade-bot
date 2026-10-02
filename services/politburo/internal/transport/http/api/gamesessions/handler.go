@@ -8,7 +8,6 @@ import (
 
 	"infinite-experiment/politburo/internal/cache"
 	domainsessions "infinite-experiment/politburo/internal/livegame/sessions"
-	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	"infinite-experiment/politburo/internal/transport/http/api/cachedresponse"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
@@ -21,7 +20,14 @@ func NewHandler(cacheStore cache.Store) *Handler {
 	return &Handler{cache: cacheStore}
 }
 
-func (h *Handler) GetActiveSessions(w http.ResponseWriter, r *http.Request, history *bool) {
+// ActiveSession is the public shape for GET /api/v1/game/sessions/active.
+type ActiveSession struct {
+	NormalizedName string `json:"normalizedName"`
+	UserCount      int    `json:"userCount"`
+	Type           int    `json:"type"`
+}
+
+func (h *Handler) GetActiveSessions(w http.ResponseWriter, r *http.Request) {
 	snapshot := domainsessions.Snapshot{}
 	if err := h.cache.GetJSON(r.Context(), cache.KeyActiveSessions, &snapshot); err != nil {
 		status := http.StatusInternalServerError
@@ -40,33 +46,31 @@ func (h *Handler) GetActiveSessions(w http.ResponseWriter, r *http.Request, hist
 		return
 	}
 
-	includeHistory := history != nil && *history
-	result := snapshot.Result
-	if result == nil {
-		result = make([]infiniteflight.Session, 0)
+	result := make([]ActiveSession, 0, len(snapshot.Result))
+	for _, session := range snapshot.Result {
+		result = append(result, ActiveSession{
+			NormalizedName: session.NormalizedName,
+			UserCount:      session.UserCount,
+			Type:           session.Type,
+		})
 	}
 
-	historyResult := make([]any, 0)
-	if includeHistory {
-		historyResult = make([]any, 0, len(snapshot.History))
-		for _, historicalSnapshot := range snapshot.History {
-			historicalSnapshot.History = nil
-			historyResult = append(historyResult, historicalSnapshot)
-		}
-	}
-	body := cachedresponse.Response[infiniteflight.Session]{
-		Data: cachedresponse.Data[infiniteflight.Session]{
-			AvailableFilters: []cachedresponse.Filter{{
-				Name: "history", Type: "boolean", Desc: "Show last 50 records",
-				Current: includeHistory, Default: false,
-			}},
-			Result:  result,
-			History: &historyResult,
+	response.WriteJSON(w, http.StatusOK, activeSessionsResponse{
+		Data: activeSessionsData{
+			Result: result,
 			Meta: cachedresponse.Meta{
 				LastCached:          snapshot.LastCached,
 				RefreshIntervalMins: int(domainsessions.RefreshInterval / time.Minute),
 			},
 		},
-	}
-	response.WriteJSON(w, http.StatusOK, body)
+	})
+}
+
+type activeSessionsResponse struct {
+	Data activeSessionsData `json:"data"`
+}
+
+type activeSessionsData struct {
+	Result []ActiveSession      `json:"result"`
+	Meta   cachedresponse.Meta  `json:"meta"`
 }

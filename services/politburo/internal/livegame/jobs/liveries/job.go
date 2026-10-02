@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"infinite-experiment/politburo/internal/cache"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 )
@@ -14,11 +13,12 @@ const jobName = "infinite-flight-liveries"
 
 type Job struct {
 	client infiniteflight.LiveriesClient
-	cache  cache.Store
+	repo   *gameliveries.Repository
+	lookup *gameliveries.Lookup
 }
 
-func New(client infiniteflight.LiveriesClient, cacheStore cache.Store) *Job {
-	return &Job{client: client, cache: cacheStore}
+func New(client infiniteflight.LiveriesClient, repo *gameliveries.Repository, lookup *gameliveries.Lookup) *Job {
+	return &Job{client: client, repo: repo, lookup: lookup}
 }
 
 func (j *Job) Name() string {
@@ -31,14 +31,13 @@ func (j *Job) Run(ctx context.Context) error {
 		return fmt.Errorf("refresh liveries: %w", err)
 	}
 
-	for _, item := range upstream {
-		livery := gameliveries.Livery{
-			ID: item.ID, AircraftID: item.AircraftID, AircraftName: item.AircraftName, LiveryName: item.LiveryName,
-		}
-		if err := j.cache.SetJSON(ctx, cache.KeyLivery(livery.ID), livery, gameliveries.CacheTTL); err != nil {
-			return fmt.Errorf("cache livery %s: %w", livery.ID, err)
-		}
+	count, err := j.repo.UpsertFromUpstream(ctx, upstream)
+	if err != nil {
+		return fmt.Errorf("persist liveries: %w", err)
 	}
-	slog.Info("Infinite Flight liveries refreshed", "liveries", len(upstream))
+	if err := j.lookup.Reload(ctx); err != nil {
+		return fmt.Errorf("reload livery lookup: %w", err)
+	}
+	slog.Info("Infinite Flight liveries refreshed", "liveries", count)
 	return nil
 }

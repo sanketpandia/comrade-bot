@@ -7,7 +7,6 @@ const (
 	RefreshSchedule      = "0 * * * * *"
 	RefreshInterval      = time.Minute
 	GameActiveFlightTTL  = 3 * 24 * time.Hour
-	MaxHistory           = 25
 	MaxFlightsPerRequest = 5000
 	DefaultPageLength    = 50
 	DefaultPageNumber    = 1
@@ -49,13 +48,6 @@ type Flight struct {
 	NormalizedName      string     `json:"normalizedName"`
 	Normalized          Normalized `json:"normalized"`
 	PathSync            *PathSync  `json:"pathSync,omitempty"`
-	// History is only used when reading legacy nested snapshots; live cache
-	// entries store history at cache.KeyFlightHistory instead.
-	History []Flight `json:"history,omitempty"`
-}
-
-type HistorySnapshot struct {
-	Result []Flight `json:"result"`
 }
 
 type Snapshot struct {

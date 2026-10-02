@@ -20,12 +20,6 @@ const (
 	// PrefixGameFlightsActive namespaces per-server active-flight snapshots.
 	PrefixGameFlightsActive = PrefixGameFlights + "active:"
 
-	// PrefixGameFlightsHistory namespaces per-flight history snapshots keyed by flight ID.
-	PrefixGameFlightsHistory = PrefixGameFlights + "history:"
-
-	// PrefixGameLivery namespaces aircraft livery cache entries.
-	PrefixGameLivery = PrefixGame + "livery:"
-
 	// PrefixAuth namespaces short-lived authentication cache entries.
 	PrefixAuth = "auth:"
 
@@ -53,12 +47,4 @@ func KeySession(sessionID string) string {
 
 func KeyActiveFlights(normalizedName string) string {
 	return PrefixGameFlightsActive + normalizedName
-}
-
-func KeyFlightHistory(flightID string) string {
-	return PrefixGameFlightsHistory + flightID
-}
-
-func KeyLivery(liveryID string) string {
-	return PrefixGameLivery + liveryID
 }

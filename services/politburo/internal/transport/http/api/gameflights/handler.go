@@ -9,13 +9,15 @@ import (
 
 	"infinite-experiment/politburo/internal/cache"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
+	"infinite-experiment/politburo/internal/metrics"
 	"infinite-experiment/politburo/internal/transport/http/api/cachedresponse"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
 
 type Handler struct {
-	cache  cache.Store
-	tokens *domainflights.Tokens
+	cache   cache.Store
+	tokens  *domainflights.Tokens
+	metrics *metrics.Registry
 }
 
 type Query struct {
@@ -35,8 +37,8 @@ type TrimmedFlight struct {
 	Heading   float64 `json:"heading"`
 }
 
-func NewHandler(cacheStore cache.Store, secret []byte) *Handler {
-	return &Handler{cache: cacheStore, tokens: domainflights.NewTokens(secret)}
+func NewHandler(cacheStore cache.Store, secret []byte, metricsRegistry *metrics.Registry) *Handler {
+	return &Handler{cache: cacheStore, tokens: domainflights.NewTokens(secret), metrics: metricsRegistry}
 }
 
 func (h *Handler) GetActiveFlights(w http.ResponseWriter, r *http.Request, query Query) {
@@ -56,10 +58,7 @@ func (h *Handler) GetActiveFlights(w http.ResponseWriter, r *http.Request, query
 
 	totalLength := len(loaded.result)
 	paged := domainflights.Paginate(loaded.result, query.PageNumber, query.PageLength)
-	for i := range paged {
-		paged[i].History = nil
-	}
-	logFilterUsage("active", query, loaded.selected, totalLength)
+	h.logFilterUsage("active", query, loaded.selected, totalLength)
 
 	response.WriteJSON(w, http.StatusOK, cachedresponse.Response[domainflights.Flight]{
 		Data: cachedresponse.Data[domainflights.Flight]{
@@ -100,7 +99,7 @@ func (h *Handler) GetTrimmedActiveFlights(w http.ResponseWriter, r *http.Request
 			Heading:   flight.Heading,
 		})
 	}
-	logFilterUsage("trimmed", query, loaded.selected, len(trimmed))
+	h.logFilterUsage("trimmed", query, loaded.selected, len(trimmed))
 
 	response.WriteJSON(w, http.StatusOK, map[string]any{
 		"data": map[string]any{
@@ -127,7 +126,6 @@ func (h *Handler) GetActiveFlight(w http.ResponseWriter, r *http.Request, flight
 		if flight.FlightID != token.FlightID {
 			continue
 		}
-		flight.History = nil
 		slog.Info("active flight detail", "serverId", token.ServerID)
 		response.WriteJSON(w, http.StatusOK, map[string]any{
 			"data": map[string]any{
@@ -268,7 +266,7 @@ func flightFilters(selected []string, userName, callSign string) []cachedrespons
 	}
 }
 
-func logFilterUsage(endpoint string, query Query, selected []string, count int) {
+func (h *Handler) logFilterUsage(endpoint string, query Query, selected []string, count int) {
 	slog.Info("active flights filter",
 		"endpoint", endpoint,
 		"serverId", query.ServerID,
@@ -277,6 +275,9 @@ func logFilterUsage(endpoint string, query Query, selected []string, count int) 
 		"callSign", query.CallSign,
 		"count", count,
 	)
+	if len(selected) > 0 || query.UserName != "" || query.CallSign != "" {
+		h.metrics.FlightsFilteredTotal.WithLabelValues(query.ServerID, endpoint).Add(float64(count))
+	}
 }
 
 func (h *Handler) knownServer(r *http.Request, w http.ResponseWriter, serverID string) bool {

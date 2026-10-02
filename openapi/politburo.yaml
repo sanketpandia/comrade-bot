@@ -47,13 +47,6 @@ paths:
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
-      parameters:
-        - name: history
-          in: query
-          description: Include the last 50 cached results when history support is available.
-          schema:
-            type: boolean
-            default: false
       responses:
         '200':
           description: The latest cached active sessions
@@ -61,12 +54,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ActiveSessionsResponse'
-        '400':
-          description: An invalid filter value was supplied
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing or inactive API key or session cookie
           content:
@@ -760,26 +747,29 @@ components:
     ActiveSessionsData:
       type: object
       required:
-        - availableFilters
         - result
-        - history
         - meta
       properties:
-        availableFilters:
-          type: array
-          items:
-            $ref: '#/components/schemas/AvailableFilter'
         result:
           type: array
           items:
-            $ref: '#/components/schemas/Session'
-        history:
-          type: array
-          description: Previous cached snapshots when the history filter is enabled.
-          items:
-            $ref: '#/components/schemas/SessionHistorySnapshot'
+            $ref: '#/components/schemas/ActiveSession'
         meta:
           $ref: '#/components/schemas/CacheMetadata'
+    ActiveSession:
+      type: object
+      required:
+        - normalizedName
+        - userCount
+        - type
+      properties:
+        normalizedName:
+          type: string
+          description: Lowercase underscore form of the session name for filters and serverId.
+        userCount:
+          type: integer
+        type:
+          type: integer
     AvailableFilter:
       type: object
       required:
@@ -813,19 +803,6 @@ components:
         refreshIntervalMins:
           type: integer
           minimum: 1
-    SessionHistorySnapshot:
-      type: object
-      required:
-        - result
-        - lastCached
-      properties:
-        result:
-          type: array
-          items:
-            $ref: '#/components/schemas/Session'
-        lastCached:
-          type: string
-          format: date-time
     ErrorResponse:
       type: object
       required:

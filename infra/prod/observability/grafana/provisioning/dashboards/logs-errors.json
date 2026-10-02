@@ -13,336 +13,156 @@
     ]
   },
   "editable": true,
-  "gnetId": null,
   "graphTooltip": 0,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "icon": "external link",
+      "keepTime": true,
+      "targetBlank": true,
+      "title": "Politburo logs (Explore)",
+      "type": "link",
+      "url": "/explore?orgId=1&left=%7B%22datasource%22%3A%22P8E80F9AEF21F6940%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22%7Bcontainer_name%3D%5C%22politburo%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D"
+    },
+    {
+      "icon": "external link",
+      "keepTime": true,
+      "targetBlank": true,
+      "title": "Comrade Bot logs (Explore)",
+      "type": "link",
+      "url": "/explore?orgId=1&left=%7B%22datasource%22%3A%22P8E80F9AEF21F6940%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22%7Bcontainer_name%3D%5C%22comrade-bot%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D"
+    }
+  ],
   "panels": [
     {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 0,
-        "y": 0
-      },
-      "id": 2,
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
       "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true
+        "code": { "language": "plaintext", "showLineNumbers": false, "showMiniMap": false },
+        "content": "Service logs live in **Explore** (links above). This dashboard shows HTTP and bot error **metrics** only — no per-route or per-request panels.",
+        "mode": "markdown"
       },
-      "pluginVersion": "8.0.0",
-      "targets": [
-        {
-          "expr": "{container_name=\"politburo\"}",
-          "refId": "A"
-        }
-      ],
-      "title": "Politburo Logs",
-      "type": "logs"
+      "title": "",
+      "transparent": true,
+      "type": "text"
     },
     {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
-      "id": 3,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true
-      },
-      "pluginVersion": "8.0.0",
-      "targets": [
-        {
-          "expr": "{container_name=\"comrade-bot\"}",
-          "refId": "A"
-        }
-      ],
-      "title": "Comrade-Bot Logs",
-      "type": "logs"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
             "axisLabel": "Error Rate (%)",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
             "drawStyle": "line",
             "fillOpacity": 10,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "lineWidth": 2
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 2
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 2 },
+              { "color": "red", "value": 5 }
             ]
           },
           "unit": "percent"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 6
-      },
-      "id": 4,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 3 },
+      "id": 2,
+      "interval": "5m",
       "options": {
-        "legend": {
-          "calcs": ["mean", "max"],
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
       },
-      "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "100 * sum(rate(politburo_http_requests_total{status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(politburo_http_requests_total[5m])), 0.001)",
-          "legendFormat": "5xx Error Rate",
+          "expr": "100 * sum(increase(politburo_http_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(increase(politburo_http_requests_total[5m])), 1)",
+          "legendFormat": "5xx",
           "refId": "A"
         }
       ],
-      "title": "5xx Error Rate Over Time",
+      "title": "Politburo 5xx error rate (5m window)",
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {}
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 },
+          "mappings": [],
+          "unit": "percent"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 14
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 3 },
+      "id": 3,
+      "interval": "5m",
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
       },
+      "targets": [
+        {
+          "expr": "100 * sum(increase(politburo_http_requests_total{status=~\"4..\"}[5m])) / clamp_min(sum(increase(politburo_http_requests_total[5m])), 1)",
+          "legendFormat": "4xx",
+          "refId": "A"
+        }
+      ],
+      "title": "Politburo 4xx error rate (5m window)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 11 },
+      "id": 4,
+      "interval": "5m",
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (status) (increase(politburo_http_requests_total{status=~\"[45]..\"}[5m]))",
+          "legendFormat": "HTTP {{status}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Politburo HTTP 4xx/5xx counts per 5m by status",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 19 },
       "id": 5,
+      "interval": "15m",
       "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
       },
-      "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "{}",
+          "expr": "sum(increase(comrade_bot_command_executions_total{result!=\"success\"}[15m]))",
+          "legendFormat": "failed commands",
           "refId": "A"
         }
       ],
-      "title": "All Service Logs",
-      "type": "logs"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 22
-      },
-      "id": 6,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true
-      },
-      "pluginVersion": "8.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
-          "expr": "{container_name=\"politburo\"} | json | endpoint=~\".*/api/v1/servers\"",
-          "refId": "A"
-        }
-      ],
-      "title": "Initserver Requests (politburo)",
-      "type": "logs"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 22
-      },
-      "id": 7,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true
-      },
-      "pluginVersion": "8.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
-          "expr": "{container_name=\"politburo\"} | json | endpoint=~\".*/dashboard/vaadmin/setup.*\"",
-          "refId": "A"
-        }
-      ],
-      "title": "Basic Setup and Callsign Test Requests (politburo)",
-      "type": "logs"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 30
-      },
-      "id": 8,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true
-      },
-      "pluginVersion": "8.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
-          "expr": "{container_name=\"comrade-bot\"} | json | command=\"initserver\"",
-          "refId": "A"
-        }
-      ],
-      "title": "Initserver Command Logs (comrade-bot)",
-      "type": "logs"
+      "title": "Comrade Bot non-success command executions per 15m (aggregate)",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",
-  "schemaVersion": 30,
+  "schemaVersion": 39,
   "style": "dark",
   "tags": ["politburo", "logs", "errors"],
-  "templating": {
-    "list": []
-  },
-  "time": {
-    "from": "now-1h",
-    "to": "now"
-  },
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
   "timepicker": {},
-  "timezone": "",
+  "timezone": "browser",
   "title": "Logs & Errors",
   "uid": "logs-errors",
-  "version": 0
+  "version": 1
 }

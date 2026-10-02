@@ -58,6 +58,20 @@ tmux session `infinite-stage`: Compose (window 1), `npm run dev` (window 2), Air
 
 Politburo logs: `/tmp/politburo.log` (Promtail → Loki).
 
+### Podman / stale containers
+
+Compose uses fixed names (`redis`, `prometheus`, `loki`, …). If you previously ran the old **labour-bureau** stack under Podman, leftover containers keep **wrong bind mounts** (e.g. `.../infinite-experiment/labour-bureau/prometheus.dev.yml`) and block a fresh `compose up`.
+
+Reset the dev stack (keeps volumes unless you set `CLEAN_VOLUMES=1`):
+
+```sh
+cd infra/dev
+./clean-dev-stack.sh
+podman compose -f docker-compose.dev.yml up
+```
+
+With Podman as the CLI: `CONTAINER_CLI=podman ./clean-dev-stack.sh` and `CONTAINER_CLI=podman podman compose ...`.
+
 ## Compose services
 
 | Service | Host port |

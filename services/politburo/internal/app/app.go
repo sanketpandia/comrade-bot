@@ -24,6 +24,7 @@ import (
 	"infinite-experiment/politburo/internal/database"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	"infinite-experiment/politburo/internal/livegame/jobs"
+	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	"infinite-experiment/politburo/internal/livegame/scheduler"
 	"infinite-experiment/politburo/internal/logging"
 	"infinite-experiment/politburo/internal/metrics"
@@ -55,7 +56,8 @@ type App struct {
 	VALookup         *lookup.VALookup
 	VirtualAirlines  *virtualairlines.Repository
 	IFUsers          infiniteflight.UsersClient
-	closeOnce    sync.Once
+	LiveryLookup     *gameliveries.Lookup
+	closeOnce        sync.Once
 }
 
 func New(ctx context.Context, cfg config.Config) (*App, error) {
@@ -91,7 +93,12 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	if err := jobs.Register(jobScheduler, infiniteFlightClient, cacheStore); err != nil {
+	liveryRepo := gameliveries.NewRepository(db)
+	liveryLookup := gameliveries.NewLookup(liveryRepo)
+	if err := liveryLookup.Reload(ctx); err != nil {
+		slog.Warn("initial livery lookup reload failed; catalog may be empty until first sync", "error", err)
+	}
+	if err := jobs.Register(jobScheduler, infiniteFlightClient, cacheStore, db, liveryLookup, metricsRegistry); err != nil {
 		_ = cacheStore.Close()
 		_ = db.Close()
 		return nil, fmt.Errorf("register jobs: %w", err)
@@ -122,7 +129,8 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		Resolver:        resolver.NewResolver(userRepo, vaRepo, membershipRepo),
 		VALookup:        lookup.NewVALookup(vaRepo),
 		VirtualAirlines: vaRepo,
-		IFUsers:         ifUsers,
+		IFUsers:      ifUsers,
+		LiveryLookup: liveryLookup,
 	}
 	slog.Info("application initialized", "environment", cfg.Environment, "jobs_enabled", cfg.Jobs.Enabled)
 	return application, nil

@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
+	"infinite-experiment/politburo/internal/metrics"
 	"infinite-experiment/politburo/internal/transport/http/api/cachedresponse"
 )
 
@@ -47,7 +47,7 @@ func (cacheStub) SetJSON(context.Context, string, any, time.Duration) error { re
 var testFlightSecret = []byte("0123456789abcdef0123456789abcdef")
 
 func testHandler(store cache.Store) *Handler {
-	return NewHandler(store, testFlightSecret)
+	return NewHandler(store, testFlightSecret, metrics.NewRegistry())
 }
 
 func sampleFlight(state string) domainflights.Flight {
@@ -127,31 +127,8 @@ func TestGetActiveFlightsReturnsCachedFlights(t *testing.T) {
 	if len(body.Data.Result) != 2 || body.Data.Meta.RefreshIntervalMins != 1 {
 		t.Fatalf("body = %#v", body.Data)
 	}
-	if body.Data.Result[0].History != nil || strings.Contains(recorder.Body.String(), `"history"`) {
-		t.Fatalf("live flights response still includes history: %s", recorder.Body.String())
-	}
 	if body.Data.Pagination.TotalLength != 2 || body.Data.Pagination.PageLength != domainflights.DefaultPageLength || body.Data.Pagination.PageNumber != domainflights.DefaultPageNumber {
 		t.Fatalf("pagination = %#v", body.Data.Pagination)
-	}
-}
-
-func TestGetActiveFlightsStripsLegacyNestedHistory(t *testing.T) {
-	flight := sampleFlight(domainflights.PilotStateNameActive)
-	flight.History = []domainflights.Flight{{Callsign: "older"}}
-	handler := testHandler(cacheStub{
-		names: []string{"casual"},
-		flights: domainflights.Snapshot{
-			LastCached: time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC),
-			Result:     []domainflights.Flight{flight},
-		},
-	})
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active?serverId=casual", nil), defaultQuery("casual", nil))
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
-	}
-	if strings.Contains(recorder.Body.String(), `"history"`) {
-		t.Fatalf("response still includes history: %s", recorder.Body.String())
 	}
 }
 

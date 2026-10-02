@@ -1,5 +1,17 @@
 {
-  "annotations": {"list": [{"builtIn": 1, "datasource": {"type": "grafana", "uid": "-- Grafana --"}, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard"}]},
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -7,25 +19,222 @@
   "links": [],
   "liveNow": false,
   "panels": [
-    {"datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"}, "fieldConfig": {"defaults": {"mappings": [], "unit": "short"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "id": 1, "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}, "targets": [{"expr": "politburo_queue_depth", "legendFormat": "depth {{queue_type}}/{{queue_name}}", "refId": "A"}, {"expr": "politburo_queue_pending", "legendFormat": "pending {{queue_type}}/{{queue_name}}", "refId": "B"}], "title": "Queue depth and pending", "type": "timeseries"},
-    {"datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"}, "fieldConfig": {"defaults": {"mappings": [], "unit": "ops"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "id": 2, "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}, "targets": [{"expr": "sum by (queue_name, queue_type) (rate(politburo_queue_enqueued_total[$__rate_interval]))", "legendFormat": "enq {{queue_type}}/{{queue_name}}", "refId": "A"}, {"expr": "sum by (queue_name, queue_type) (rate(politburo_queue_dequeued_total[$__rate_interval]))", "legendFormat": "deq {{queue_type}}/{{queue_name}}", "refId": "B"}, {"expr": "sum by (queue_name, queue_type) (rate(politburo_queue_acknowledged_total[$__rate_interval]))", "legendFormat": "ack {{queue_type}}/{{queue_name}}", "refId": "C"}], "title": "Queue throughput", "type": "timeseries"},
-    {"datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"}, "fieldConfig": {"defaults": {"mappings": [], "unit": "ops"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}, "id": 3, "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}, "targets": [{"expr": "sum by (queue_name, queue_type, error_type) (rate(politburo_queue_errors_total[$__rate_interval]))", "legendFormat": "{{queue_type}}/{{queue_name}} {{error_type}}", "refId": "A"}, {"expr": "sum by (queue_name, queue_type) (rate(politburo_queue_retries_total[$__rate_interval]))", "legendFormat": "retry {{queue_type}}/{{queue_name}}", "refId": "B"}], "title": "Queue errors and retries", "type": "timeseries"},
-    {"datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"}, "fieldConfig": {"defaults": {"mappings": [], "unit": "s"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}, "id": 4, "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}, "targets": [{"expr": "histogram_quantile(0.95, sum by (le, queue_name, queue_type) (rate(politburo_queue_processing_duration_seconds_bucket[$__rate_interval])))", "legendFormat": "p95 {{queue_type}}/{{queue_name}}", "refId": "A"}], "title": "Queue processing latency", "type": "timeseries"},
-    {"datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"}, "fieldConfig": {"defaults": {"mappings": [], "unit": "s"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}, "id": 5, "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}, "targets": [{"expr": "histogram_quantile(0.95, sum by (le, job_name, provider, entity_type) (rate(politburo_sync_job_duration_seconds_bucket[$__rate_interval])))", "legendFormat": "p95 {{job_name}} {{provider}}/{{entity_type}}", "refId": "A"}], "title": "Sync job duration", "type": "timeseries"},
-    {"datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"}, "fieldConfig": {"defaults": {"mappings": [], "unit": "ops"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}, "id": 6, "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}, "targets": [{"expr": "sum by (job_name, provider, entity_type, status) (rate(politburo_sync_job_records_processed_total[$__rate_interval]))", "legendFormat": "{{job_name}} {{entity_type}} {{status}}", "refId": "A"}, {"expr": "sum by (job_name, provider, entity_type, error_type) (rate(politburo_sync_job_records_failed_total[$__rate_interval]))", "legendFormat": "failed {{job_name}} {{entity_type}} {{error_type}}", "refId": "B"}], "title": "Sync records processed/failed", "type": "timeseries"},
-    {"datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"}, "fieldConfig": {"defaults": {"mappings": [], "unit": "ops"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}, "id": 7, "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}, "targets": [{"expr": "sum by (handler_name) (rate(politburo_watermill_handler_errors_total[$__rate_interval]))", "legendFormat": "errors {{handler_name}}", "refId": "A"}, {"expr": "sum by (handler_name) (rate(politburo_watermill_poison_total[$__rate_interval]))", "legendFormat": "poison {{handler_name}}", "refId": "B"}], "title": "Watermill errors and poison", "type": "timeseries"},
-    {"datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"}, "fieldConfig": {"defaults": {"mappings": [], "unit": "ops"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}, "id": 8, "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}, "targets": [{"expr": "sum by (webhook_target, status) (rate(politburo_webhooks_delivered_total[$__rate_interval]))", "legendFormat": "{{webhook_target}} {{status}}", "refId": "A"}], "title": "Webhook delivery attempts", "type": "timeseries"},
-    {"datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"}, "fieldConfig": {"defaults": {"mappings": [], "unit": "short"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32}, "id": 9, "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}, "targets": [{"expr": "politburo_cache_size_bytes{cache_name=~\"session_cache|live_flights|live_session_flight_indexes|live_va_flight_indexes\"}", "legendFormat": "{{cache_name}}", "refId": "A"}], "title": "Live flight/session cache sizes", "type": "timeseries"}
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "panels": [],
+      "title": "Scheduled jobs",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 1 },
+      "id": 1,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "politburo_jobs_running",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Jobs currently running",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 120 },
+              { "color": "red", "value": 300 }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 1 },
+      "id": 2,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "time() - politburo_jobs_last_success_timestamp_seconds",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Seconds since last successful run",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "id": 3,
+      "interval": "15m",
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (job, outcome) (increase(politburo_jobs_runs_total[15m]))",
+          "legendFormat": "{{job}} {{outcome}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Job runs per 15m",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "mappings": [], "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "id": 4,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le, job) (rate(politburo_jobs_run_duration_seconds_bucket[$__rate_interval])))",
+          "legendFormat": "p50 {{job}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, job) (rate(politburo_jobs_run_duration_seconds_bucket[$__rate_interval])))",
+          "legendFormat": "p95 {{job}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Job run duration",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+      "id": 200,
+      "panels": [],
+      "title": "Cache",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "id": 5,
+      "interval": "15m",
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "increase(politburo_cache_inserts_total[15m])",
+          "legendFormat": "inserts",
+          "refId": "A"
+        }
+      ],
+      "title": "Cache inserts per 15m",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+      "id": 6,
+      "interval": "15m",
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (operation, outcome) (increase(politburo_cache_operations_total[15m]))",
+          "legendFormat": "{{operation}} {{outcome}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Cache operations per 15m",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "mappings": [], "unit": "percentunit" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+      "id": 7,
+      "interval": "15m",
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(politburo_cache_operations_total{operation=\"get\",outcome=\"miss\"}[15m])) / clamp_min(sum(increase(politburo_cache_operations_total{operation=\"get\"}[15m])), 1)",
+          "legendFormat": "miss ratio",
+          "refId": "A"
+        }
+      ],
+      "title": "Cache get miss ratio (15m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "mappings": [], "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "id": 8,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, operation) (rate(politburo_cache_operation_duration_seconds_bucket[$__rate_interval])))",
+          "legendFormat": "p95 {{operation}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Cache operation latency (p95)",
+      "type": "timeseries"
+    }
   ],
-  "refresh": "10s",
+  "refresh": "30s",
   "schemaVersion": 39,
   "style": "dark",
-  "tags": ["politburo", "background", "queues"],
-  "templating": {"list": []},
-  "time": {"from": "now-6h", "to": "now"},
+  "tags": ["politburo", "background", "jobs", "cache"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Politburo Background Jobs and Queues",
+  "title": "Politburo background jobs and cache",
   "uid": "politburo-background",
   "version": 1,
   "weekStart": ""

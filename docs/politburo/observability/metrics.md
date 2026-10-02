@@ -58,3 +58,22 @@ Seconds since its last success:
 ```promql
 time() - politburo_jobs_last_success_timestamp_seconds{job="infinite-flight-sessions"}
 ```
+
+## Live game (Infinite Flight)
+
+Grafana dashboard **Infinite Live metrics** (`politburo-livegame`).
+
+- `politburo_livegame_flights_active{server}` — active flights in the latest
+  cached snapshot per normalized server name.
+- `politburo_livegame_flights_by_pilot_state{server,pilot_state}` — active
+  flights in the latest upstream poll grouped by pilot state.
+- `politburo_livegame_livery_resolve_total{outcome}` — livery catalog match
+  outcomes while mapping flights (`livery`, `aircraft_only`, `miss`).
+- `politburo_livegame_flights_filtered_total{server,endpoint}` — flights
+  returned after HTTP query filters (`endpoint` is `active` or `trimmed`).
+
+Livery resolves per 15 minutes:
+
+```promql
+sum by (outcome) (increase(politburo_livegame_livery_resolve_total[15m]))
+```

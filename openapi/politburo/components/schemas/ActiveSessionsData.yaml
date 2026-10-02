@@ -1,18 +1,9 @@
 type: object
-required: [availableFilters, result, history, meta]
+required: [result, meta]
 properties:
-  availableFilters:
-    type: array
-    items:
-      $ref: "./AvailableFilter.yaml"
   result:
     type: array
     items:
-      $ref: "./Session.yaml"
-  history:
-    type: array
-    description: Previous cached snapshots when the history filter is enabled.
-    items:
-      $ref: "./SessionHistorySnapshot.yaml"
+      $ref: "./ActiveSession.yaml"
   meta:
     $ref: "./CacheMetadata.yaml"

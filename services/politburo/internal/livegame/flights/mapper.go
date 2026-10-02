@@ -9,7 +9,7 @@ import (
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 )
 
-func MapFlight(upstream infiniteflight.Flight, session infiniteflight.Session, livery *gameliveries.Livery, existing *Flight, fallbackReport time.Time) Flight {
+func MapFlight(upstream infiniteflight.Flight, session infiniteflight.Session, names *gameliveries.ResolvedNames, existing *Flight, fallbackReport time.Time) Flight {
 	speed := int(math.Round(upstream.Speed))
 	verticalSpeed := math.Round(upstream.VerticalSpeed*10) / 10
 	connected := "disconnected"
@@ -18,9 +18,9 @@ func MapFlight(upstream infiniteflight.Flight, session infiniteflight.Session, l
 	}
 	aircraftName := ""
 	liveryName := ""
-	if livery != nil {
-		aircraftName = livery.AircraftName
-		liveryName = livery.LiveryName
+	if names != nil {
+		aircraftName = names.AircraftName
+		liveryName = names.LiveryName
 	}
 	if existing != nil {
 		if aircraftName == "" {
@@ -75,7 +75,6 @@ func UpsertFlights(existing []Flight, mapped []Flight) []Flight {
 		if prior, hadPrior := index[current.FlightID]; hadPrior {
 			current = mergeNames(current, prior)
 		}
-		current.History = nil
 		if previousIndex, duplicate := seen[current.FlightID]; duplicate {
 			result[previousIndex] = current
 			continue
@@ -94,19 +93,6 @@ func mergeNames(current, prior Flight) Flight {
 		current.LiveryName = prior.LiveryName
 	}
 	return current
-}
-
-func NextHistory(existing []Flight, prior Flight) []Flight {
-	historical := prior
-	historical.History = nil
-	historical.PathSync = nil
-	history := make([]Flight, 0, len(existing)+1)
-	history = append(history, existing...)
-	history = append(history, historical)
-	if len(history) > MaxHistory {
-		history = history[len(history)-MaxHistory:]
-	}
-	return history
 }
 
 func parseLastReport(raw string, fallback time.Time) time.Time {

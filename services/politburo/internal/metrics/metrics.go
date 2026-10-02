@@ -14,6 +14,10 @@ type Registry struct {
 	JobDuration            *prometheus.HistogramVec
 	JobRunning             *prometheus.GaugeVec
 	JobLastSuccess         *prometheus.GaugeVec
+	FlightsActive          *prometheus.GaugeVec
+	FlightsByPilotState    *prometheus.GaugeVec
+	LiveryResolveTotal     *prometheus.CounterVec
+	FlightsFilteredTotal   *prometheus.CounterVec
 }
 
 func NewRegistry() *Registry {
@@ -80,10 +84,35 @@ func NewRegistry() *Registry {
 		Name:      "last_success_timestamp_seconds",
 		Help:      "Unix timestamp of the last successful scheduled job run.",
 	}, []string{"job"})
+	flightsActive := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "politburo",
+		Subsystem: "livegame",
+		Name:      "flights_active",
+		Help:      "Active flights in the latest cached snapshot per normalized server name.",
+	}, []string{"server"})
+	flightsByPilotState := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "politburo",
+		Subsystem: "livegame",
+		Name:      "flights_by_pilot_state",
+		Help:      "Active flights in the latest upstream poll grouped by pilot state.",
+	}, []string{"server", "pilot_state"})
+	liveryResolveTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "livegame",
+		Name:      "livery_resolve_total",
+		Help:      "Livery catalog match outcomes while mapping live flights.",
+	}, []string{"outcome"})
+	flightsFilteredTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "livegame",
+		Name:      "flights_filtered_total",
+		Help:      "Flights returned after HTTP query filters on active flight endpoints.",
+	}, []string{"server", "endpoint"})
 	registry.MustRegister(
 		requests, duration,
 		cacheOperations, cacheDuration, cachePayloadBytes, cacheInserts,
 		jobRuns, jobDuration, jobRunning, jobLastSuccess,
+		flightsActive, flightsByPilotState, liveryResolveTotal, flightsFilteredTotal,
 	)
 	return &Registry{
 		Prometheus: registry, Requests: requests, RequestDuration: duration,
@@ -91,5 +120,7 @@ func NewRegistry() *Registry {
 		CachePayloadBytes: cachePayloadBytes, CacheInserts: cacheInserts,
 		JobRuns: jobRuns, JobDuration: jobDuration, JobRunning: jobRunning,
 		JobLastSuccess: jobLastSuccess,
+		FlightsActive: flightsActive, FlightsByPilotState: flightsByPilotState,
+		LiveryResolveTotal: liveryResolveTotal, FlightsFilteredTotal: flightsFilteredTotal,
 	}
 }

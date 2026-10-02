@@ -161,8 +161,43 @@
       "type": "stat"
     },
     {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 3, "w": 6, "x": 0, "y": 5 },
+      "id": 206,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "count(count by (namespace) (container_memory_working_set_bytes{job=\"cadvisor\", namespace!=\"\", container!=\"\", container!=\"POD\"}))",
+          "refId": "A"
+        }
+      ],
+      "title": "Namespaces with cAdvisor data",
+      "type": "stat"
+    },
+    {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 },
       "id": 200,
       "panels": [],
       "title": "Pods / containers",
@@ -187,7 +222,7 @@
           }
         ]
       },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 6 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 },
       "id": 201,
       "options": {
         "cellHeight": "sm",
@@ -198,7 +233,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "expr": "sum by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\", namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\", image!=\"\"}[$__rate_interval]))",
+          "expr": "sum by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\", namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[$__rate_interval]))",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -230,7 +265,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
       "id": 202,
       "options": {
         "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true, "calcs": ["mean", "max"] },
@@ -238,7 +273,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\", namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\", image!=\"\"}[$__rate_interval]))",
+          "expr": "sum by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\", namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[$__rate_interval]))",
           "legendFormat": "{{namespace}}/{{pod}}/{{container}}",
           "refId": "A"
         }
@@ -255,7 +290,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
       "id": 203,
       "options": {
         "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true, "calcs": ["mean", "max"] },
@@ -263,7 +298,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (namespace, pod, container) (container_memory_working_set_bytes{job=\"cadvisor\", namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\", image!=\"\"})",
+          "expr": "sum by (namespace, pod, container) (container_memory_working_set_bytes{job=\"cadvisor\", namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"})",
           "legendFormat": "{{namespace}}/{{pod}}/{{container}}",
           "refId": "A"
         }
@@ -280,7 +315,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 25 },
       "id": 204,
       "options": {
         "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true, "calcs": ["mean", "max"] },
@@ -310,7 +345,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 25 },
       "id": 205,
       "options": {
         "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true, "calcs": ["mean", "max"] },
@@ -342,7 +377,7 @@
         "allValue": ".*",
         "current": { "selected": true, "text": "All", "value": "$__all" },
         "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-        "definition": "label_values(container_memory_working_set_bytes{job=\"cadvisor\", container!=\"\", container!=\"POD\", image!=\"\"}, namespace)",
+        "definition": "label_values(container_memory_working_set_bytes{job=\"cadvisor\", namespace!=\"\", container!=\"\", container!=\"POD\"}, namespace)",
         "hide": 0,
         "includeAll": true,
         "label": "Namespace",
@@ -350,7 +385,7 @@
         "name": "namespace",
         "options": [],
         "query": {
-          "query": "label_values(container_memory_working_set_bytes{job=\"cadvisor\", container!=\"\", container!=\"POD\", image!=\"\"}, namespace)",
+          "query": "label_values(container_memory_working_set_bytes{job=\"cadvisor\", namespace!=\"\", container!=\"\", container!=\"POD\"}, namespace)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
@@ -362,7 +397,7 @@
         "allValue": ".*",
         "current": { "selected": true, "text": "All", "value": "$__all" },
         "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-        "definition": "label_values(container_memory_working_set_bytes{job=\"cadvisor\", namespace=~\"$namespace\", container!=\"\", container!=\"POD\", image!=\"\"}, pod)",
+        "definition": "label_values(container_memory_working_set_bytes{job=\"cadvisor\", namespace=~\"$namespace\", container!=\"\", container!=\"POD\"}, pod)",
         "hide": 0,
         "includeAll": true,
         "label": "Pod",
@@ -370,7 +405,7 @@
         "name": "pod",
         "options": [],
         "query": {
-          "query": "label_values(container_memory_working_set_bytes{job=\"cadvisor\", namespace=~\"$namespace\", container!=\"\", container!=\"POD\", image!=\"\"}, pod)",
+          "query": "label_values(container_memory_working_set_bytes{job=\"cadvisor\", namespace=~\"$namespace\", container!=\"\", container!=\"POD\"}, pod)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,

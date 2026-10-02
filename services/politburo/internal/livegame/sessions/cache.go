@@ -16,7 +16,6 @@ const (
 type Snapshot struct {
 	Result     []infiniteflight.Session `json:"result"`
 	LastCached time.Time                `json:"lastCached"`
-	History    []Snapshot               `json:"history,omitempty"`
 }
 
 // SnapshotFresh reports whether lastCached is within the scheduled refresh window.
