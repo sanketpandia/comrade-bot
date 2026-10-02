@@ -1,0 +1,78 @@
+post:
+  operationId: createUser
+  summary: Register a Discord user with IFC identity and logbook proof
+  description: |
+    Creates a global Politburo user for the Discord member in X-Discord-User-Id.
+    Requires X-Discord-Server-Id (bot context). Verifies the IFC username resolves
+    upstream and that logbookEntry matches the latest complete online logbook flight.
+  tags: [Users]
+  security:
+    - ApiKeyAuth: []
+  parameters:
+    - name: X-Discord-User-Id
+      in: header
+      required: true
+      description: Discord user id of the member registering.
+      schema:
+        type: string
+    - name: X-Discord-Server-Id
+      in: header
+      required: true
+      description: Discord guild id for bot context and VA registration hint.
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/CreateUserRequest.yaml"
+  responses:
+    "200":
+      description: User registered
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/CreateUserResponse.yaml"
+    "400":
+      description: Invalid request body or flight proof failed
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "401":
+      description: Missing or inactive API key
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Banned Discord account or missing Discord context headers
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: IFC user not found upstream
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "409":
+      description: Discord user or IFC username already registered
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "503":
+      description: Infinite Flight API unavailable
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Registration failed
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

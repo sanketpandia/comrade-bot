@@ -7,11 +7,24 @@ info:
 servers:
   - url: http://localhost:8080
     description: Local rewrite
+tags:
+  - name: Health
+    description: Process and dependency readiness.
+  - name: Game
+    description: Cached Infinite Flight live game data.
+  - name: Auth
+    description: Browser session and signed links.
+  - name: Users
+    description: Discord user registration and account flows.
+  - name: Admin
+    description: Platform operator (god mode) actions.
 paths:
   /health/status:
     get:
       operationId: getHealthStatus
       summary: Report process uptime and dependency readiness
+      tags:
+        - Health
       responses:
         '200':
           description: The process is up and required dependencies are reachable
@@ -29,6 +42,8 @@ paths:
     get:
       operationId: getActiveSessions
       summary: Read the latest active Infinite Flight sessions from cache
+      tags:
+        - Game
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -74,6 +89,8 @@ paths:
     get:
       operationId: getActiveFlights
       summary: Read cached active Infinite Flight flights for a server
+      tags:
+        - Game
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -152,6 +169,8 @@ paths:
     get:
       operationId: getTrimmedActiveFlights
       summary: Read a map-oriented, unpaged snapshot of active flights
+      tags:
+        - Game
       description: |
         Returns every matching flight with only marker fields. flightId is an
         encrypted token that can be resolved by GET /api/v1/game/flights/active/detail.
@@ -219,6 +238,8 @@ paths:
     get:
       operationId: getActiveFlight
       summary: Read one cached active flight by encrypted map marker id
+      tags:
+        - Game
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -270,6 +291,8 @@ paths:
     post:
       operationId: generateSignedLink
       summary: Create a one-time signed URL that mints a browser session
+      tags:
+        - Auth
       description: |
         Discord bots with a valid API key and X-Discord-User-Id receive a
         10-minute URL. Visiting it creates a session cookie and redirects
@@ -329,6 +352,187 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Ticket generation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/users:
+    post:
+      operationId: createUser
+      summary: Register a Discord user with IFC identity and logbook proof
+      description: |
+        Creates a global Politburo user for the Discord member in X-Discord-User-Id.
+        Requires X-Discord-Server-Id (bot context). Verifies the IFC username resolves
+        upstream and that logbookEntry matches the latest complete online logbook flight.
+      tags:
+        - Users
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: X-Discord-User-Id
+          in: header
+          required: true
+          description: Discord user id of the member registering.
+          schema:
+            type: string
+        - name: X-Discord-Server-Id
+          in: header
+          required: true
+          description: Discord guild id for bot context and VA registration hint.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '200':
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUserResponse'
+        '400':
+          description: Invalid request body or flight proof failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or inactive API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Banned Discord account or missing Discord context headers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: IFC user not found upstream
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Discord user or IFC username already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Registration failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Infinite Flight API unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/admin/verify-god:
+    get:
+      operationId: verifyGodMode
+      summary: Confirm the caller has platform god-mode access
+      description: |
+        Requires a valid API key and X-Discord-User-Id for a configured platform operator.
+        X-Discord-Server-Id is required for bot context.
+      tags:
+        - Admin
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: X-Discord-User-Id
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: X-Discord-Server-Id
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Caller is a platform operator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyGodResponse'
+        '401':
+          description: Missing or inactive API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Missing Discord context or not a platform operator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/admin/users/ban:
+    post:
+      operationId: banUser
+      summary: Ban a Discord user from Politburo
+      description: |
+        Platform operator (god mode) only. Adds the Discord id to banned_discord_ids and,
+        when a Politburo user exists, archives and deletes their account and memberships.
+      tags:
+        - Admin
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: X-Discord-User-Id
+          in: header
+          required: true
+          description: Discord user id of the platform operator performing the ban.
+          schema:
+            type: string
+        - name: X-Discord-Server-Id
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BanUserRequest'
+      responses:
+        '200':
+          description: User banned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BanUserResponse'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or inactive API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Missing Discord context or not a platform operator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Ban failed
           content:
             application/json:
               schema:
@@ -760,3 +964,93 @@ components:
           $ref: '#/components/schemas/FlightNormalized'
         pathSync:
           $ref: '#/components/schemas/FlightPathSync'
+    CreateUserRequest:
+      type: object
+      required:
+        - discourseNames
+        - logbookEntry
+      properties:
+        discourseNames:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            type: string
+            minLength: 1
+          description: IFC Community username (same as Infinite Flight discourseNames lookup).
+        logbookEntry:
+          type: string
+          pattern: ^[A-Z]{4}-[A-Z]{4}$
+          description: Origin-destination proof for the pilot's latest complete online logbook flight (ICAO ORIG-DEST).
+    CreateUserData:
+      type: object
+      required:
+        - success
+        - message
+        - is_va_registered
+        - if_community_id
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        is_va_registered:
+          type: boolean
+          description: True when the Discord server in X-Discord-Server-Id is configured as a VA.
+        if_community_id:
+          type: string
+          description: Linked IFC Community username stored for the new user.
+    CreateUserResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/CreateUserData'
+    VerifyGodData:
+      type: object
+      required:
+        - is_god
+      properties:
+        is_god:
+          type: boolean
+    VerifyGodResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/VerifyGodData'
+    BanUserRequest:
+      type: object
+      required:
+        - discord_user_id
+      properties:
+        discord_user_id:
+          type: string
+          minLength: 1
+          description: Discord user id to ban from registration and remove from Politburo if registered.
+        reason:
+          type: string
+          description: Optional audit reason stored on the ban record.
+    BanUserData:
+      type: object
+      required:
+        - success
+        - discord_user_id
+        - user_deleted
+      properties:
+        success:
+          type: boolean
+        discord_user_id:
+          type: string
+        user_deleted:
+          type: boolean
+          description: True when a Politburo user row existed and was archived and removed.
+    BanUserResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/BanUserData'

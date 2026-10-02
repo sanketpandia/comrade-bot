@@ -23,15 +23,30 @@ func TestParseRouteProofRejectsBadShape(t *testing.T) {
 	}
 }
 
-func TestMatchesRecentFlights(t *testing.T) {
+func TestMatchesLatestCompleteFlight(t *testing.T) {
 	flights := []infiniteflight.LogbookFlight{
+		{Origin: "EGLL", Destination: ""},
+		{Origin: "", Destination: "KSEA"},
 		{Origin: "YTYA", Destination: "YSSY"},
 		{Origin: "EGLL", Destination: "KSEA"},
 	}
-	if !MatchesRecentFlights(flights, "EGLL", "KSEA") {
-		t.Fatal("expected match on second flight")
+	if !MatchesLatestCompleteFlight(flights, "YTYA", "YSSY") {
+		t.Fatal("expected match on latest complete flight YTYA-YSSY")
 	}
-	if MatchesRecentFlights(flights, "KSEA", "EGLL") {
+	if MatchesLatestCompleteFlight(flights, "EGLL", "KSEA") {
+		t.Fatal("older complete row must not match when a newer complete row exists")
+	}
+	if MatchesLatestCompleteFlight(flights, "KSEA", "EGLL") {
 		t.Fatal("reverse route should not match")
+	}
+}
+
+func TestMatchesLatestCompleteFlightNoCompleteRow(t *testing.T) {
+	flights := []infiniteflight.LogbookFlight{
+		{Origin: "EGLL", Destination: ""},
+		{Origin: "", Destination: "KSEA"},
+	}
+	if MatchesLatestCompleteFlight(flights, "EGLL", "KSEA") {
+		t.Fatal("expected no match when no complete row exists")
 	}
 }

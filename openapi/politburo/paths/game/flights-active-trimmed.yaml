@@ -1,6 +1,7 @@
 get:
   operationId: getTrimmedActiveFlights
   summary: Read a map-oriented, unpaged snapshot of active flights
+  tags: [Game]
   description: |
     Returns every matching flight with only marker fields. flightId is an
     encrypted token that can be resolved by GET /api/v1/game/flights/active/detail.

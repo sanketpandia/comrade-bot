@@ -26,13 +26,65 @@ import { NotFoundError } from "../helpers/NotFoundException";
 import { errorFields, logger } from "../infra/logger";
 import { unwrapApiData } from "../helpers/apiEnvelope";
 import { ApiNotImplementedError } from "../helpers/ApiNotImplementedError";
+import type { components } from "../generated/politburo-api";
 
 const API_URL = process.env.API_URL ?? "http://localhost:8080";
+
+type CreateUserRequest = components["schemas"]["CreateUserRequest"];
+type PolitburoErrorBody = {
+    error?: { code?: string; message?: string };
+    message?: string;
+};
 
 export class ApiService {
     private static rejectStub<T>(operation: string): Promise<T> {
         logger.warn("api_operation_stubbed", { operation });
         return Promise.reject(new ApiNotImplementedError(operation));
+    }
+
+    private static async parsePolitburoError(res: Awaited<ReturnType<typeof fetch>>): Promise<{ code?: string; message?: string }> {
+        try {
+            const body = await res.json() as PolitburoErrorBody;
+            return {
+                code: body.error?.code,
+                message: body.error?.message || body.message,
+            };
+        } catch {
+            return {};
+        }
+    }
+
+    private static throwCreateUserError(status: number, code?: string, message?: string): never {
+        const detail = message || "Registration failed";
+        switch (code) {
+            case "USER_ALREADY_REGISTERED":
+                throw new Error(`USER_ALREADY_REGISTERED: ${detail}`);
+            case "IFC_ALREADY_LINKED":
+                throw new Error(`IFC_ALREADY_LINKED: ${detail}`);
+            case "IF_USER_NOT_FOUND":
+                throw new Error(`IF_USER_NOT_FOUND: ${detail}`);
+            case "FLIGHT_PROOF_FAILED":
+                throw new Error(`FLIGHT_PROOF_FAILED: ${detail}`);
+            case "IF_UNAVAILABLE":
+                throw new Error(`IF_UNAVAILABLE: ${detail}`);
+            case "INVALID_REQUEST":
+                throw new Error(`INVALID_REQUEST: ${detail}`);
+            case "BANNED":
+            case "MISSING_DISCORD_CONTEXT":
+                throw new PermissionDeniedError(detail);
+            default:
+                break;
+        }
+        if (status === 401) {
+            throw new UnauthorizedError(detail);
+        }
+        if (status === 403) {
+            throw new PermissionDeniedError(detail);
+        }
+        if (status === 409) {
+            throw new Error(`USER_ALREADY_REGISTERED: ${detail}`);
+        }
+        throw new Error(detail);
     }
 
     static async getHealth(metainfo: MetaInfo): Promise<HealthApiResponse> {
@@ -77,12 +129,12 @@ export class ApiService {
         lastFlight: string
     ): Promise<RegistrationResult> {
         try {
-            const payload = {
-                ifc_id: ifcId,
-                last_flight: lastFlight
+            const payload: CreateUserRequest = {
+                discourseNames: [ifcId],
+                logbookEntry: lastFlight,
             };
 
-            const res = await fetch(`${API_URL}/api/v1/user/register`, {
+            const res = await fetch(`${API_URL}/api/v1/users`, {
                 method: "POST",
                 headers: {
                     ...generateRegistrationMetaHeaders(meta),
@@ -91,51 +143,12 @@ export class ApiService {
                 body: JSON.stringify(payload)
             });
 
-            if (res.status === 401) {
-                const message = await res.text(); // plain-text body
-                throw new UnauthorizedError(message || "Unauthorized");
-            }
-
-            if (res.status === 403) {
-                const body = await res.json() as ApiResponse<any>;
-                throw new PermissionDeniedError(body.message || "Forbidden");
-            }
-
-            if (res.status === 409) {
-                const body = await res.json() as any;
-                const errorCode = body.error?.code || body.error?.error_code;
-                const errorMessage = body.error?.message || body.message;
-                
-                // Check if it's IFC ID duplicate error
-                if (
-                    errorCode === "IFC_ALREADY_LINKED" ||
-                    errorCode === "IFC_ID_ALREADY_REGISTERED" ||
-                    errorMessage?.includes("IFC ID is already registered")
-                ) {
-                    throw new Error("IFC_ALREADY_LINKED: " + (errorMessage || "This IFC ID is already registered to another Discord account."));
-                }
-                
-                // Otherwise, it's the user already registered error
-                throw new Error(errorMessage || "User already registered");
-            }
-
-            if (res.status === 404) {
-                const body = await res.json() as any;
-                throw new Error(body.error?.message || "IFC user not found");
-            }
-
-            if (res.status === 400) {
-                const body = await res.json() as any;
-                throw new Error(body.error?.message || "Flight validation failed");
-            }
-
             if (!res.ok) {
-                logger.warn("api_request_failed", {
-                    operation: "initiate_registration",
-                    status: res.status,
-                    status_text: res.statusText,
-                });
-                throw new Error(`Failed to fetch initRegistration: ${res.status} ${res.statusText}`);
+                const { code, message } = await this.parsePolitburoError(res);
+                if (res.status === 401) {
+                    throw new UnauthorizedError(message || "Unauthorized");
+                }
+                this.throwCreateUserError(res.status, code, message);
             }
             
             const responseText = await res.text();
@@ -282,7 +295,7 @@ export class ApiService {
         try {
             const res = await fetch(`${API_URL}/api/v1/admin/verify-god`, {
                 method: "GET",
-                headers: generateMetaHeaders(meta),
+                headers: generateRegistrationMetaHeaders(meta),
             });
 
             if (res.status === 401 || res.status === 403) {

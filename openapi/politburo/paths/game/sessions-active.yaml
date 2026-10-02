@@ -1,6 +1,7 @@
 get:
   operationId: getActiveSessions
   summary: Read the latest active Infinite Flight sessions from cache
+  tags: [Game]
   security:
     - ApiKeyAuth: []
     - CookieAuth: []

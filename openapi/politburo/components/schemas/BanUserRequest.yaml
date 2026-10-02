@@ -1,0 +1,10 @@
+type: object
+required: [discord_user_id]
+properties:
+  discord_user_id:
+    type: string
+    minLength: 1
+    description: Discord user id to ban from registration and remove from Politburo if registered.
+  reason:
+    type: string
+    description: Optional audit reason stored on the ban record.

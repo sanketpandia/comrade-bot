@@ -1,0 +1,31 @@
+info:
+  name: Register User
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{POLITBURO_BASE_URL}}/api/v1/users"
+  headers:
+    - name: accept
+      value: application/json
+      disabled: true
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "discourseNames": [
+          "{{IFC_ID}}"
+        ],
+        "logbookEntry": "{{lastFlight}}"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

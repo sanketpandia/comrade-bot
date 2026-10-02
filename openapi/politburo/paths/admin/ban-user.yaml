@@ -1,0 +1,58 @@
+post:
+  operationId: banUser
+  summary: Ban a Discord user from Politburo
+  description: |
+    Platform operator (god mode) only. Adds the Discord id to banned_discord_ids and,
+    when a Politburo user exists, archives and deletes their account and memberships.
+  tags: [Admin]
+  security:
+    - ApiKeyAuth: []
+  parameters:
+    - name: X-Discord-User-Id
+      in: header
+      required: true
+      description: Discord user id of the platform operator performing the ban.
+      schema:
+        type: string
+    - name: X-Discord-Server-Id
+      in: header
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/BanUserRequest.yaml"
+  responses:
+    "200":
+      description: User banned
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/BanUserResponse.yaml"
+    "400":
+      description: Invalid request body
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "401":
+      description: Missing or inactive API key
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Missing Discord context or not a platform operator
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Ban failed
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

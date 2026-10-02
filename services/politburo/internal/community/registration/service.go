@@ -41,8 +41,7 @@ type RegisterInput struct {
 }
 
 type RegisterResult struct {
-	User            *users.User
-	IsVARegistered  bool
+	User *users.User
 }
 
 func (s *Service) Register(ctx context.Context, input RegisterInput) (*RegisterResult, error) {
@@ -92,11 +91,11 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (*RegisterR
 		return nil, err
 	}
 
-	flights, err := s.ifc.RecentLogbookFlights(ctx, ifUserID, 3)
+	flights, err := s.ifc.RecentLogbookFlights(ctx, ifUserID, 0)
 	if err != nil {
 		return nil, err
 	}
-	if !proof.MatchesRecentFlights(flights, origin, dest) {
+	if !proof.MatchesLatestCompleteFlight(flights, origin, dest) {
 		return nil, ErrFlightProofFailed
 	}
 

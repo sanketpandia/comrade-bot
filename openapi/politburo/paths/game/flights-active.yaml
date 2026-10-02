@@ -1,6 +1,7 @@
 get:
   operationId: getActiveFlights
   summary: Read cached active Infinite Flight flights for a server
+  tags: [Game]
   security:
     - ApiKeyAuth: []
     - CookieAuth: []

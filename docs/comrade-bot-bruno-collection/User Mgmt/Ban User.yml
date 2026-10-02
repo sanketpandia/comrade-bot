@@ -1,0 +1,28 @@
+info:
+  name: Ban User
+  type: http
+  seq: 2
+
+http:
+  method: post
+  url: "{{POLITBURO_BASE_URL}}/api/v1/admin/users/ban"
+  headers:
+    - name: accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "discord_user_id": "668664447950127154",
+        "reason": "Violent language"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: false
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

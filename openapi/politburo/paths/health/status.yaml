@@ -1,6 +1,7 @@
 get:
   operationId: getHealthStatus
   summary: Report process uptime and dependency readiness
+  tags: [Health]
   responses:
     "200":
       description: The process is up and required dependencies are reachable

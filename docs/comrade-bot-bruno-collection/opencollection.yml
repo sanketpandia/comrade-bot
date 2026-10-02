@@ -19,9 +19,17 @@ request:
     - name: X-API-Key
       value: "{{politburo-api-key}}"
       description: Politburo API key (active row in api_keys)
+    - name: X-Discord-User-Id
+      value: "{{discord-user-id}}"
+    - name: X-Discord-Server-Id
+      value: "{{discord-server-id}}"
   variables:
     - name: POLITBURO_BASE_URL
       value: "{{politburo-base-url}}"
+    - name: IFC_ID
+      value: sanketpandia
+    - name: lastFlight
+      value: LFPG-DNAA
 bundled: false
 extensions:
   bruno:

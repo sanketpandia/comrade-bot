@@ -3,6 +3,17 @@ info:
   title: Politburo API
   version: 0.1.0
   description: Authoritative contract for the clean-slate Politburo application.
+tags:
+  - name: Health
+    description: Process and dependency readiness.
+  - name: Game
+    description: Cached Infinite Flight live game data.
+  - name: Auth
+    description: Browser session and signed links.
+  - name: Users
+    description: Discord user registration and account flows.
+  - name: Admin
+    description: Platform operator (god mode) actions.
 servers:
   - url: http://localhost:8080
     description: Local rewrite
@@ -19,6 +30,12 @@ paths:
     $ref: "./paths/game/flights-active-detail.yaml"
   /api/v1/signed-link:
     $ref: "./paths/auth/signed-link.yaml"
+  /api/v1/users:
+    $ref: "./paths/users/create.yaml"
+  /api/v1/admin/verify-god:
+    $ref: "./paths/admin/verify-god.yaml"
+  /api/v1/admin/users/ban:
+    $ref: "./paths/admin/ban-user.yaml"
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -78,3 +95,19 @@ components:
       $ref: "./components/schemas/FlightNormalized.yaml"
     Flight:
       $ref: "./components/schemas/Flight.yaml"
+    CreateUserRequest:
+      $ref: "./components/schemas/CreateUserRequest.yaml"
+    CreateUserData:
+      $ref: "./components/schemas/CreateUserData.yaml"
+    CreateUserResponse:
+      $ref: "./components/schemas/CreateUserResponse.yaml"
+    VerifyGodData:
+      $ref: "./components/schemas/VerifyGodData.yaml"
+    VerifyGodResponse:
+      $ref: "./components/schemas/VerifyGodResponse.yaml"
+    BanUserRequest:
+      $ref: "./components/schemas/BanUserRequest.yaml"
+    BanUserData:
+      $ref: "./components/schemas/BanUserData.yaml"
+    BanUserResponse:
+      $ref: "./components/schemas/BanUserResponse.yaml"

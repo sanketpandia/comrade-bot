@@ -1,6 +1,7 @@
 post:
   operationId: generateSignedLink
   summary: Create a one-time signed URL that mints a browser session
+  tags: [Auth]
   description: |
     Discord bots with a valid API key and X-Discord-User-Id receive a
     10-minute URL. Visiting it creates a session cookie and redirects

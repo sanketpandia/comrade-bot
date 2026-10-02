@@ -62,7 +62,7 @@ Deployed commands (`src/commands/registry.ts`):
 
 | Command | Intended job | Politburo endpoint it calls |
 |---|---|---|
-| `/register` | Global account + optional VA callsign link | `POST /api/v1/user/register`, `GET /api/v1/user/status` |
+| `/register` | Global account + optional VA callsign link | `POST /api/v1/users`, `GET /api/v1/user/status` |
 | `/status` | Account + current-server membership | `GET /api/v1/user/status` |
 | `/botstatus` | Ops health | `GET /health/status` |
 | `/log` | File a PIREP for the current flight | `GET /api/v1/pireps/config`, `POST /api/v1/pireps/submit` |
@@ -74,7 +74,7 @@ Deployed commands (`src/commands/registry.ts`):
 | `/events` | List active VA events | `GET /api/v1/events?active_only=true` |
 | `/tour`, `/tour_leg` | Tour legs + extra data | `GET /api/v1/events/...`, `PUT .../additional-data` |
 | `/help` | Local catalog, no API | — |
-| `/rollout` | God-mode command redeploy | `GET /api/v1/admin/verify-god` |
+| `/rollout` | God-mode command redeploy | `GET /api/v1/admin/verify-god`, `POST /api/v1/admin/users/ban` |
 
 `/dashboard` is the only bot command whose rewrite endpoint exists. Request
 and response envelopes still differ (old `{status,result}` vs rewrite
