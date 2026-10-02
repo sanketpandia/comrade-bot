@@ -1,0 +1,47 @@
+site_name: Infinite Experiment
+site_description: Comrade Bot and Politburo — guides for virtual airlines on Infinite Flight.
+site_url: https://sanketpandia.github.io/comrade-bot/
+repo_url: https://github.com/sanketpandia/comrade-bot
+repo_name: comrade-bot
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - search.suggest
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Features: features.md
+  - Guides:
+      - Registration: guides/registration.md
+      - Roles & your VA: guides/roles-and-va.md
+      - Discord & portal: guides/discord-and-portal.md
+  - API:
+      - Overview: api/index.md
+      - Reference: api/reference/index.html
+  - Legal:
+      - Privacy: legal/privacy.md
+      - Terms: legal/terms.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true

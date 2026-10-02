@@ -1,5 +1,9 @@
 # Comrade-bot monorepo documentation
 
+**Public product docs & API reference (GitHub Pages):**
+<https://sanketpandia.github.io/comrade-bot/> — built from [`docs-site/`](../docs-site/);
+enable Pages with source **GitHub Actions** (see [`docs-site/README.md`](../docs-site/README.md)).
+
 | Area | Location |
 |------|----------|
 | Local stack and Compose | [infra/dev/README.md](../infra/dev/README.md) |

@@ -13,6 +13,9 @@ Monorepo for the Infinite Experiment VA stack: Politburo (Go API + dashboard), t
 | `infra/dev/` | Local Docker Compose backing services |
 | `infra/prod/` | Production Podman Compose and deploy scripts |
 | `docs/` | Central documentation |
+| `docs-site/` | Public GitHub Pages site (guides + API reference) |
+
+**Public docs:** <https://sanketpandia.github.io/comrade-bot/>
 
 ## Quick start
 

@@ -1,5 +1,6 @@
 .PHONY: generate generate-bindings generate-politburo generate-infinite-flight generate-bot-client \
-	openapi-bundle openapi-bundle-check check test build ci openapi-view openapi-stop
+	openapi-bundle openapi-bundle-check check test build ci openapi-view openapi-stop \
+	docs-site-deps docs-pack-api docs-build docs-serve
 
 REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 CICD_DIR = $(REPO_ROOT)/cicd
@@ -11,6 +12,9 @@ OPENAPI_DIR = $(REPO_ROOT)/openapi
 POLITBURO_SPEC_SRC = $(OPENAPI_DIR)/politburo/openapi.yaml
 POLITBURO_SPEC = $(OPENAPI_DIR)/politburo.yaml
 COMPOSE_DEV = $(REPO_ROOT)/infra/dev/docker-compose.dev.yml
+DOCS_SITE = $(REPO_ROOT)/docs-site
+DOCS_API_REF = $(DOCS_SITE)/docs/api/reference
+REDOC_STANDALONE = $(DOCS_SITE)/node_modules/redoc/bundles/redoc.standalone.js
 
 # Bundle first; bindings read the bundled spec (safe under make -j).
 generate: openapi-bundle
@@ -62,3 +66,21 @@ openapi-view: openapi-bundle
 
 openapi-stop:
 	docker compose -f $(COMPOSE_DEV) stop swagger-editor
+
+$(REDOC_STANDALONE): $(DOCS_SITE)/package.json $(DOCS_SITE)/package-lock.json
+	cd $(DOCS_SITE) && npm ci --no-audit --no-fund
+
+docs-site-deps: $(REDOC_STANDALONE)
+
+docs-pack-api: openapi-bundle docs-site-deps
+	mkdir -p $(DOCS_API_REF)
+	cp $(DOCS_SITE)/api-renderer/index.html $(DOCS_API_REF)/
+	cp $(REDOC_STANDALONE) $(DOCS_API_REF)/redoc.standalone.js
+	cp $(POLITBURO_SPEC) $(DOCS_API_REF)/openapi.yaml
+
+docs-build: docs-pack-api
+	python3 -m pip install -q -r $(DOCS_SITE)/requirements.txt
+	cd $(DOCS_SITE) && python3 -m mkdocs build -d site
+
+docs-serve: docs-pack-api
+	cd $(DOCS_SITE) && python3 -m mkdocs serve
