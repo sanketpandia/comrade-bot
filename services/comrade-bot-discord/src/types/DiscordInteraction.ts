@@ -20,11 +20,27 @@ export class DiscordInteraction {
 
 
     public async reply(message: InteractionReplyOptions | string) {
-        this._interaction.reply(message);
+        return this._interaction.reply(DiscordInteraction.normalizeReplyOptions(message));
     }
 
     public async editReply(message: InteractionEditReplyOptions | string) {
-        return this._interaction.editReply(message)
+        return this._interaction.editReply(message);
+    }
+
+    private static normalizeReplyOptions(
+        message: InteractionReplyOptions | string,
+    ): InteractionReplyOptions {
+        if (typeof message === "string") {
+            return { content: message };
+        }
+        const { ephemeral, flags, ...rest } = message;
+        if (!ephemeral) {
+            return message;
+        }
+        return {
+            ...rest,
+            flags: flags ?? MessageFlags.Ephemeral,
+        };
     }
 
     public isChatInputCommand(): boolean {

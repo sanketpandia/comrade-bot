@@ -95,6 +95,10 @@ components:
       $ref: "./components/schemas/FlightNormalized.yaml"
     Flight:
       $ref: "./components/schemas/Flight.yaml"
+    CreateUserErrorCode:
+      $ref: "./components/schemas/CreateUserErrorCode.yaml"
+    CreateUserErrorResponse:
+      $ref: "./components/schemas/CreateUserErrorResponse.yaml"
     CreateUserRequest:
       $ref: "./components/schemas/CreateUserRequest.yaml"
     CreateUserData:

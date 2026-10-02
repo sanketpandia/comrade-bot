@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 // Repository reads API key rows from the shared api_keys table.
@@ -19,6 +21,9 @@ func NewRepository(db *sql.DB) *Repository {
 // Active reports whether the key exists and is enabled.
 // found is false when no row matches the key id.
 func (r *Repository) Active(ctx context.Context, key string) (active bool, found bool, err error) {
+	if _, parseErr := uuid.Parse(key); parseErr != nil {
+		return false, false, nil
+	}
 	err = r.db.QueryRowContext(ctx, `SELECT status FROM api_keys WHERE id = $1`, key).Scan(&active)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, false, nil

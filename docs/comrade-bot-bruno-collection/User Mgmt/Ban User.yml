@@ -2,6 +2,9 @@ info:
   name: Ban User
   type: http
   seq: 2
+  description: |
+    Platform operator only. X-Discord-User-Id must be the operator's Discord id
+    (listed in PLATFORM_OPERATOR_DISCORD_IDS), not the ban target. Target goes in the JSON body.
 
 http:
   method: post

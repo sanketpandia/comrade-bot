@@ -1,3 +1,8 @@
+/**
+ * Politburo HTTP facade. New OpenAPI-covered calls must go through
+ * `src/generated/politburoClient.ts` (see `getPolitburoClient`). Hand-written
+ * fetch below is legacy until those routes are migrated.
+ */
 import fetch from "node-fetch";
 import { 
     HealthApiResponse, 
@@ -19,18 +24,20 @@ import {
     TourLegResponse
 } from "../types/Responses";
 import { MetaInfo } from "../types/DiscordInteraction";
-import { generateMetaHeaders, generateRegistrationMetaHeaders } from "../helpers/utils";
+import {
+    generateMetaHeaders,
+    generateRegistrationMetaHeaders,
+    getPolitburoApiUrl,
+} from "../helpers/utils";
 import { UnauthorizedError } from "../helpers/UnauthorizedException";
 import { PermissionDeniedError } from "../helpers/PermissionDeniedException";
 import { NotFoundError } from "../helpers/NotFoundException";
 import { errorFields, logger } from "../infra/logger";
 import { unwrapApiData } from "../helpers/apiEnvelope";
 import { ApiNotImplementedError } from "../helpers/ApiNotImplementedError";
-import type { components } from "../generated/politburo-api";
+import { getPolitburoClient } from "../generated/politburoClient";
+import { PolitburoApiError } from "../helpers/PolitburoApiError";
 
-const API_URL = process.env.API_URL ?? "http://localhost:8080";
-
-type CreateUserRequest = components["schemas"]["CreateUserRequest"];
 type PolitburoErrorBody = {
     error?: { code?: string; message?: string };
     message?: string;
@@ -54,44 +61,39 @@ export class ApiService {
         }
     }
 
-    private static throwCreateUserError(status: number, code?: string, message?: string): never {
-        const detail = message || "Registration failed";
-        switch (code) {
-            case "USER_ALREADY_REGISTERED":
-                throw new Error(`USER_ALREADY_REGISTERED: ${detail}`);
-            case "IFC_ALREADY_LINKED":
-                throw new Error(`IFC_ALREADY_LINKED: ${detail}`);
-            case "IF_USER_NOT_FOUND":
-                throw new Error(`IF_USER_NOT_FOUND: ${detail}`);
-            case "FLIGHT_PROOF_FAILED":
-                throw new Error(`FLIGHT_PROOF_FAILED: ${detail}`);
-            case "IF_UNAVAILABLE":
-                throw new Error(`IF_UNAVAILABLE: ${detail}`);
-            case "INVALID_REQUEST":
-                throw new Error(`INVALID_REQUEST: ${detail}`);
-            case "BANNED":
-            case "MISSING_DISCORD_CONTEXT":
-                throw new PermissionDeniedError(detail);
-            default:
-                break;
+    /** Logs Politburo upstream failures. Uses api_path (not route) for Loki/Grafana filters. */
+    private static logUpstreamAPIFailure(
+        operation: string,
+        method: string,
+        apiPath: string,
+        status: number,
+        errorCode?: string,
+        err?: unknown,
+    ): void {
+        const fields: Record<string, unknown> = {
+            operation,
+            method,
+            api_path: apiPath,
+            status,
+        };
+        if (errorCode) {
+            fields.error_code = errorCode;
         }
-        if (status === 401) {
-            throw new UnauthorizedError(detail);
+        if (err) {
+            Object.assign(fields, errorFields(err));
         }
-        if (status === 403) {
-            throw new PermissionDeniedError(detail);
+        if (status >= 500) {
+            logger.error("api_request_failed", fields);
+            return;
         }
-        if (status === 409) {
-            throw new Error(`USER_ALREADY_REGISTERED: ${detail}`);
-        }
-        throw new Error(detail);
+        logger.warn("api_request_failed", fields);
     }
 
     static async getHealth(metainfo: MetaInfo): Promise<HealthApiResponse> {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
         try {
-            const res = await fetch(`${API_URL}/health/status`, {
+            const res = await fetch(`${getPolitburoApiUrl()}/health/status`, {
                 method: "GET",
                 headers: generateMetaHeaders(metainfo),
                 signal: controller.signal,
@@ -128,63 +130,37 @@ export class ApiService {
         ifcId: string,
         lastFlight: string
     ): Promise<RegistrationResult> {
+        const apiPath = "/api/v1/users";
         try {
-            const payload: CreateUserRequest = {
+            const client = getPolitburoClient(getPolitburoApiUrl());
+            const result = await client.createUser(meta, {
                 discourseNames: [ifcId],
                 logbookEntry: lastFlight,
-            };
-
-            const res = await fetch(`${API_URL}/api/v1/users`, {
-                method: "POST",
-                headers: {
-                    ...generateRegistrationMetaHeaders(meta),
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
             });
-
-            if (!res.ok) {
-                const { code, message } = await this.parsePolitburoError(res);
-                if (res.status === 401) {
-                    throw new UnauthorizedError(message || "Unauthorized");
-                }
-                logger.warn("registration_rejected", {
-                    operation: "initiate_registration",
-                    status: res.status,
-                    code,
-                    discord_user_id: meta.discordId,
-                });
-                this.throwCreateUserError(res.status, code, message);
-            }
-            
-            const responseText = await res.text();
-
-            let response: ApiResponse<RegistrationResult>;
-            try {
-                response = JSON.parse(responseText) as ApiResponse<RegistrationResult>;
-            } catch (jsonErr) {
-                logger.warn("api_response_parse_failed", {
-                    operation: "initiate_registration",
-                    ...errorFields(jsonErr),
-                });
-                throw new Error("Failed to parse API response as JSON");
-            }
-
-            if (!response) {
-                throw new Error("Empty response from API");
-            }
-
-            const result = unwrapApiData<RegistrationResult>(response as Record<string, unknown>);
-            if (!result) {
-                throw new Error("No data received in API response");
-            }
-            return result;
+            return {
+                success: result.success,
+                message: result.message,
+                is_va_registered: result.is_va_registered,
+            };
         } catch (err) {
+            if (PolitburoApiError.isPolitburoApiError(err)) {
+                this.logUpstreamAPIFailure(
+                    "initiate_registration",
+                    "POST",
+                    apiPath,
+                    err.httpStatus,
+                    String(err.code),
+                    err,
+                );
+                throw err;
+            }
             logger.error("api_request_failed", {
                 operation: "initiate_registration",
+                method: "POST",
+                api_path: apiPath,
                 ...errorFields(err),
             });
-            throw err
+            throw err;
         }
     }
 
@@ -195,7 +171,7 @@ export class ApiService {
         code: string
     ): Promise<InitServerResult> {
         try {
-            const res = await fetch(`${API_URL}/api/v1/server/init`, {
+            const res = await fetch(`${getPolitburoApiUrl()}/api/v1/server/init`, {
                 method: "POST",
                 headers: generateRegistrationMetaHeaders(meta),
                 body: JSON.stringify({
@@ -258,23 +234,28 @@ export class ApiService {
 
 
     static async getUserDetails(meta: MetaInfo): Promise<UserDetailsData> {
+        const apiPath = "/api/v1/user/status";
         try {
-            const res = await fetch(`${API_URL}/api/v1/user/status`, {
+            const res = await fetch(`${getPolitburoApiUrl()}${apiPath}`, {
                 method: "GET",
                 headers: generateRegistrationMetaHeaders(meta),
             });
 
             if (res.status === 401) {
                 const message = await res.text();
+                this.logUpstreamAPIFailure("get_user_details", "GET", apiPath, res.status, "UNAUTHORIZED");
                 throw new UnauthorizedError(message || "Unauthorized");
             }
 
             if(res.status === 404) {
+                this.logUpstreamAPIFailure("get_user_details", "GET", apiPath, res.status, "NOT_FOUND");
                 throw new NotFoundError("User not found");
             }
 
             if (!res.ok) {
-                throw new Error(`Failed to fetch user details: ${res.status} ${res.statusText}`);
+                const { code, message } = await this.parsePolitburoError(res);
+                this.logUpstreamAPIFailure("get_user_details", "GET", apiPath, res.status, code);
+                throw new Error(message || `Failed to fetch user details: ${res.status} ${res.statusText}`);
             }
 
             const response: ApiResponse<UserDetailsData> = await res.json() as ApiResponse<UserDetailsData>;
@@ -285,8 +266,17 @@ export class ApiService {
             }
             return result;
         } catch (err) {
+            if (
+                err instanceof UnauthorizedError ||
+                err instanceof NotFoundError ||
+                (err instanceof Error && err.message.startsWith("Failed to fetch user details:"))
+            ) {
+                throw err;
+            }
             logger.error("api_request_failed", {
                 operation: "get_user_details",
+                method: "GET",
+                api_path: apiPath,
                 ...errorFields(err),
             });
             throw err;
@@ -299,7 +289,7 @@ export class ApiService {
      */
     static async verifyGodMode(meta: MetaInfo): Promise<boolean> {
         try {
-            const res = await fetch(`${API_URL}/api/v1/admin/verify-god`, {
+            const res = await fetch(`${getPolitburoApiUrl()}/api/v1/admin/verify-god`, {
                 method: "GET",
                 headers: generateRegistrationMetaHeaders(meta),
             });
@@ -356,7 +346,7 @@ export class ApiService {
         ttlMinutes?: number
     ): Promise<ApiResponse<{ url: string; expires_in: number; redirect_to: string }>> {
         try {
-            const res = await fetch(`${API_URL}/api/v1/signed-link`, {
+            const res = await fetch(`${getPolitburoApiUrl()}/api/v1/signed-link`, {
                 method: "POST",
                 headers: {
                     ...generateRegistrationMetaHeaders(meta),
@@ -406,7 +396,7 @@ export class ApiService {
      */
     static async joinMembership(meta: MetaInfo, callsign: string): Promise<MembershipJoinResult> {
         try {
-            const res = await fetch(`${API_URL}/api/v1/memberships/join`, {
+            const res = await fetch(`${getPolitburoApiUrl()}/api/v1/memberships/join`, {
                 method: "POST",
                 headers: {
                     ...generateRegistrationMetaHeaders(meta),
@@ -497,7 +487,7 @@ export class ApiService {
     }
 
     static async reportOccupiedIFC(meta: MetaInfo, claimedIfc: string, note?: string): Promise<{ id: string }> {
-        const res = await fetch(`${API_URL}/api/v1/reports/occupied-ifc`, {
+        const res = await fetch(`${getPolitburoApiUrl()}/api/v1/reports/occupied-ifc`, {
             method: "POST",
             headers: {
                 ...generateRegistrationMetaHeaders(meta),

@@ -2,6 +2,8 @@ import { DiscordInteraction } from "../types/DiscordInteraction";
 import { UnauthorizedError } from "./UnauthorizedException";
 import { PermissionDeniedError } from "./PermissionDeniedException";
 import { ApiNotImplementedError } from "./ApiNotImplementedError";
+import { PolitburoApiError } from "./PolitburoApiError";
+import { replyToCreateUserError } from "./registrationErrors";
 import { logger, errorFields } from "../infra/logger";
 
 /**
@@ -48,6 +50,11 @@ export class CommandErrorHandler {
             ...errorFields(error),
         });
 
+        if (operation === "Registration" && PolitburoApiError.isPolitburoApiError(error)) {
+            await replyToCreateUserError(interaction, error);
+            return;
+        }
+
         // Handle unauthorized errors (401)
         if (error instanceof UnauthorizedError) {
             await interaction.reply({
@@ -81,7 +88,6 @@ export class CommandErrorHandler {
         // Check for IFC ID duplicate error first (more specific)
         if (
             errorMessage.includes('IFC_ALREADY_LINKED') ||
-            errorMessage.includes('IFC_ID_ALREADY_REGISTERED') ||
             errorMessageLower.includes('ifc id is already registered')
         ) {
             await interaction.reply({

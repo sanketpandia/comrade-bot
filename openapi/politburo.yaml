@@ -364,6 +364,8 @@ paths:
         Creates a global Politburo user for the Discord member in X-Discord-User-Id.
         Requires X-Discord-Server-Id (bot context). Verifies the IFC username resolves
         upstream and that logbookEntry matches the latest complete online logbook flight.
+
+        Error responses use `error.code` from the CreateUserErrorCode enum (see response examples).
       tags:
         - Users
       security:
@@ -399,43 +401,110 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/CreateUserErrorResponse'
+              examples:
+                invalidRequest:
+                  summary: Invalid request body
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      message: discourseNames must contain exactly one IFC username
+                flightProofFailed:
+                  summary: Logbook proof mismatch
+                  value:
+                    error:
+                      code: FLIGHT_PROOF_FAILED
+                      message: Flight validation failed
+                registrationFailed:
+                  summary: Unclassified registration failure
+                  value:
+                    error:
+                      code: REGISTRATION_FAILED
+                      message: registration failed
         '401':
           description: Missing or inactive API key
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/CreateUserErrorResponse'
+              examples:
+                unauthorized:
+                  value:
+                    error:
+                      code: UNAUTHORIZED
+                      message: Unauthorized
         '403':
           description: Banned Discord account or missing Discord context headers
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/CreateUserErrorResponse'
+              examples:
+                banned:
+                  summary: Discord account is banned
+                  value:
+                    error:
+                      code: BANNED
+                      message: This Discord account cannot register
+                missingDiscordContext:
+                  summary: Bot omitted required Discord headers
+                  value:
+                    error:
+                      code: MISSING_DISCORD_CONTEXT
+                      message: 'Missing required Discord context headers: X-Discord-User-Id and X-Discord-Server-Id'
         '404':
           description: IFC user not found upstream
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/CreateUserErrorResponse'
+              examples:
+                ifUserNotFound:
+                  value:
+                    error:
+                      code: IF_USER_NOT_FOUND
+                      message: IFC user not found
         '409':
           description: Discord user or IFC username already registered
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/CreateUserErrorResponse'
+              examples:
+                userAlreadyRegistered:
+                  value:
+                    error:
+                      code: USER_ALREADY_REGISTERED
+                      message: User already registered
+                ifcAlreadyLinked:
+                  value:
+                    error:
+                      code: IFC_ALREADY_LINKED
+                      message: IFC ID is already registered to another Discord account
         '500':
-          description: Registration failed
+          description: Authentication lookup or internal registration failure
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/CreateUserErrorResponse'
+              examples:
+                authLookupFailed:
+                  value:
+                    error:
+                      code: AUTH_LOOKUP_FAILED
+                      message: authentication lookup failed
         '503':
           description: Infinite Flight API unavailable
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/CreateUserErrorResponse'
+              examples:
+                ifUnavailable:
+                  value:
+                    error:
+                      code: IF_UNAVAILABLE
+                      message: Infinite Flight API is not configured
   /api/v1/admin/verify-god:
     get:
       operationId: verifyGodMode
@@ -964,6 +1033,36 @@ components:
           $ref: '#/components/schemas/FlightNormalized'
         pathSync:
           $ref: '#/components/schemas/FlightPathSync'
+    CreateUserErrorCode:
+      type: string
+      description: Machine-readable error code for POST /api/v1/users failures.
+      enum:
+        - INVALID_REQUEST
+        - FLIGHT_PROOF_FAILED
+        - REGISTRATION_FAILED
+        - UNAUTHORIZED
+        - BANNED
+        - MISSING_DISCORD_CONTEXT
+        - IF_USER_NOT_FOUND
+        - USER_ALREADY_REGISTERED
+        - IFC_ALREADY_LINKED
+        - AUTH_LOOKUP_FAILED
+        - IF_UNAVAILABLE
+    CreateUserErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              $ref: '#/components/schemas/CreateUserErrorCode'
+            message:
+              type: string
     CreateUserRequest:
       type: object
       required:
