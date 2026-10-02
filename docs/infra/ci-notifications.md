@@ -23,12 +23,12 @@ Jobs that post to Discord use `environment: production` so environment-scoped se
 
 | Event | Discord |
 |-------|---------|
-| Any workflow job **failure** (PR or `main`) | Notify (when webhook is configured) |
-| **`main`** `production-image` success | Notify (image pushed to GHCR) |
-| **`main`** `deploy` success / failure | Notify |
+| PR check **failure** | Notify via `notify_pr_failure` (when webhook is configured) |
+| **`main`** `image_*` success / failure | Notify |
+| **`main`** deploy / infra / command sync success / failure | Notify |
 | PR success only | Silent |
 
-Implementation: [`.github/actions/discord-notify`](../../.github/actions/discord-notify).
+Workflow: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml). Implementation: [`.github/actions/discord-notify`](../../.github/actions/discord-notify).
 
 ## Rotate webhook
 

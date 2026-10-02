@@ -22,7 +22,7 @@ Use this before planning, implementing, or reviewing anything. It describes the 
 | `infra/dev/` | Local Compose backing services, Prometheus/Loki/Promtail/Grafana config, `start-dev.sh` |
 | `infra/prod/` | Podman Compose, Caddy, systemd units, deploy scripts, env templates, prod Grafana |
 | `docs/` | Dev notes (`docs/development/openapi.md` is current; much else is stale) |
-| `.github/workflows/` | `openapi.yml`, `politburo.yml`, `discord-bot.yml` |
+| `.github/workflows/` | `ci.yml` (path-filtered monorepo CI/CD) |
 | `_monorepo-backup/` | Bare git backups of the three old repos — never edit, never import from |
 
 ---

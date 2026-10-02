@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Path-filtered checks mirroring .github/workflows (politburo, discord-bot, openapi).
+# Path-filtered checks mirroring .github/workflows/ci.yml.
 # Install: make hooks-install   Skip one push: git push --no-verify   Or: SKIP_PREPUSH=1
 set -euo pipefail
 
@@ -72,7 +72,7 @@ file_triggers_politburo_ci() {
 		"openapi/*" \
 		"cicd/*" \
 		"Makefile" \
-		".github/workflows/politburo.yml"
+		".github/workflows/ci.yml"
 }
 
 file_triggers_bot_ci() {
@@ -81,7 +81,7 @@ file_triggers_bot_ci() {
 		"openapi/*" \
 		"cicd/*" \
 		"Makefile" \
-		".github/workflows/discord-bot.yml" \
+		".github/workflows/ci.yml" \
 		"infra/prod/scripts/k8s-sync-discord-commands.sh"
 }
 

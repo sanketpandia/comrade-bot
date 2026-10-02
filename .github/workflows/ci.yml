@@ -1,0 +1,486 @@
+name: CI/CD
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sync_discord_commands:
+        description: Push slash commands to Discord (global)
+        type: boolean
+        default: true
+      image_tag:
+        description: GHCR tag for command sync (e.g. main or commit SHA). Used for commands-only runs.
+        type: string
+        default: main
+      commands_only:
+        description: Skip test/build/deploy; only run command sync
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    if: github.event_name != 'workflow_dispatch' || inputs.commands_only != true
+    runs-on: ubuntu-latest
+    outputs:
+      politburo: ${{ steps.filter.outputs.politburo }}
+      bot: ${{ steps.filter.outputs.bot }}
+      contract: ${{ steps.filter.outputs.contract }}
+      infra: ${{ steps.filter.outputs.infra }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Detect path changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            politburo:
+              - 'services/politburo/**'
+              - 'openapi/**'
+              - 'cicd/**'
+              - 'Makefile'
+              - '.github/workflows/ci.yml'
+            bot:
+              - 'services/comrade-bot-discord/**'
+              - 'openapi/**'
+              - 'cicd/**'
+              - 'Makefile'
+              - '.github/workflows/ci.yml'
+              - 'infra/prod/scripts/k8s-sync-discord-commands.sh'
+            contract:
+              - 'openapi/**'
+              - 'cicd/**'
+              - 'Makefile'
+            infra:
+              - 'infra/prod/k8s/**'
+              - '.github/workflows/ci.yml'
+
+  pr_contract:
+    needs: changes
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.changes.outputs.contract == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            cicd/package-lock.json
+            services/comrade-bot-discord/package-lock.json
+
+      - name: Install bot dependencies (OpenAPI generate tooling)
+        working-directory: services/comrade-bot-discord
+        run: npm ci
+
+      - name: Check bundled Politburo spec is up to date
+        run: make openapi-bundle-check
+
+  pr_politburo_test:
+    needs: changes
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.changes.outputs.politburo == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Generate, test, and build (Dockerfile.dev ci target)
+        run: docker build --file services/politburo/Dockerfile.dev --target ci --tag politburo-ci:${{ github.sha }} .
+
+  pr_politburo_image:
+    needs: changes
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.changes.outputs.politburo == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build production image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/politburo/Dockerfile
+          push: false
+
+  pr_bot_test:
+    needs: changes
+    if: |
+      (github.event_name == 'pull_request' && needs.changes.outputs.bot == 'true') ||
+      (github.event_name == 'workflow_dispatch' && inputs.commands_only != true)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: services/comrade-bot-discord/package-lock.json
+
+      - name: Install, generate client, test, and build
+        working-directory: services/comrade-bot-discord
+        run: |
+          npm ci
+          npm run api:generate
+          npm test
+          npm run build
+          npm run commands:validate
+
+  pr_bot_image:
+    needs: changes
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.changes.outputs.bot == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build production image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/comrade-bot-discord/Dockerfile
+          push: false
+
+  notify_pr_failure:
+    needs:
+      pr_contract:
+        optional: true
+      pr_politburo_test:
+        optional: true
+      pr_politburo_image:
+        optional: true
+      pr_bot_test:
+        optional: true
+      pr_bot_image:
+        optional: true
+    if: |
+      always() &&
+      !cancelled() &&
+      github.event_name == 'pull_request' &&
+      (
+        needs.pr_contract.result == 'failure' ||
+        needs.pr_politburo_test.result == 'failure' ||
+        needs.pr_politburo_image.result == 'failure' ||
+        needs.pr_bot_test.result == 'failure' ||
+        needs.pr_bot_image.result == 'failure'
+      )
+    runs-on: ubuntu-latest
+    environment: production
+    continue-on-error: true
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Discord notify
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL || secrets.WEBHOOK_URL || vars.DISCORD_WEBHOOK_URL || vars.WEBHOOK_URL }}
+          title: CI — pull request checks failed
+          status: failure
+          job-name: notify_pr_failure
+
+  image_politburo:
+    needs: changes
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.changes.outputs.politburo == 'true'
+    runs-on: [self-hosted, linux, prod]
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.ghcr.outputs.prefix }}/politburo:${{ github.sha }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set GHCR image prefix
+        id: ghcr
+        run: echo "prefix=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/politburo/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.ghcr.outputs.prefix }}/politburo:${{ github.sha }}
+            ${{ steps.ghcr.outputs.prefix }}/politburo:main
+
+      - name: Discord notify
+        if: always()
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL || secrets.WEBHOOK_URL || vars.DISCORD_WEBHOOK_URL || vars.WEBHOOK_URL }}
+          title: Politburo — production image
+          status: ${{ job.status }}
+          job-name: image_politburo
+          details: ${{ steps.ghcr.outputs.prefix }}/politburo:${{ github.sha }}
+
+  image_comrade_bot:
+    needs:
+      changes:
+        optional: true
+      pr_bot_test:
+        optional: true
+    if: |
+      always() &&
+      !cancelled() &&
+      needs.changes.result == 'success' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.bot == 'true') ||
+        (
+          github.event_name == 'workflow_dispatch' &&
+          inputs.commands_only != true &&
+          github.ref == 'refs/heads/main' &&
+          needs.pr_bot_test.result == 'success'
+        )
+      )
+    runs-on: [self-hosted, linux, prod]
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.ghcr.outputs.prefix }}/comrade-bot:${{ github.sha }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set GHCR image prefix
+        id: ghcr
+        run: echo "prefix=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/comrade-bot-discord/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.ghcr.outputs.prefix }}/comrade-bot:${{ github.sha }}
+            ${{ steps.ghcr.outputs.prefix }}/comrade-bot:main
+
+      - name: Discord notify
+        if: always()
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL || secrets.WEBHOOK_URL || vars.DISCORD_WEBHOOK_URL || vars.WEBHOOK_URL }}
+          title: Comrade-bot — production image
+          status: ${{ job.status }}
+          job-name: image_comrade_bot
+          details: ${{ steps.ghcr.outputs.prefix }}/comrade-bot:${{ github.sha }}
+
+  deploy_politburo:
+    needs: image_politburo
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.image_politburo.result == 'success'
+    runs-on: [self-hosted, linux, prod]
+    environment: production
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure kubeconfig
+        uses: ./.github/actions/kubeconfig-setup
+        with:
+          kubeconfig-b64: ${{ secrets.KUBECONFIG_B64 }}
+
+      - name: Refresh GHCR pull secret
+        uses: ./.github/actions/ghcr-pull-secret
+        with:
+          ghcr-user: ${{ github.repository_owner }}
+          ghcr-token: ${{ secrets.GHCR_PULL_TOKEN }}
+
+      - name: Roll out politburo
+        env:
+          IMAGE: ${{ needs.image_politburo.outputs.image }}
+        run: |
+          kubectl -n ie-apps set image deployment/politburo politburo="$IMAGE"
+          kubectl -n ie-apps rollout status deployment/politburo --timeout=5m
+
+      - name: Discord notify
+        if: always()
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL || secrets.WEBHOOK_URL || vars.DISCORD_WEBHOOK_URL || vars.WEBHOOK_URL }}
+          title: Politburo deploy (lalquila)
+          status: ${{ job.status }}
+          job-name: deploy_politburo
+          details: ${{ needs.image_politburo.outputs.image }}
+
+  deploy_comrade_bot:
+    needs: image_comrade_bot
+    if: |
+      needs.image_comrade_bot.result == 'success' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_dispatch' && inputs.commands_only != true && github.ref == 'refs/heads/main')
+      )
+    runs-on: [self-hosted, linux, prod]
+    environment: production
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure kubeconfig
+        uses: ./.github/actions/kubeconfig-setup
+        with:
+          kubeconfig-b64: ${{ secrets.KUBECONFIG_B64 }}
+
+      - name: Refresh GHCR pull secret
+        uses: ./.github/actions/ghcr-pull-secret
+        with:
+          ghcr-user: ${{ github.repository_owner }}
+          ghcr-token: ${{ secrets.GHCR_PULL_TOKEN }}
+
+      - name: Roll out comrade-bot
+        env:
+          IMAGE: ${{ needs.image_comrade_bot.outputs.image }}
+        run: |
+          kubectl -n ie-apps set image deployment/comrade-bot comrade-bot="$IMAGE"
+          kubectl -n ie-apps rollout status deployment/comrade-bot --timeout=5m
+
+      - name: Discord notify
+        if: always()
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL || secrets.WEBHOOK_URL || vars.DISCORD_WEBHOOK_URL || vars.WEBHOOK_URL }}
+          title: Comrade-bot deploy (lalquila)
+          status: ${{ job.status }}
+          job-name: deploy_comrade_bot
+          details: ${{ needs.image_comrade_bot.outputs.image }}
+
+  apply_infra:
+    needs: changes
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.changes.outputs.infra == 'true'
+    runs-on: [self-hosted, linux, prod]
+    environment: production
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure kubeconfig
+        uses: ./.github/actions/kubeconfig-setup
+        with:
+          kubeconfig-b64: ${{ secrets.KUBECONFIG_B64 }}
+
+      - name: Apply prod overlay
+        run: bash infra/prod/k8s/apply.sh
+
+      - name: Discord notify
+        if: always()
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL || secrets.WEBHOOK_URL || vars.DISCORD_WEBHOOK_URL || vars.WEBHOOK_URL }}
+          title: k8s manifest apply (lalquila)
+          status: ${{ job.status }}
+          job-name: apply_infra
+
+  sync_discord_commands:
+    needs:
+      image_comrade_bot:
+        optional: true
+      deploy_comrade_bot:
+        optional: true
+    if: |
+      always() &&
+      !cancelled() &&
+      (
+        (github.event_name == 'workflow_dispatch' && inputs.sync_discord_commands) ||
+        (github.event_name == 'push' && contains(github.event.head_commit.message, '[sync-cmds]'))
+      ) &&
+      (
+        (github.event_name == 'workflow_dispatch' && inputs.commands_only) ||
+        (needs.image_comrade_bot.result == 'success' && needs.deploy_comrade_bot.result == 'success')
+      )
+    runs-on: [self-hosted, linux, prod]
+    environment: production
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure kubeconfig
+        uses: ./.github/actions/kubeconfig-setup
+        with:
+          kubeconfig-b64: ${{ secrets.KUBECONFIG_B64 }}
+
+      - name: Refresh GHCR pull secret
+        uses: ./.github/actions/ghcr-pull-secret
+        with:
+          ghcr-user: ${{ github.repository_owner }}
+          ghcr-token: ${{ secrets.GHCR_PULL_TOKEN }}
+
+      - name: Resolve container image
+        id: image
+        env:
+          GHCR_PREFIX: ghcr.io/${{ github.repository_owner }}
+        run: |
+          OWNER_LC=$(echo "$GHCR_PREFIX" | tr '[:upper:]' '[:lower:]')
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.commands_only }}" = "true" ]; then
+            echo "image=${OWNER_LC}/comrade-bot:${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=${{ needs.image_comrade_bot.outputs.image }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sync Discord slash commands
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: bash infra/prod/scripts/k8s-sync-discord-commands.sh
+
+      - name: Discord notify
+        if: always()
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL || secrets.WEBHOOK_URL || vars.DISCORD_WEBHOOK_URL || vars.WEBHOOK_URL }}
+          title: Comrade-bot command sync (lalquila)
+          status: ${{ job.status }}
+          job-name: sync_discord_commands
+          details: ${{ steps.image.outputs.image }}

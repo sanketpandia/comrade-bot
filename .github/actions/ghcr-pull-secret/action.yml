@@ -1,0 +1,30 @@
+name: GHCR imagePullSecret
+description: Refresh ghcr-cred docker-registry secret in ie-apps when GHCR_PULL_TOKEN is set
+
+inputs:
+  ghcr-user:
+    description: GHCR username (typically repository owner)
+    required: true
+  ghcr-token:
+    description: GHCR pull token
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Ensure GHCR imagePullSecret
+      shell: bash
+      env:
+        GHCR_USER: ${{ inputs.ghcr-user }}
+        GHCR_TOKEN: ${{ inputs.ghcr-token }}
+      run: |
+        if [ -z "${GHCR_TOKEN}" ]; then
+          echo "GHCR_PULL_TOKEN not set; skipping imagePullSecret refresh"
+          exit 0
+        fi
+        kubectl create secret docker-registry ghcr-cred -n ie-apps \
+          --docker-server=ghcr.io \
+          --docker-username="$GHCR_USER" \
+          --docker-password="$GHCR_TOKEN" \
+          --dry-run=client -o yaml | kubectl apply -f -
