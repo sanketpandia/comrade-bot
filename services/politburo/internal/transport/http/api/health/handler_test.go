@@ -63,7 +63,7 @@ func TestStatusAllActive(t *testing.T) {
 	if !strings.Contains(body, `"status":"ok"`) {
 		t.Fatalf("body = %s, want ok status", body)
 	}
-	for _, want := range []string{`"database":"active"`, `"cache":"active"`, `"sessions":"active"`} {
+	for _, want := range []string{`"database":"active"`, `"cache":"active"`, `"infinite-flight":"active"`} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("body = %s, want %s", body, want)
 		}
@@ -105,8 +105,8 @@ func TestStatusSessionsStaleWhenJobsEnabled(t *testing.T) {
 		t.Fatalf("status = %d, want 503", recorder.Code)
 	}
 	body := recorder.Body.String()
-	if !strings.Contains(body, `"sessions":"down"`) {
-		t.Fatalf("body = %s, want sessions down", body)
+	if !strings.Contains(body, `"infinite-flight":"down"`) {
+		t.Fatalf("body = %s, want infinite-flight down", body)
 	}
 }
 
@@ -125,7 +125,7 @@ func TestStatusSessionsFreshWhenJobsEnabled(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", recorder.Code)
 	}
-	if !strings.Contains(recorder.Body.String(), `"sessions":"active"`) {
-		t.Fatalf("body = %s, want sessions active", recorder.Body.String())
+	if !strings.Contains(recorder.Body.String(), `"infinite-flight":"active"`) {
+		t.Fatalf("body = %s, want infinite-flight active", recorder.Body.String())
 	}
 }

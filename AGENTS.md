@@ -40,6 +40,17 @@ Full map and known traps: `.claude/commands/architecture.md`. Agents in `.claude
 - Backing services: `docker compose -f infra/dev/docker-compose.dev.yml up` from `infra/dev/`.
 - Ports: Politburo `8082`, bot metrics `9091`, Postgres `5432`, Redis `6379`, Swagger UI `8081`, Prometheus `9090`, Grafana `3000`.
 
+## Git hooks
+
+Optional pre-push checks (same path filters as Politburo, Discord bot, and OpenAPI CI):
+
+```sh
+make hooks-install   # once per clone: git config core.hooksPath .githooks
+make pre-push        # same script, without pushing
+```
+
+Skip for one push: `git push --no-verify` or `SKIP_PREPUSH=1 git push`.
+
 ## Code generation
 
 From repo root:
