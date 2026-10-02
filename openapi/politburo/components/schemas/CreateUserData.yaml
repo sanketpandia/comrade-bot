@@ -1,0 +1,13 @@
+type: object
+required: [success, message, is_va_registered, if_community_id]
+properties:
+  success:
+    type: boolean
+  message:
+    type: string
+  is_va_registered:
+    type: boolean
+    description: True when the Discord server in X-Discord-Server-Id is configured as a VA.
+  if_community_id:
+    type: string
+    description: Linked IFC Community username stored for the new user.

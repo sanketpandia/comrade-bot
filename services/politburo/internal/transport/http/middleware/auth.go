@@ -1,8 +1,11 @@
 package middleware
 
 import (
+	"log/slog"
 	"net/http"
 	"strings"
+
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/transport/http/response"
@@ -52,15 +55,18 @@ func AuthenticateAPI(lookup APIKeyLookup, sessions SessionLookup) func(http.Hand
 
 			apiKey := strings.TrimSpace(r.Header.Get(APIKeyHeader))
 			if apiKey == "" {
+				logAPIAuthFailure(r, "missing_api_key")
 				response.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
 				return
 			}
 			claims, ok, err := lookup.Lookup(r, apiKey)
 			if err != nil {
+				logAPIAuthFailure(r, "api_key_lookup_error", "lookup_error", err.Error())
 				response.WriteError(w, http.StatusInternalServerError, "AUTH_LOOKUP_FAILED", "authentication lookup failed")
 				return
 			}
 			if !ok {
+				logAPIAuthFailure(r, "invalid_api_key")
 				response.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
 				return
 			}
@@ -88,6 +94,18 @@ func RequireDiscordBotContext() func(http.Handler) http.Handler {
 			hasUser := strings.TrimSpace(r.Header.Get(DiscordUserIDHeader)) != ""
 			hasServer := strings.TrimSpace(r.Header.Get(DiscordServerIDHeader)) != ""
 			if !hasUser || !hasServer {
+				args := []any{
+					"method", r.Method,
+					"path", r.URL.Path,
+					"reason", "missing_discord_context",
+					"error_code", "MISSING_DISCORD_CONTEXT",
+					"has_discord_user_id", hasUser,
+					"has_discord_server_id", hasServer,
+				}
+				if requestID := chimiddleware.GetReqID(r.Context()); requestID != "" {
+					args = append(args, "request_id", requestID)
+				}
+				slog.Info("api_access_denied", args...)
 				response.WriteError(w, http.StatusForbidden, "MISSING_DISCORD_CONTEXT",
 					"Missing required Discord context headers: X-Discord-User-Id and X-Discord-Server-Id")
 				return
@@ -95,4 +113,17 @@ func RequireDiscordBotContext() func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func logAPIAuthFailure(r *http.Request, reason string, extra ...any) {
+	args := []any{
+		"method", r.Method,
+		"path", r.URL.Path,
+		"reason", reason,
+	}
+	args = append(args, extra...)
+	if requestID := chimiddleware.GetReqID(r.Context()); requestID != "" {
+		args = append(args, "request_id", requestID)
+	}
+	slog.Info("api_auth_failed", args...)
 }

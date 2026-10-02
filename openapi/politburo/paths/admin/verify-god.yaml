@@ -1,0 +1,39 @@
+get:
+  operationId: verifyGodMode
+  summary: Confirm the caller has platform god-mode access
+  description: |
+    Requires a valid API key and X-Discord-User-Id for a configured platform operator.
+    X-Discord-Server-Id is required for bot context.
+  tags: [Admin]
+  security:
+    - ApiKeyAuth: []
+  parameters:
+    - name: X-Discord-User-Id
+      in: header
+      required: true
+      schema:
+        type: string
+    - name: X-Discord-Server-Id
+      in: header
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: Caller is a platform operator
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VerifyGodResponse.yaml"
+    "401":
+      description: Missing or inactive API key
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Missing Discord context or not a platform operator
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

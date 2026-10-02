@@ -1,19 +1,23 @@
 package identity
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
-	"slices"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
+	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/community/membership"
 	"infinite-experiment/politburo/internal/operations/operator"
 	"infinite-experiment/politburo/internal/community/registration"
+	"infinite-experiment/politburo/internal/community/registration/proof"
 	"infinite-experiment/politburo/internal/operations/reports"
 	"infinite-experiment/politburo/internal/transport/http/response"
 	"infinite-experiment/politburo/internal/community/users/status"
@@ -28,7 +32,6 @@ type Handler struct {
 	reports      *reports.Repository
 	operator     *operator.Service
 	vas          *virtualairlines.Repository
-	operators    []string
 }
 
 func NewHandler(
@@ -39,7 +42,6 @@ func NewHandler(
 	reports *reports.Repository,
 	operator *operator.Service,
 	vas *virtualairlines.Repository,
-	platformOperators []string,
 ) *Handler {
 	return &Handler{
 		registration: registration,
@@ -49,29 +51,38 @@ func NewHandler(
 		reports:      reports,
 		operator:     operator,
 		vas:          vas,
-		operators:    platformOperators,
 	}
 }
 
-func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request, _ politburoapi.CreateUserParams) {
 	claims, ok := auth.ClaimsFromContext(r.Context())
 	if !ok {
 		response.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
 		return
 	}
-	var body registerBody
+	var body politburoapi.CreateUserRequest
 	if err := decodeJSON(r, &body); err != nil {
 		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
-	ifc := firstNonEmpty(body.IFCUsername, body.IFCID)
-	proof := firstNonEmpty(body.RouteProof, body.LastFlight)
-
-	result, err := h.registration.Register(r.Context(), registration.RegisterInput{
+	if len(body.DiscourseNames) != 1 {
+		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "discourseNames must contain exactly one IFC username")
+		return
+	}
+	ifc := strings.TrimSpace(body.DiscourseNames[0])
+	if ifc == "" {
+		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "discourseNames must contain exactly one IFC username")
+		return
+	}
+	h.registerFromInput(w, r, claims, registration.RegisterInput{
 		DiscordID:   claims.DsUserID,
 		IFCUsername: ifc,
-		RouteProof:  proof,
+		RouteProof:  strings.TrimSpace(body.LogbookEntry),
 	})
+}
+
+func (h *Handler) registerFromInput(w http.ResponseWriter, r *http.Request, claims auth.Claims, input registration.RegisterInput) {
+	result, err := h.registration.Register(r.Context(), input)
 	if err != nil {
 		writeRegisterError(w, err)
 		return
@@ -85,10 +96,10 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	response.WriteJSON(w, http.StatusOK, map[string]any{
 		"data": map[string]any{
-			"success":           true,
-			"message":           "Registration successful",
-			"is_va_registered":  isVARegistered,
-			"if_community_id":   result.User.IFCommunityID,
+			"success":          true,
+			"message":          "Registration successful",
+			"is_va_registered": isVARegistered,
+			"if_community_id":  result.User.IFCommunityID,
 		},
 	})
 }
@@ -214,52 +225,64 @@ func (h *Handler) ResolveOperatorReport(w http.ResponseWriter, r *http.Request) 
 		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "report id required")
 		return
 	}
-	report, err := h.reports.GetByID(r.Context(), reportID)
-	if err != nil || report == nil {
-		response.WriteError(w, http.StatusNotFound, "NOT_FOUND", "report not found")
-		return
-	}
-	switch report.Kind {
-	case reports.KindOccupiedIFC:
-		err = h.operator.ResolveOccupiedIFC(r.Context(), reportID, claims.DsUserID)
-	case reports.KindMigrateDiscordServer:
-		err = h.operator.ResolveGuildMigration(r.Context(), reportID, claims.DsUserID)
-	default:
-		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "unsupported report kind")
-		return
-	}
+	err := reports.ResolveOpenReport(r.Context(), h.reports, h.operator, reportID, claims.DsUserID)
 	if err != nil {
-		if errors.Is(err, operator.ErrOccupantNotFound) {
+		switch {
+		case errors.Is(err, reports.ErrReportNotFound):
+			response.WriteError(w, http.StatusNotFound, "NOT_FOUND", "report not found")
+		case errors.Is(err, reports.ErrUnsupportedReportKind):
+			response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "unsupported report kind")
+		case errors.Is(err, operator.ErrOccupantNotFound):
 			response.WriteError(w, http.StatusNotFound, "OCCUPANT_NOT_FOUND", "no user linked to claimed IFC")
 			return
+		default:
+			response.WriteError(w, http.StatusInternalServerError, "RESOLVE_FAILED", "failed to resolve report")
 		}
-		response.WriteError(w, http.StatusInternalServerError, "RESOLVE_FAILED", "failed to resolve report")
 		return
 	}
 	response.WriteJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"resolved": true}})
 }
 
-func (h *Handler) VerifyGod(w http.ResponseWriter, r *http.Request) {
-	claims, ok := auth.ClaimsFromContext(r.Context())
-	if !ok {
-		response.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
-		return
-	}
-	isGod := slices.Contains(h.operators, claims.DsUserID)
-	if !isGod {
-		response.WriteError(w, http.StatusForbidden, "FORBIDDEN", "god mode required")
-		return
-	}
+func (h *Handler) VerifyGod(w http.ResponseWriter, _ *http.Request) {
 	response.WriteJSON(w, http.StatusOK, map[string]any{
 		"data": map[string]any{"is_god": true},
 	})
 }
 
-type registerBody struct {
-	IFCUsername string `json:"ifcUsername"`
-	IFCID       string `json:"ifc_id"`
-	RouteProof  string `json:"routeProof"`
-	LastFlight  string `json:"last_flight"`
+func (h *Handler) BanUser(w http.ResponseWriter, r *http.Request, _ politburoapi.BanUserParams) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
+		return
+	}
+	var body politburoapi.BanUserRequest
+	if err := decodeJSON(r, &body); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+		return
+	}
+	target := strings.TrimSpace(body.DiscordUserId)
+	if target == "" {
+		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "discord_user_id is required")
+		return
+	}
+	reason := ""
+	if body.Reason != nil {
+		reason = strings.TrimSpace(*body.Reason)
+	}
+	result, err := h.operator.BanDiscordUser(r.Context(), target, claims.DsUserID, reason)
+	if err != nil {
+		logUserBanFailure(r.Context(), claims.DsUserID, target, err)
+		writeBanUserError(w, err)
+		return
+	}
+	logUserBanSuccess(r.Context(), claims.DsUserID, result.DiscordUserID, result.UserDeleted, reason)
+	response.WriteJSON(w, http.StatusOK, map[string]any{
+		"data": map[string]any{
+			"success":         true,
+			"discord_user_id": result.DiscordUserID,
+			"user_deleted":    result.UserDeleted,
+		},
+	})
 }
 
 type joinBody struct {
@@ -300,6 +323,8 @@ func firstNonEmpty(values ...string) string {
 
 func writeRegisterError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, proof.ErrInvalidRoute):
+		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid logbook entry; expected ORIG-DEST")
 	case errors.Is(err, registration.ErrBanned):
 		response.WriteError(w, http.StatusForbidden, "BANNED", "This Discord account cannot register")
 	case errors.Is(err, registration.ErrAlreadyRegistered):
@@ -345,4 +370,50 @@ func writeInitServerError(w http.ResponseWriter, err error) {
 	default:
 		response.WriteError(w, http.StatusInternalServerError, "INIT_FAILED", err.Error())
 	}
+}
+
+func writeBanUserError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, operator.ErrInvalidDiscordID):
+		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "discord_user_id is required")
+	default:
+		response.WriteError(w, http.StatusInternalServerError, "BAN_FAILED", "failed to ban user")
+	}
+}
+
+func logUserBanSuccess(ctx context.Context, operatorDiscordID, targetDiscordID string, userDeleted bool, reason string) {
+	args := []any{
+		"operator_discord_id", operatorDiscordID,
+		"target_discord_id", targetDiscordID,
+		"user_deleted", userDeleted,
+		"reason", truncateLogReason(reason, 200),
+	}
+	if requestID := chimiddleware.GetReqID(ctx); requestID != "" {
+		args = append(args, "request_id", requestID)
+	}
+	slog.Info("user_ban", args...)
+}
+
+func logUserBanFailure(ctx context.Context, operatorDiscordID, targetDiscordID string, err error) {
+	args := []any{
+		"operator_discord_id", operatorDiscordID,
+		"target_discord_id", targetDiscordID,
+	}
+	if requestID := chimiddleware.GetReqID(ctx); requestID != "" {
+		args = append(args, "request_id", requestID)
+	}
+	if errors.Is(err, operator.ErrInvalidDiscordID) {
+		args = append(args, "error_code", "INVALID_REQUEST")
+		slog.Info("user_ban", args...)
+		return
+	}
+	args = append(args, "error", err)
+	slog.Error("user_ban", args...)
+}
+
+func truncateLogReason(reason string, maxLen int) string {
+	if maxLen <= 0 || len(reason) <= maxLen {
+		return reason
+	}
+	return reason[:maxLen] + "..."
 }

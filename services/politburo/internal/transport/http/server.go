@@ -90,12 +90,14 @@ func (s *Server) router() stdhttp.Handler {
 	signedLinkHandler := signedlink.NewHandler(s.app.Users, s.app.Tickets, s.app.Resolver, s.app.VALookup, s.app.Config.Auth.UIBaseURL)
 	identityHandler := identity.NewHandler(
 		s.app.Registration, s.app.Membership, s.app.VAInit, s.app.Status,
-		s.app.Reports, s.app.Operator, s.app.VirtualAirlines, s.app.Config.PlatformOperatorDiscordIDs,
+		s.app.Reports, s.app.Operator, s.app.VirtualAirlines,
 	)
 	uiHandler := uihttp.NewHandler(s.app.UI, s.app.Sessions, s.app.Tickets, s.app.Reports, s.app.Operator, s.app.Config.PlatformOperatorDiscordIDs)
 	handler := apiHandler{
 		health: healthHandler, sessions: sessionsHandler, flights: flightsHandler,
-		signedLink: signedLinkHandler,
+		signedLink: signedLinkHandler, identity: identityHandler,
+		registrationMiddleware: registrationRouteMiddleware(s.app),
+		godMiddleware:          godRouteMiddleware(s.app),
 	}
 
 	// Public ops + OpenAPI machine API (paths include /health/* and /api/v1/*).
@@ -114,12 +116,10 @@ func (s *Server) router() stdhttp.Handler {
 			appmiddleware.EnrichDiscordMembership(s.app.Resolver),
 			appmiddleware.RateLimit(s.app.Cache, appmiddleware.RateLimitGroupRegistration, appmiddleware.RateLimitRegistration),
 		)
-		bot.Post("/api/v1/user/register", identityHandler.Register)
 		bot.Get("/api/v1/user/status", identityHandler.Status)
 		bot.Post("/api/v1/memberships/join", identityHandler.Join)
 		bot.Post("/api/v1/server/init", identityHandler.InitServer)
 		bot.Post("/api/v1/reports/occupied-ifc", identityHandler.ReportOccupiedIFC)
-		bot.Get("/api/v1/admin/verify-god", identityHandler.VerifyGod)
 	})
 
 	router.Group(func(op chi.Router) {
@@ -146,6 +146,9 @@ type apiHandler struct {
 	sessions   *gamesessions.Handler
 	flights    *gameflights.Handler
 	signedLink *signedlink.Handler
+	identity   *identity.Handler
+	registrationMiddleware []func(stdhttp.Handler) stdhttp.Handler
+	godMiddleware          []func(stdhttp.Handler) stdhttp.Handler
 }
 
 func (h apiHandler) GetHealthStatus(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -188,6 +191,46 @@ func flightsQuery(serverID string, pilotState *[]politburoapi.PilotStateName, us
 
 func (h apiHandler) GenerateSignedLink(w stdhttp.ResponseWriter, r *stdhttp.Request, _ politburoapi.GenerateSignedLinkParams) {
 	h.signedLink.GenerateSignedLink(w, r)
+}
+
+func (h apiHandler) CreateUser(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.CreateUserParams) {
+	h.withMiddleware(h.registrationMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.identity.CreateUser(w, r, params)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) VerifyGodMode(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.VerifyGodModeParams) {
+	h.withMiddleware(h.godMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.identity.VerifyGod(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) BanUser(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.BanUserParams) {
+	h.withMiddleware(h.godMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.identity.BanUser(w, r, params)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) withMiddleware(chain []func(stdhttp.Handler) stdhttp.Handler, handler stdhttp.Handler) stdhttp.Handler {
+	for i := len(chain) - 1; i >= 0; i-- {
+		handler = chain[i](handler)
+	}
+	return handler
+}
+
+func registrationRouteMiddleware(application *app.App) []func(stdhttp.Handler) stdhttp.Handler {
+	return []func(stdhttp.Handler) stdhttp.Handler{
+		appmiddleware.RequireDiscordBotContext(),
+		appmiddleware.EnrichDiscordMembership(application.Resolver),
+		appmiddleware.RateLimit(application.Cache, appmiddleware.RateLimitGroupRegistration, appmiddleware.RateLimitRegistration),
+	}
+}
+
+func godRouteMiddleware(application *app.App) []func(stdhttp.Handler) stdhttp.Handler {
+	return []func(stdhttp.Handler) stdhttp.Handler{
+		appmiddleware.RequireDiscordBotContext(),
+		appmiddleware.RequirePlatformOperator(application.Config.PlatformOperatorDiscordIDs),
+	}
 }
 
 func pageValue(value *int, fallback int) int {

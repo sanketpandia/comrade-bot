@@ -96,22 +96,16 @@ func (h *Handler) ResolveOperatorReport(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	reportID := chi.URLParam(r, "reportID")
-	report, err := h.reports.GetByID(r.Context(), reportID)
-	if err != nil || report == nil {
-		http.Error(w, "report not found", http.StatusNotFound)
-		return
-	}
-	switch report.Kind {
-	case reports.KindOccupiedIFC:
-		err = h.operator.ResolveOccupiedIFC(r.Context(), reportID, claims.DsUserID)
-	case reports.KindMigrateDiscordServer:
-		err = h.operator.ResolveGuildMigration(r.Context(), reportID, claims.DsUserID)
-	default:
-		http.Error(w, "unsupported report", http.StatusBadRequest)
-		return
-	}
+	err := reports.ResolveOpenReport(r.Context(), h.reports, h.operator, reportID, claims.DsUserID)
 	if err != nil {
-		http.Error(w, "resolve failed", http.StatusInternalServerError)
+		switch {
+		case errors.Is(err, reports.ErrReportNotFound):
+			http.Error(w, "report not found", http.StatusNotFound)
+		case errors.Is(err, reports.ErrUnsupportedReportKind):
+			http.Error(w, "unsupported report", http.StatusBadRequest)
+		default:
+			http.Error(w, "resolve failed", http.StatusInternalServerError)
+		}
 		return
 	}
 	http.Redirect(w, r, "/operator/reports", http.StatusSeeOther)

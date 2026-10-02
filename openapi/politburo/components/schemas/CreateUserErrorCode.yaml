@@ -1,0 +1,14 @@
+type: string
+description: Machine-readable error code for POST /api/v1/users failures.
+enum:
+  - INVALID_REQUEST
+  - FLIGHT_PROOF_FAILED
+  - REGISTRATION_FAILED
+  - UNAUTHORIZED
+  - BANNED
+  - MISSING_DISCORD_CONTEXT
+  - IF_USER_NOT_FOUND
+  - USER_ALREADY_REGISTERED
+  - IFC_ALREADY_LINKED
+  - AUTH_LOOKUP_FAILED
+  - IF_UNAVAILABLE

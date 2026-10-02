@@ -2,6 +2,8 @@ import { DiscordInteraction } from "../types/DiscordInteraction";
 import { UnauthorizedError } from "./UnauthorizedException";
 import { PermissionDeniedError } from "./PermissionDeniedException";
 import { ApiNotImplementedError } from "./ApiNotImplementedError";
+import { PolitburoApiError } from "./PolitburoApiError";
+import { replyToCreateUserError } from "./registrationErrors";
 import { logger, errorFields } from "../infra/logger";
 
 /**
@@ -15,10 +17,10 @@ export const ErrorMessages = {
     UNAUTHORIZED: (message: string) => `❌ **Authorization Failed**\n${message}`,
     PERMISSION_DENIED: (message: string) => `🔒 **Permission Denied**\n${message}`,
     VALIDATION_ERROR: (field: string, requirement: string) => `❌ Invalid ${field}. ${requirement}`,
-    USER_ALREADY_REGISTERED: "❌ **Already Registered**\nThis IFC account is already registered. Use `/status` to view your details.",
+    USER_ALREADY_REGISTERED: "❌ **Already Registered**\nYour Discord account is already registered with Comrade Bot. Use `/status` to view your details.",
     IFC_ID_ALREADY_REGISTERED: "❌ **IFC Username Taken**\nThis IFC username is already linked to another Discord account. Claiming someone else's IFC is grounds for a ban. If this is your username, use **Report this username** below.",
     IFC_USER_NOT_FOUND: "❌ **IFC User Not Found**\nThe provided IFC username was not found. Please check your spelling and try again.",
-    FLIGHT_MISMATCH: "❌ **Flight Verification Failed**\nThe flight route you provided doesn't match your most recent flight. Please verify your last flight in the Infinite Flight app and try again.",
+    FLIGHT_MISMATCH: "❌ **Flight Verification Failed**\nThe route you provided doesn't match your most recent **complete** online logbook flight. Check Infinite Flight and try again.",
 } as const;
 
 /**
@@ -47,6 +49,11 @@ export class CommandErrorHandler {
             operation,
             ...errorFields(error),
         });
+
+        if (operation === "Registration" && PolitburoApiError.isPolitburoApiError(error)) {
+            await replyToCreateUserError(interaction, error);
+            return;
+        }
 
         // Handle unauthorized errors (401)
         if (error instanceof UnauthorizedError) {
@@ -81,7 +88,6 @@ export class CommandErrorHandler {
         // Check for IFC ID duplicate error first (more specific)
         if (
             errorMessage.includes('IFC_ALREADY_LINKED') ||
-            errorMessage.includes('IFC_ID_ALREADY_REGISTERED') ||
             errorMessageLower.includes('ifc id is already registered')
         ) {
             await interaction.reply({
@@ -91,8 +97,32 @@ export class CommandErrorHandler {
             return;
         }
 
+        if (errorMessage.includes('USER_ALREADY_REGISTERED')) {
+            await interaction.reply({
+                content: ErrorMessages.USER_ALREADY_REGISTERED,
+                ephemeral: true
+            });
+            return;
+        }
+
+        if (errorMessage.includes('IF_USER_NOT_FOUND')) {
+            await interaction.reply({
+                content: ErrorMessages.IFC_USER_NOT_FOUND,
+                ephemeral: true
+            });
+            return;
+        }
+
+        if (errorMessage.includes('FLIGHT_PROOF_FAILED')) {
+            await interaction.reply({
+                content: ErrorMessages.FLIGHT_MISMATCH,
+                ephemeral: true
+            });
+            return;
+        }
+
         // Check for user already registered (Discord user already registered)
-        if (errorMessageLower.includes('already registered') && !errorMessageLower.includes('ifc id')) {
+        if (errorMessageLower.includes('already registered') && !errorMessageLower.includes('ifc')) {
             await interaction.reply({
                 content: ErrorMessages.USER_ALREADY_REGISTERED,
                 ephemeral: true

@@ -7,6 +7,8 @@ import { ApiService } from "../services/apiService";
 import { DiscordInteraction } from "../types/DiscordInteraction";
 import { CUSTOM_IDS } from "../configs/constants";
 import { CommandErrorHandler, ValidationPatterns } from "../helpers/commandErrorHandler";
+import { PolitburoApiError } from "../helpers/PolitburoApiError";
+import { replyToCreateUserError } from "../helpers/registrationErrors";
 
 export const data = {
     name: CUSTOM_IDS.REGISTER_MODAL
@@ -76,21 +78,9 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
         if (response.success) {
             let message = `✅ **Registration Successful!**\n\n${response.message}\n\n`;
 
-            let shouldOfferVALink = response.is_va_registered;
-            let vaName = "this Virtual Airline";
-            try {
-                const status = await ApiService.getUserDetails(interaction.getMetaInfo());
-                shouldOfferVALink = status.current_server?.is_configured_va === true && !status.current_va?.is_member;
-                vaName = status.current_server?.va_name || vaName;
-            } catch (_statusErr) {
-                // Keep the registration success path usable; fallback to registration response hint.
-            }
+            if (response.is_va_registered) {
+                message += "📌 **Next Step:**\nYou're registered with Comrade Bot. Click the button below to link to **this server's VA** with your callsign.";
 
-            if (shouldOfferVALink) {
-                // User is registered to this VA server - show button to link
-                message += `📌 **Next Step:**\nYou're registered to Comrade Bot. Click the button below to link yourself to **${vaName}** with your VA callsign.`;
-
-                // Create "Link to VA" button
                 const linkButton = new ButtonBuilder()
                     .setCustomId(CUSTOM_IDS.REGISTER_LINK_BUTTON)
                     .setLabel("Link to VA")
@@ -123,18 +113,8 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
         }
 
     } catch (error) {
-        const message = error instanceof Error ? error.message : "";
-        if (message.includes("IFC_ALREADY_LINKED") || message.includes("IFC_ID_ALREADY_REGISTERED")) {
-            const reportButton = new ButtonBuilder()
-                .setCustomId(`${CUSTOM_IDS.REPORT_OCCUPIED_IFC_PREFIX}${ifcId}`)
-                .setLabel("Report this username")
-                .setStyle(ButtonStyle.Danger);
-            const row = new ActionRowBuilder<ButtonBuilder>().addComponents(reportButton);
-            await interaction.reply({
-                content: "❌ **IFC Username Taken**\nThis IFC username is already linked to another Discord account. If it is yours, report it for operator review.",
-                components: [row],
-                ephemeral: true,
-            });
+        if (PolitburoApiError.isPolitburoApiError(error)) {
+            await replyToCreateUserError(interaction, error, { ifcUsername: ifcId });
             return;
         }
         await CommandErrorHandler.handleApiError(interaction, error, "Registration");

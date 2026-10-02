@@ -1,0 +1,31 @@
+info:
+  name: Ban User
+  type: http
+  seq: 2
+  description: |
+    Platform operator only. X-Discord-User-Id must be the operator's Discord id
+    (listed in PLATFORM_OPERATOR_DISCORD_IDS), not the ban target. Target goes in the JSON body.
+
+http:
+  method: post
+  url: "{{POLITBURO_BASE_URL}}/api/v1/admin/users/ban"
+  headers:
+    - name: accept
+      value: application/json
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "discord_user_id": "668664447950127154",
+        "reason": "Violent language"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: false
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

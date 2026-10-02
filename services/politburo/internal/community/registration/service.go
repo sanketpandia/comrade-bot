@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
+
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"infinite-experiment/politburo/internal/community/registration/proof"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
@@ -41,13 +44,14 @@ type RegisterInput struct {
 }
 
 type RegisterResult struct {
-	User            *users.User
-	IsVARegistered  bool
+	User *users.User
 }
 
-func (s *Service) Register(ctx context.Context, input RegisterInput) (*RegisterResult, error) {
+func (s *Service) Register(ctx context.Context, input RegisterInput) (result *RegisterResult, err error) {
 	discordID := strings.TrimSpace(input.DiscordID)
 	ifc := strings.TrimSpace(input.IFCUsername)
+	defer func() { logUserRegistration(ctx, discordID, ifc, err) }()
+
 	if discordID == "" || ifc == "" {
 		return nil, fmt.Errorf("discord id and ifc username are required")
 	}
@@ -92,11 +96,11 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (*RegisterR
 		return nil, err
 	}
 
-	flights, err := s.ifc.RecentLogbookFlights(ctx, ifUserID, 3)
+	flights, err := s.ifc.RecentLogbookFlights(ctx, ifUserID, 0)
 	if err != nil {
 		return nil, err
 	}
-	if !proof.MatchesRecentFlights(flights, origin, dest) {
+	if !proof.MatchesLatestCompleteFlight(flights, origin, dest) {
 		return nil, ErrFlightProofFailed
 	}
 
@@ -110,4 +114,45 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (*RegisterR
 		return nil, err
 	}
 	return &RegisterResult{User: user}, nil
+}
+
+func logUserRegistration(ctx context.Context, discordID, ifc string, err error) {
+	args := []any{
+		"discord_id", discordID,
+		"ifc_username", ifc,
+		"result", registerResult(err),
+	}
+	if requestID := chimiddleware.GetReqID(ctx); requestID != "" {
+		args = append(args, "request_id", requestID)
+	}
+	if err == nil || registerResult(err) != "failed" {
+		slog.Info("user_registration", args...)
+		return
+	}
+	args = append(args, "error", err)
+	slog.Error("user_registration", args...)
+}
+
+func registerResult(err error) string {
+	if err == nil {
+		return "created"
+	}
+	switch {
+	case errors.Is(err, ErrBanned):
+		return "banned"
+	case errors.Is(err, ErrAlreadyRegistered):
+		return "already_registered"
+	case errors.Is(err, ErrIFCAlreadyLinked):
+		return "ifc_linked"
+	case errors.Is(err, ErrFlightProofFailed):
+		return "proof_failed"
+	case errors.Is(err, ErrIFUserNotFound):
+		return "if_user_not_found"
+	case errors.Is(err, ErrIFClientUnavailable):
+		return "if_unavailable"
+	case errors.Is(err, proof.ErrInvalidRoute):
+		return "invalid_route"
+	default:
+		return "failed"
+	}
 }

@@ -27,14 +27,16 @@ func ParseRouteProof(raw string) (origin, destination string, err error) {
 	return origin, destination, nil
 }
 
-// MatchesRecentFlights returns true if any of the given logbook rows matches origin and destination.
-func MatchesRecentFlights(flights []infiniteflight.LogbookFlight, origin, destination string) bool {
+// MatchesLatestCompleteFlight returns true when the newest logbook row with both
+// origin and destination matches the given ICAO pair.
+func MatchesLatestCompleteFlight(flights []infiniteflight.LogbookFlight, origin, destination string) bool {
 	wantOrigin := strings.ToUpper(strings.TrimSpace(origin))
 	wantDest := strings.ToUpper(strings.TrimSpace(destination))
 	for _, flight := range flights {
-		if flight.Origin == wantOrigin && flight.Destination == wantDest {
-			return true
+		if flight.Origin == "" || flight.Destination == "" {
+			continue
 		}
+		return flight.Origin == wantOrigin && flight.Destination == wantDest
 	}
 	return false
 }

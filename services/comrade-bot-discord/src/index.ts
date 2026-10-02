@@ -1,17 +1,19 @@
-import * as dotenv from "dotenv";
+import "./loadEnv";
 import { BotClient } from "./bot/BotClient";
 import { loadBotConfig } from "./configs/env";
 import { logger, errorFields } from "./infra/logger";
 import { MetricsServer } from "./infra/metricsServer";
-
-// Load environment variables
-dotenv.config();
 
 /**
  * Main entry point for Comrade Bot
  */
 async function main() {
     const config = loadBotConfig();
+    if (!config.apiKey) {
+        logger.warn("api_key_missing", {
+            hint: "Set API_KEY to an active UUID from Politburo api_keys (see services/politburo/migrations/README.md)",
+        });
+    }
     const metricsServer = new MetricsServer(config.metrics);
 
     // Initialize and start bot

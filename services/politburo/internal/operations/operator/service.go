@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"infinite-experiment/politburo/internal/community/membership"
@@ -15,6 +16,7 @@ import (
 )
 
 var ErrOccupantNotFound = errors.New("occupant not found")
+var ErrInvalidDiscordID = errors.New("discord user id is required")
 
 type Service struct {
 	db          *sql.DB
@@ -48,10 +50,48 @@ func (s *Service) ResolveOccupiedIFC(ctx context.Context, reportID, operatorDisc
 		return ErrOccupantNotFound
 	}
 
-	if err := s.deleteUserWithArchive(ctx, occupant, operatorDiscordID); err != nil {
+	if err := s.deleteUserWithArchive(ctx, occupant, operatorDiscordID, "occupied ifc takedown"); err != nil {
 		return err
 	}
 	return s.reports.MarkResolved(ctx, reportID, operatorDiscordID)
+}
+
+type BanUserResult struct {
+	DiscordUserID string
+	UserDeleted   bool
+}
+
+func (s *Service) BanDiscordUser(ctx context.Context, targetDiscordID, operatorDiscordID, reason string) (*BanUserResult, error) {
+	targetDiscordID = strings.TrimSpace(targetDiscordID)
+	if targetDiscordID == "" {
+		return nil, ErrInvalidDiscordID
+	}
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		reason = "operator ban"
+	}
+
+	user, err := s.users.GetByDiscordID(ctx, targetDiscordID)
+	if err != nil {
+		return nil, err
+	}
+	if user != nil {
+		if err := s.deleteUserWithArchive(ctx, user, operatorDiscordID, reason); err != nil {
+			return nil, err
+		}
+		return &BanUserResult{DiscordUserID: targetDiscordID, UserDeleted: true}, nil
+	}
+
+	_, err = s.db.ExecContext(ctx, `
+INSERT INTO public.banned_discord_ids (discord_id, banned_by, reason)
+VALUES ($1, $2, $3)
+ON CONFLICT (discord_id) DO UPDATE SET banned_by = EXCLUDED.banned_by, reason = EXCLUDED.reason`,
+		targetDiscordID, operatorDiscordID, reason,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ban discord id: %w", err)
+	}
+	return &BanUserResult{DiscordUserID: targetDiscordID, UserDeleted: false}, nil
 }
 
 func (s *Service) ResolveGuildMigration(ctx context.Context, reportID, operatorDiscordID string) error {
@@ -71,7 +111,7 @@ func (s *Service) ResolveGuildMigration(ctx context.Context, reportID, operatorD
 	return s.reports.MarkResolved(ctx, reportID, operatorDiscordID)
 }
 
-func (s *Service) deleteUserWithArchive(ctx context.Context, user *users.User, operatorDiscordID string) error {
+func (s *Service) deleteUserWithArchive(ctx context.Context, user *users.User, operatorDiscordID, banReason string) error {
 	memberships, err := s.memberships.ListForUser(ctx, user.ID)
 	if err != nil {
 		return err
@@ -104,7 +144,7 @@ INSERT INTO public.user_deletion_archives (deleted_by, payload) VALUES ($1, $2)`
 INSERT INTO public.banned_discord_ids (discord_id, banned_by, reason)
 VALUES ($1, $2, $3)
 ON CONFLICT (discord_id) DO NOTHING`,
-		user.DiscordID, operatorDiscordID, "occupied ifc takedown",
+		user.DiscordID, operatorDiscordID, banReason,
 	)
 	if err != nil {
 		return fmt.Errorf("ban discord id: %w", err)

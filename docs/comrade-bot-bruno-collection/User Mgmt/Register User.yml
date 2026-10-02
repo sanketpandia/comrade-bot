@@ -1,0 +1,42 @@
+info:
+  name: Register User
+  type: http
+  seq: 1
+  description: |
+    Requires X-Discord-User-Id and X-Discord-Server-Id (inherited collection auth).
+
+    Common `error.code` values (see openapi/politburo/paths/users/create.yaml):
+    - 400: INVALID_REQUEST, FLIGHT_PROOF_FAILED, REGISTRATION_FAILED
+    - 401: UNAUTHORIZED
+    - 403: BANNED, MISSING_DISCORD_CONTEXT
+    - 404: IF_USER_NOT_FOUND
+    - 409: USER_ALREADY_REGISTERED, IFC_ALREADY_LINKED
+    - 500: AUTH_LOOKUP_FAILED
+    - 503: IF_UNAVAILABLE
+
+http:
+  method: POST
+  url: "{{POLITBURO_BASE_URL}}/api/v1/users"
+  headers:
+    - name: accept
+      value: application/json
+      disabled: true
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "discourseNames": [
+          "{{IFC_ID}}"
+        ],
+        "logbookEntry": "{{lastFlight}}"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

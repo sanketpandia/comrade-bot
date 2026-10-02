@@ -106,7 +106,8 @@ HTTP surfaces:
 | `/metrics` | Prometheus | public on host (blocked by Caddy in prod) |
 | `/api/v1/game/**` | OpenAPI | session cookie **or** `X-API-Key` |
 | `/api/v1/signed-link` | OpenAPI | `X-API-Key` (+ `X-Discord-User-Id`) |
-| `/api/v1/user/*`, `/memberships/join`, `/server/init`, `/reports/occupied-ifc`, `/admin/verify-god` | **hand-mounted, not in OpenAPI** | API key + `RequireDiscordBotContext` + `EnrichDiscordMembership` + registration rate limit |
+| `/api/v1/user/*`, `/memberships/join`, `/server/init`, `/reports/occupied-ifc` | **hand-mounted, not in OpenAPI** | API key + `RequireDiscordBotContext` + `EnrichDiscordMembership` + registration rate limit |
+| `/api/v1/admin/verify-god`, `/api/v1/admin/users/ban` | OpenAPI **Admin** | API key + Discord context + `RequirePlatformOperator` (god mode) |
 | `/api/v1/operator/**` | **hand-mounted, not in OpenAPI** | session or API key + `RequirePlatformOperator` |
 | `/auth/login`, `/auth/logout`, `/dashboard`, `/maps/**`, `/operator/**`, `/static/*` | SSR, never OpenAPI | `UISessionAuth` for dashboard group |
 

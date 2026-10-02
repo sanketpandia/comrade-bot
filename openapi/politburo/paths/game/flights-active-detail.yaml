@@ -1,6 +1,7 @@
 get:
   operationId: getActiveFlight
   summary: Read one cached active flight by encrypted map marker id
+  tags: [Game]
   security:
     - ApiKeyAuth: []
     - CookieAuth: []

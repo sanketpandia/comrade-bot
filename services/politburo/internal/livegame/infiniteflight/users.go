@@ -73,7 +73,10 @@ func (c *Client) ResolveUserIDByIFCUsername(ctx context.Context, ifcUsername str
 	return "", ErrUserNotFound
 }
 
-// RecentLogbookFlights returns the first limit entries from page 1 of the user's online logbook.
+// RecentLogbookFlights returns logbook rows from page 1 in recency order.
+// When limit is greater than zero, at most limit rows are returned after skipping
+// rows with no origin and no destination. Partial rows (missing origin or destination)
+// are included so callers can resolve the latest complete flight.
 func (c *Client) RecentLogbookFlights(ctx context.Context, userID string, limit int) ([]LogbookFlight, error) {
 	if strings.TrimSpace(userID) == "" {
 		return nil, fmt.Errorf("user id is required")
