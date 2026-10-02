@@ -31,13 +31,21 @@
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
           "mappings": [],
           "max": 1,
           "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
+              { "color": "green", "value": 0 },
               { "color": "red", "value": 1 }
             ]
           },
@@ -54,7 +62,7 @@
       "targets": [
         {
           "expr": "politburo_jobs_running",
-          "legendFormat": "{{job}}",
+          "legendFormat": "{{exported_job}}",
           "refId": "A"
         }
       ],
@@ -65,11 +73,19 @@
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
+              { "color": "green", "value": 0 },
               { "color": "yellow", "value": 120 },
               { "color": "red", "value": 300 }
             ]
@@ -87,7 +103,7 @@
       "targets": [
         {
           "expr": "time() - politburo_jobs_last_success_timestamp_seconds",
-          "legendFormat": "{{job}}",
+          "legendFormat": "{{exported_job}}",
           "refId": "A"
         }
       ],
@@ -96,7 +112,21 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
       "id": 3,
       "interval": "15m",
@@ -106,8 +136,8 @@
       },
       "targets": [
         {
-          "expr": "sum by (job, outcome) (increase(politburo_jobs_runs_total[15m]))",
-          "legendFormat": "{{job}} {{outcome}}",
+          "expr": "sum by (exported_job, outcome) (increase(politburo_jobs_runs_total[15m]))",
+          "legendFormat": "{{exported_job}} {{outcome}}",
           "refId": "A"
         }
       ],
@@ -116,7 +146,21 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "s" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "s"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
       "id": 4,
       "options": {
@@ -125,13 +169,13 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum by (le, job) (rate(politburo_jobs_run_duration_seconds_bucket[$__rate_interval])))",
-          "legendFormat": "p50 {{job}}",
+          "expr": "histogram_quantile(0.50, sum by (le, exported_job) (rate(politburo_jobs_run_duration_seconds_bucket[$__rate_interval])))",
+          "legendFormat": "p50 {{exported_job}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum by (le, job) (rate(politburo_jobs_run_duration_seconds_bucket[$__rate_interval])))",
-          "legendFormat": "p95 {{job}}",
+          "expr": "histogram_quantile(0.95, sum by (le, exported_job) (rate(politburo_jobs_run_duration_seconds_bucket[$__rate_interval])))",
+          "legendFormat": "p95 {{exported_job}}",
           "refId": "B"
         }
       ],
@@ -148,7 +192,21 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
       "id": 5,
       "interval": "15m",
@@ -168,7 +226,21 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
       "id": 6,
       "interval": "15m",
@@ -188,7 +260,21 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "percentunit" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
       "id": 7,
       "interval": "15m",
@@ -208,7 +294,21 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "s" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "s"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
       "id": 8,
       "options": {
@@ -236,6 +336,6 @@
   "timezone": "browser",
   "title": "Politburo background jobs and cache",
   "uid": "politburo-background",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

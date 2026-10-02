@@ -50,7 +50,21 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 },
       "id": 2,
       "interval": "5m",
@@ -70,7 +84,21 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "ms" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "ms"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "id": 3,
       "options": {
@@ -94,7 +122,21 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": { "defaults": { "mappings": [], "unit": "percent" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "percent"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
       "id": 4,
       "interval": "5m",
@@ -128,6 +170,6 @@
   "timezone": "browser",
   "title": "Politburo HTTP",
   "uid": "politburo-http-setup",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

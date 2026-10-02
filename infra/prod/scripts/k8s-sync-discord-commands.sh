@@ -37,8 +37,6 @@ spec:
   template:
     spec:
       restartPolicy: Never
-      imagePullSecrets:
-        - name: ghcr-cred
       containers:
         - name: deploy-commands
           image: ${IMAGE}

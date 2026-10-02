@@ -120,12 +120,16 @@ kubectl create namespace ie-observability --dry-run=client -o yaml | kubectl app
 kubectl -n ie-observability create secret generic grafana-credentials \
   --from-literal=GRAFANA_ADMIN_PASSWORD='…'
 
-# GHCR pull (private packages)
+# GHCR pull (only if container packages are private — skip when `docker pull ghcr.io/OWNER/politburo:main` works without login)
 kubectl -n ie-apps create secret docker-registry ghcr-cred \
   --docker-server=ghcr.io \
   --docker-username=GITHUB_USER \
   --docker-password=GITHUB_PAT_WITH_read_packages
+kubectl -n ie-apps patch deployment politburo -p '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"ghcr-cred"}]}}}}'
+kubectl -n ie-apps patch deployment comrade-bot -p '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"ghcr-cred"}]}}}}'
 ```
+
+Public GHCR packages do not need `ghcr-cred`; manifests omit `imagePullSecrets` by default so kubelet will not warn about a missing secret.
 
 Edit [`base/kustomization.yaml`](base/kustomization.yaml) `images.newName` if your GHCR owner is not `infinite-experiment`.
 
@@ -179,6 +183,25 @@ Preserve existing ACME data under `/var/lib/caddy` (or your current path).
 ## 7. Smoke tests
 
 - `curl -sS http://127.0.0.1:8080/health/status`
+
+### Politburo CrashLoopBackOff — probe 404 on `/health/status`
+
+If `kubectl describe pod` shows `Readiness/Liveness probe failed: HTTP probe failed with statuscode: 404` and Politburo logs show `route":"unmatched"` every ~15s, the **running container image** does not register `/health/status` (older builds exposed `/health/live` and `/health/ready` only) while the Deployment probes `/health/status`.
+
+Common trigger: the node cached `ghcr.io/…/politburo:main` before the health path change, and `imagePullPolicy` was `IfNotPresent` (default), so restarts reuse the stale digest.
+
+Recovery on the VPS (after pulling this repo’s manifests with `imagePullPolicy: Always`):
+
+```bash
+cd /opt/comrade-bot && bash infra/prod/k8s/apply.sh
+kubectl -n ie-apps delete pod -l app=politburo
+kubectl -n ie-apps rollout status deployment/politburo --timeout=5m
+```
+
+Or pin the image CD last deployed: `kubectl -n ie-apps set image deployment/politburo politburo=ghcr.io/OWNER/politburo:<git-sha>`.
+
+While the pod is briefly Running, `/health/status` should return **200** or **503**, not **404** (legacy images only had `/health/live` and `/health/ready`).
+
 - `https://comradebot.cc/public/…` via Caddy
 - Discord bot responds
 - `https://monitor.comradebot.cc` → Grafana
