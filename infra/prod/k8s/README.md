@@ -57,18 +57,18 @@ EOF
 
 Verify PVCs bind before relying on production data.
 
-## 2. Self-hosted runner (`runner` user)
+## 2. Self-hosted runner (`gitrunner` user)
 
 1. GitHub → **Settings → Actions → Runners → New self-hosted runner** (Linux x64).
-2. Install under `/home/runner/actions-runner` as user `runner`.
-3. Labels: `self-hosted`, `linux`, `prod`.
+2. Install under `/home/gitrunner/actions-runner` as user **`gitrunner`** (dedicated service account; not your normal SSH login if that is also named `runner`).
+3. Labels: add **`prod`** and **`linux`** at registration (`--labels prod,linux`); GitHub also adds `self-hosted`, `Linux`, `X64`.
 4. **Kubeconfig** for the runner:
 
 ```bash
-sudo mkdir -p /home/runner/.kube
-sudo cp /etc/rancher/k3s/k3s.yaml /home/runner/.kube/config
-sudo chown -R runner:runner /home/runner/.kube
-sudo chmod 600 /home/runner/.kube/config
+sudo mkdir -p /home/gitrunner/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml /home/gitrunner/.kube/config
+sudo chown -R gitrunner:gitrunner /home/gitrunner/.kube
+sudo chmod 600 /home/gitrunner/.kube/config
 ```
 
 Optional: use GitHub secret `KUBECONFIG_B64` instead (deploy workflow writes `~/.kube/config` per job).
@@ -78,7 +78,7 @@ Optional: use GitHub secret `KUBECONFIG_B64` instead (deploy workflow writes `~/
 ```bash
 # /etc/systemd/system/actions.runner.*.service.d/override.conf
 [Service]
-Environment=ACTIONS_RUNNER_HOOK_JOB_STARTED=/home/runner/hooks/job-started.sh
+Environment=ACTIONS_RUNNER_HOOK_JOB_STARTED=/home/gitrunner/hooks/job-started.sh
 ```
 
 `job-started.sh`: `umask 077`, verify `kubectl cluster-info` — **no secrets in hook scripts**.
