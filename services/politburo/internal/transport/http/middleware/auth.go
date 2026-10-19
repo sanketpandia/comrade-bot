@@ -82,8 +82,12 @@ func isGameAPIPath(path string) bool {
 	return strings.HasPrefix(path, "/api/v1/game/")
 }
 
+func isVAAdminAPIPath(path string) bool {
+	return path == "/api/v1/va" || strings.HasPrefix(path, "/api/v1/va/")
+}
+
 func isSessionAPIPath(path string) bool {
-	return isGameAPIPath(path) || strings.HasPrefix(path, "/api/v1/operator/")
+	return isGameAPIPath(path) || strings.HasPrefix(path, "/api/v1/operator/") || isVAAdminAPIPath(path) || path == "/api/v1/user/me"
 }
 
 // RequireDiscordBotContext requires Discord user and server headers after API

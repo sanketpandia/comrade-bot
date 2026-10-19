@@ -9,7 +9,7 @@ info:
     **Authentication**
     - `X-API-Key` — UUID API key for `/api/v1/*` machine clients (Discord bot, integrations).
     - `X-Discord-User-Id` and `X-Discord-Server-Id` — Discord context on bot-originated requests.
-    - `session_id` cookie — browser session after signed-link login (selected routes).
+    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/va`, and related routes).
 
     **Documentation** — https://sanketpandia.github.io/comrade-bot/api/reference/
 servers:
@@ -30,6 +30,8 @@ tags:
     description: Discord user registration and account flows.
   - name: Admin
     description: Platform operator (god mode) actions.
+  - name: VirtualAirline
+    description: VA administrator settings and metadata.
 paths:
   /health/status:
     get:
@@ -230,6 +232,44 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Ticket generation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/user/me:
+    get:
+      operationId: getCurrentUser
+      summary: Read the authenticated user's profile and VA role
+      description: |
+        Returns Politburo user fields for the caller. The `role` field reflects VA membership in the
+        current context (browser session snapshot or live resolution for bot requests with Discord headers).
+        `role` is null when the user has no VA role in that context.
+      tags:
+        - Users
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserResponse'
+        '401':
+          description: Missing or inactive API key or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to load user
           content:
             application/json:
               schema:
@@ -595,6 +635,49 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Ban failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va:
+    get:
+      operationId: getVA
+      summary: Read virtual airline details for the authenticated VA administrator
+      description: |
+        Returns metadata for the virtual airline tied to the caller's session or Discord membership context.
+        Requires VA administrator role (`administrator`).
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Virtual airline details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VADetailsResponse'
+        '401':
+          description: Missing or inactive API key or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not a VA administrator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No virtual airline context or row not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to load virtual airline
           content:
             application/json:
               schema:
@@ -1023,6 +1106,77 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/BanUserData'
+    VADetails:
+      type: object
+      required:
+        - id
+        - name
+        - code
+        - isActive
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Internal virtual airline id.
+        name:
+          type: string
+        code:
+          type: string
+          description: Short VA identifier (callsign prefix).
+        isActive:
+          type: boolean
+    VADetailsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/VADetails'
+    CurrentUser:
+      type: object
+      required:
+        - id
+        - discordId
+        - isActive
+        - role
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Internal Politburo user id.
+        discordId:
+          type: string
+          description: Discord snowflake for the user.
+        isActive:
+          type: boolean
+        username:
+          type: string
+          description: Display username when stored.
+        ifCommunityId:
+          type: string
+          description: Linked Infinite Flight Community username.
+        role:
+          type: string
+          nullable: true
+          description: VA membership role in the current context; null when the caller has no role.
+          enum:
+            - proletariat
+            - bourgeoisie
+            - administrator
+        vaId:
+          type: string
+          format: uuid
+          description: Virtual airline id for the current Discord server context, when known.
+        discordServerId:
+          type: string
+          description: Discord guild id bound to the session or request context.
+    CurrentUserResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/CurrentUser'
     ActiveFlightTrack:
       type: object
       required:

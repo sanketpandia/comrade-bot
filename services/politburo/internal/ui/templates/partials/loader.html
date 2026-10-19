@@ -1,0 +1,34 @@
+{{define "loader"}}
+<div class="public-loader" id="public-loader">
+  <video class="public-loader__video" src="/static/brand/loading.mp4" autoplay muted playsinline></video>
+</div>
+<noscript><style>.public-loader{display:none}</style></noscript>
+<script>
+(function () {
+  var root = document.getElementById("public-loader");
+  if (!root) return;
+  var video = root.querySelector("video");
+  function dismiss() {
+    root.classList.add("is-dismissed");
+  }
+  if (document.documentElement.classList.contains("reduce-motion")) {
+    if (video) {
+      video.removeAttribute("autoplay");
+      video.pause();
+    }
+    dismiss();
+    return;
+  }
+  if (!video) {
+    dismiss();
+    return;
+  }
+  video.addEventListener("ended", dismiss);
+  video.addEventListener("error", dismiss);
+  var play = video.play();
+  if (play && typeof play.catch === "function") {
+    play.catch(dismiss);
+  }
+})();
+</script>
+{{end}}

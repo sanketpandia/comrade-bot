@@ -24,3 +24,4 @@ _monorepo-backup/
 *.png
 !services/comrade-bot-discord/assets/**/*.png
 !docs-site/docs/assets/**/*.png
+!services/politburo/internal/ui/static/brand/**/*.png

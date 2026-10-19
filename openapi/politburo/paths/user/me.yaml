@@ -1,0 +1,36 @@
+get:
+  operationId: getCurrentUser
+  summary: Read the authenticated user's profile and VA role
+  description: |
+    Returns Politburo user fields for the caller. The `role` field reflects VA membership in the
+    current context (browser session snapshot or live resolution for bot requests with Discord headers).
+    `role` is null when the user has no VA role in that context.
+  tags: [Users]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  responses:
+    "200":
+      description: Current user profile
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/CurrentUserResponse.yaml"
+    "401":
+      description: Missing or inactive API key or session cookie
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: User record not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Failed to load user
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

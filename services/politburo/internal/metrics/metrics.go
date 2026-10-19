@@ -116,7 +116,7 @@ func NewRegistry() *Registry {
 		Namespace: "politburo",
 		Subsystem: "livegame",
 		Name:      "flights_compute_total",
-		Help:      "Per-flight compute outcomes during the flights refresh job (fast_path vs full_compute).",
+		Help:      "Per-flight resolve outcomes during the flights refresh job (skipped vs resolved).",
 	}, []string{"server", "outcome"})
 	flightsFPLSyncScheduledTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "politburo",
@@ -128,7 +128,7 @@ func NewRegistry() *Registry {
 		Namespace: "politburo",
 		Subsystem: "livegame",
 		Name:      "flights_record_update_total",
-		Help:      "Per-flight Redis record write attempts (written, skipped_disabled, skipped_fast_path).",
+		Help:      "Per-flight Redis record write attempts (written, skipped).",
 	}, []string{"server", "result"})
 	flightsRecordCacheMissTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "politburo",

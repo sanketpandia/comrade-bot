@@ -1,0 +1,33 @@
+type: object
+required: [id, discordId, isActive, role]
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Internal Politburo user id.
+  discordId:
+    type: string
+    description: Discord snowflake for the user.
+  isActive:
+    type: boolean
+  username:
+    type: string
+    description: Display username when stored.
+  ifCommunityId:
+    type: string
+    description: Linked Infinite Flight Community username.
+  role:
+    type: string
+    nullable: true
+    description: VA membership role in the current context; null when the caller has no role.
+    enum:
+      - proletariat
+      - bourgeoisie
+      - administrator
+  vaId:
+    type: string
+    format: uuid
+    description: Virtual airline id for the current Discord server context, when known.
+  discordServerId:
+    type: string
+    description: Discord guild id bound to the session or request context.

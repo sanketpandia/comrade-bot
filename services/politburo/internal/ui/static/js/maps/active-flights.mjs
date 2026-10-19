@@ -97,34 +97,37 @@ function setStatus(count, lastCached) {
   cachedEl.textContent = Number.isNaN(at.getTime()) ? '' : `Cached ${at.toISOString()}`;
 }
 
-async function loadSessions() {
-  const body = await fetchJSON('/api/v1/game/sessions/active');
-  const sessions = Array.isArray(body?.data?.result) ? body.data.result : [];
-  const urlFilters = readFiltersFromURL();
-  const preferred = urlFilters.serverId || DEFAULT_SERVER;
-  serverSelect.replaceChildren();
-  for (const session of sessions) {
-    const value = session.normalizedName || '';
-    if (!value) continue;
-    const option = document.createElement('option');
-    option.value = value;
-    option.textContent = value.replaceAll('_', ' ');
-    serverSelect.append(option);
+function ensureServerOption(serverId) {
+  const preferred = serverId || DEFAULT_SERVER;
+  if ([...serverSelect.options].some((option) => option.value === preferred)) {
+    serverSelect.value = preferred;
+    return;
   }
   if (serverSelect.options.length === 0) {
     const option = document.createElement('option');
-    option.value = DEFAULT_SERVER;
-    option.textContent = DEFAULT_SERVER;
+    option.value = preferred;
+    option.textContent = preferred;
     serverSelect.append(option);
   }
-  if ([...serverSelect.options].some((option) => option.value === preferred)) {
-    serverSelect.value = preferred;
-  } else {
-    serverSelect.selectedIndex = 0;
-  }
-  applyFiltersToForm({
-    ...urlFilters,
-    serverId: serverSelect.value,
+  serverSelect.value = serverSelect.options[0].value;
+}
+
+function whenServersReady() {
+  if (serverSelect.options.length > 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      serverSelect.removeEventListener('htmx:afterSettle', finish);
+      serverSelect.removeEventListener('htmx:responseError', finish);
+      serverSelect.removeEventListener('htmx:sendError', finish);
+      resolve();
+    };
+    serverSelect.addEventListener('htmx:afterSettle', finish);
+    serverSelect.addEventListener('htmx:responseError', finish);
+    serverSelect.addEventListener('htmx:sendError', finish);
+    window.setTimeout(finish, 4000);
   });
 }
 
@@ -205,20 +208,13 @@ form.addEventListener('submit', (event) => {
 });
 
 async function start() {
-  try {
-    await loadSessions();
-    setError('');
-  } catch (err) {
-    applyFiltersToForm(readFiltersFromURL());
-    if (!serverSelect.value) {
-      const option = document.createElement('option');
-      option.value = DEFAULT_SERVER;
-      option.textContent = DEFAULT_SERVER;
-      serverSelect.append(option);
-      serverSelect.value = DEFAULT_SERVER;
-    }
-    setError(err.message || 'Failed to load servers');
-  }
+  await whenServersReady();
+  const urlFilters = readFiltersFromURL();
+  ensureServerOption(urlFilters.serverId || DEFAULT_SERVER);
+  applyFiltersToForm({
+    ...urlFilters,
+    serverId: serverSelect.value,
+  });
   await loadFlights();
   pollTimer = window.setInterval(loadFlights, POLL_MS);
 }

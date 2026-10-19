@@ -1,0 +1,15 @@
+info:
+  name: Virtual Airline
+  type: folder
+  seq: 5
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    VA administrator endpoints (`VirtualAirline` in OpenAPI). Not platform god mode
+    (`/api/v1/admin/*`). Requires membership role `administrator` for the guild in
+    `X-Discord-Server-Id`. Uses collection `X-API-Key` + Discord headers, or a
+    browser `session_id` cookie after signed-link login.
+  type: text/markdown
