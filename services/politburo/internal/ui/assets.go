@@ -19,7 +19,7 @@ type Renderer struct {
 }
 
 func NewRenderer() (*Renderer, error) {
-	templates, err := template.ParseFS(Assets, "templates/layouts/*.html", "templates/pages/*.html")
+	templates, err := template.ParseFS(Assets, "templates/layouts/*.html", "templates/partials/*.html", "templates/pages/*.html")
 	if err != nil {
 		return nil, err
 	}

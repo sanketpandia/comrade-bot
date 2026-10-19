@@ -5,11 +5,34 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{if .Title}}{{.Title}}{{else}}Politburo{{end}}</title>
+  <link rel="icon" href="/static/brand/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/static/brand/apple-touch-icon.png">
   <link rel="stylesheet" href="/static/css/base.css">
+  {{if eq .Content "maps-active-flights-content"}}
+  <link rel="stylesheet" href="/static/css/maps.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="">
+  {{end}}
 </head>
-<body>
-  <main>{{block "content" .}}{{end}}</main>
+<body{{if eq .Content "maps-active-flights-content"}} class="maps-page"{{end}}>
+  {{template "topnav" .}}
+  <main class="{{if eq .Content "maps-active-flights-content"}}map-main{{else if eq .Content "admin-content"}}app-main app-main--wide{{else}}app-main{{end}}">
+    {{if eq .Content "dashboard-content"}}{{template "dashboard-content" .}}
+    {{else if eq .Content "maps-active-flights-content"}}{{template "maps-active-flights-content" .}}
+    {{else if eq .Content "admin-content"}}{{template "admin-content" .}}
+    {{end}}
+  </main>
+  {{if eq .Content "admin-content"}}
+  <script type="module" src="/static/js/admin/general.mjs"></script>
+  {{end}}
+  {{if eq .Content "maps-active-flights-content"}}
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script src="/static/js/htmx.min.js"></script>
+  <script type="module" src="/static/js/maps/active-flights.mjs"></script>
+  {{end}}
 </body>
 </html>
 {{end}}
-

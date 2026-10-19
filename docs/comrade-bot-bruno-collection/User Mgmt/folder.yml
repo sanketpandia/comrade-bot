@@ -5,3 +5,10 @@ info:
 
 request:
   auth: inherit
+
+docs:
+  content: |-
+    User registration (`Users` in OpenAPI) and `GET /api/v1/user/me` for the caller's profile and VA role.
+    Bot flows use collection `X-API-Key` and Discord headers; browser sessions use a `session_id` cookie
+    after signed-link login.
+  type: text/markdown

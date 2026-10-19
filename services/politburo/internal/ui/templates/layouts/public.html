@@ -1,0 +1,32 @@
+{{define "public"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{if .Title}}{{.Title}}{{else}}Comrade Bot{{end}}</title>
+  <link rel="icon" href="/static/brand/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/static/brand/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/public.css">
+  <script>
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.documentElement.classList.add("reduce-motion");
+    }
+  </script>
+</head>
+<body>
+  {{template "loader" .}}
+  {{template "topnav" .}}
+  <div class="public-stage">
+    <main class="public-main">
+      {{if eq .Content "home-content"}}{{template "home-content" .}}
+      {{else if eq .Content "unauthorized-content"}}{{template "unauthorized-content" .}}
+      {{else if eq .Content "not-found-content"}}{{template "not-found-content" .}}
+      {{end}}
+    </main>
+    {{template "public-footer" .}}
+  </div>
+</body>
+</html>
+{{end}}

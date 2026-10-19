@@ -1,0 +1,41 @@
+get:
+  operationId: getVA
+  summary: Read virtual airline details for the authenticated VA administrator
+  description: |
+    Returns metadata for the virtual airline tied to the caller's session or Discord membership context.
+    Requires VA administrator role (`administrator`).
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  responses:
+    "200":
+      description: Virtual airline details
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VADetailsResponse.yaml"
+    "401":
+      description: Missing or inactive API key or session cookie
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Caller is not a VA administrator
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: No virtual airline context or row not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Failed to load virtual airline
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

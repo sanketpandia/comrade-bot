@@ -8,7 +8,7 @@ info:
     **Authentication**
     - `X-API-Key` — UUID API key for `/api/v1/*` machine clients (Discord bot, integrations).
     - `X-Discord-User-Id` and `X-Discord-Server-Id` — Discord context on bot-originated requests.
-    - `session_id` cookie — browser session after signed-link login (selected routes).
+    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/va`, and related routes).
 
     **Documentation** — https://sanketpandia.github.io/comrade-bot/api/reference/
 tags:
@@ -22,6 +22,8 @@ tags:
     description: Discord user registration and account flows.
   - name: Admin
     description: Platform operator (god mode) actions.
+  - name: VirtualAirline
+    description: VA administrator settings and metadata.
 servers:
   - url: https://comradebot.cc
     description: Production
@@ -38,6 +40,8 @@ paths:
     $ref: "./paths/game/flights-active.yaml"
   /api/v1/signed-link:
     $ref: "./paths/auth/signed-link.yaml"
+  /api/v1/user/me:
+    $ref: "./paths/user/me.yaml"
   /api/v1/users:
     $ref: "./paths/users/create.yaml"
   /api/v1/servers:
@@ -46,6 +50,8 @@ paths:
     $ref: "./paths/admin/verify-god.yaml"
   /api/v1/admin/users/ban:
     $ref: "./paths/admin/ban-user.yaml"
+  /api/v1/va:
+    $ref: "./paths/va/get.yaml"
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -119,3 +125,11 @@ components:
       $ref: "./components/schemas/BanUserData.yaml"
     BanUserResponse:
       $ref: "./components/schemas/BanUserResponse.yaml"
+    VADetails:
+      $ref: "./components/schemas/VADetails.yaml"
+    VADetailsResponse:
+      $ref: "./components/schemas/VADetailsResponse.yaml"
+    CurrentUser:
+      $ref: "./components/schemas/CurrentUser.yaml"
+    CurrentUserResponse:
+      $ref: "./components/schemas/CurrentUserResponse.yaml"

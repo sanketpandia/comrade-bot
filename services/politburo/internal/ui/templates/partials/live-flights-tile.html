@@ -1,0 +1,11 @@
+{{define "live-flights-tile"}}
+<section class="tile">
+  <h2>Live flights</h2>
+  <p>Open the map for an Infinite Flight server.</p>
+  <div class="tile__links">
+    {{range .Servers}}
+    <a class="tile__link" href="/maps/flights/active?serverId={{.ID}}">{{.Label}}</a>
+    {{end}}
+  </div>
+</section>
+{{end}}

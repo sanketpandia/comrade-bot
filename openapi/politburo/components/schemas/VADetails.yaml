@@ -1,0 +1,14 @@
+type: object
+required: [id, name, code, isActive]
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Internal virtual airline id.
+  name:
+    type: string
+  code:
+    type: string
+    description: Short VA identifier (callsign prefix).
+  isActive:
+    type: boolean

@@ -18,6 +18,8 @@ import (
 	"infinite-experiment/politburo/internal/transport/http/api/health"
 	"infinite-experiment/politburo/internal/transport/http/api/identity"
 	"infinite-experiment/politburo/internal/transport/http/api/signedlink"
+	userapi "infinite-experiment/politburo/internal/transport/http/api/user"
+	vaapi "infinite-experiment/politburo/internal/transport/http/api/va"
 	appmiddleware "infinite-experiment/politburo/internal/transport/http/middleware"
 	"infinite-experiment/politburo/internal/transport/http/response"
 	uihttp "infinite-experiment/politburo/internal/transport/http/ui"
@@ -91,12 +93,16 @@ func (s *Server) router() stdhttp.Handler {
 		s.app.Registration, s.app.Membership, s.app.VAInit, s.app.Status,
 		s.app.Reports, s.app.Operator, s.app.VirtualAirlines,
 	)
-	uiHandler := uihttp.NewHandler(s.app.UI, s.app.Sessions, s.app.Tickets, s.app.Reports, s.app.Operator, s.app.Config.PlatformOperatorDiscordIDs)
+	vaHandler := vaapi.NewHandler(s.app.VirtualAirlines)
+	userHandler := userapi.NewHandler(s.app.Users)
+	uiHandler := uihttp.NewHandler(s.app.UI, s.app.Sessions, s.app.Tickets, s.app.Reports, s.app.Operator, s.app.Config.PlatformOperatorDiscordIDs, s.app.SessionsReader)
 	handler := apiHandler{
 		health: healthHandler, sessions: sessionsHandler, flights: flightsHandler,
-		signedLink: signedLinkHandler, identity: identityHandler,
+		signedLink: signedLinkHandler, identity: identityHandler, va: vaHandler, user: userHandler,
 		registrationMiddleware: registrationRouteMiddleware(s.app),
 		godMiddleware:          godRouteMiddleware(s.app),
+		vaAdminMiddleware:      vaAdminRouteMiddleware(s.app),
+		currentUserMiddleware:  currentUserRouteMiddleware(s.app),
 	}
 
 	// Public ops + OpenAPI machine API (paths include /health/* and /api/v1/*).
@@ -130,23 +136,35 @@ func (s *Server) router() stdhttp.Handler {
 		ui.Use(appmiddleware.UISessionAuth(s.app.Sessions))
 		ui.Get("/dashboard", uiHandler.Dashboard)
 		ui.Get("/dashboard/", uiHandler.Dashboard)
+		ui.Get("/admin", uiHandler.AdminRedirect)
+		ui.Get("/admin/", uiHandler.AdminRedirect)
+		ui.Get("/admin/general", uiHandler.Admin)
+		ui.Get("/admin/general/", uiHandler.Admin)
 		ui.Get("/maps/flights/active", uiHandler.ActiveFlightsMap)
+		ui.Get("/maps/flights/active/servers", uiHandler.MapServerOptions)
 		ui.Get("/operator/reports", uiHandler.OperatorReports)
 		ui.Post("/operator/reports/{reportID}/resolve", uiHandler.ResolveOperatorReport)
 	})
+	router.Get("/", uiHandler.Home)
+	router.Handle("/static/brand/*", uihttp.Brand())
 	router.Handle("/static/*", uihttp.Static())
+	router.NotFound(uiHandler.NotFound)
 
 	return router
 }
 
 type apiHandler struct {
-	health     *health.Handler
-	sessions   *gamesessions.Handler
-	flights    *gameflights.Handler
-	signedLink *signedlink.Handler
-	identity   *identity.Handler
+	health                 *health.Handler
+	sessions               *gamesessions.Handler
+	flights                *gameflights.Handler
+	signedLink             *signedlink.Handler
+	identity               *identity.Handler
+	va                     *vaapi.Handler
+	user                   *userapi.Handler
 	registrationMiddleware []func(stdhttp.Handler) stdhttp.Handler
 	godMiddleware          []func(stdhttp.Handler) stdhttp.Handler
+	vaAdminMiddleware      []func(stdhttp.Handler) stdhttp.Handler
+	currentUserMiddleware  []func(stdhttp.Handler) stdhttp.Handler
 }
 
 func (h apiHandler) GetHealthStatus(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -189,6 +207,18 @@ func (h apiHandler) BanUser(w stdhttp.ResponseWriter, r *stdhttp.Request, params
 	})).ServeHTTP(w, r)
 }
 
+func (h apiHandler) GetVA(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.withMiddleware(h.vaAdminMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.va.GetVA(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) GetCurrentUser(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.withMiddleware(h.currentUserMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.user.GetMe(w, r)
+	})).ServeHTTP(w, r)
+}
+
 func (h apiHandler) withMiddleware(chain []func(stdhttp.Handler) stdhttp.Handler, handler stdhttp.Handler) stdhttp.Handler {
 	for i := len(chain) - 1; i >= 0; i-- {
 		handler = chain[i](handler)
@@ -208,6 +238,19 @@ func godRouteMiddleware(application *app.App) []func(stdhttp.Handler) stdhttp.Ha
 	return []func(stdhttp.Handler) stdhttp.Handler{
 		appmiddleware.RequireDiscordBotContext(),
 		appmiddleware.RequirePlatformOperator(application.Config.PlatformOperatorDiscordIDs),
+	}
+}
+
+func vaAdminRouteMiddleware(application *app.App) []func(stdhttp.Handler) stdhttp.Handler {
+	return []func(stdhttp.Handler) stdhttp.Handler{
+		appmiddleware.EnrichDiscordMembership(application.Resolver),
+		appmiddleware.RequireAdmin(),
+	}
+}
+
+func currentUserRouteMiddleware(application *app.App) []func(stdhttp.Handler) stdhttp.Handler {
+	return []func(stdhttp.Handler) stdhttp.Handler{
+		appmiddleware.EnrichDiscordMembership(application.Resolver),
 	}
 }
 
