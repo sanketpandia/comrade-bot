@@ -41,6 +41,7 @@ type WebhookDispatchTarget struct {
 	VACode           string
 	WebhookType      string
 	URL              string
+	Frequency        string
 	Filters          json.RawMessage
 	PreferredServers []string
 }
@@ -121,6 +122,7 @@ func (s *Service) LoadWebhookDispatchTarget(ctx context.Context, vaID, webhookTy
 			VACode:      vaCode,
 			WebhookType: entry.Key,
 			URL:         entry.URL,
+			Frequency:   entry.Frequency,
 			Filters:     entry.Filters,
 		}
 		if len(basic) > 0 {

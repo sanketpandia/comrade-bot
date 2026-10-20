@@ -16,10 +16,6 @@ import (
 
 const postTimeout = 10 * time.Second
 
-type payload struct {
-	Content string `json:"content"`
-}
-
 // Client is a thin HTTP poster. Callers pass one message per request.
 type Client struct {
 	http    *http.Client
@@ -40,11 +36,20 @@ func NewClient(reg *metrics.Registry) *Client {
 
 // PostContent sends one JSON body with content. webhookType is a metric label only and is not logged with the URL.
 func (c *Client) PostContent(ctx context.Context, webhookType, webhookURL, content string) error {
-	body, err := json.Marshal(payload{Content: content})
+	return c.post(ctx, webhookType, webhookURL, webhookPayload{Content: content})
+}
+
+// PostEmbeds sends one JSON body with embeds. webhookType is a metric label only and is not logged with the URL.
+func (c *Client) PostEmbeds(ctx context.Context, webhookType, webhookURL string, embeds []Embed) error {
+	return c.post(ctx, webhookType, webhookURL, webhookPayload{Embeds: embeds})
+}
+
+func (c *Client) post(ctx context.Context, webhookType, webhookURL string, body webhookPayload) error {
+	encoded, err := json.Marshal(body)
 	if err != nil {
 		return fmt.Errorf("encode discord webhook body: %w", err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewReader(encoded))
 	if err != nil {
 		return errors.New("discord webhook post: invalid url")
 	}

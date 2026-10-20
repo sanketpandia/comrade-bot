@@ -1,91 +1,104 @@
 package activeflights
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
-	"unicode/utf8"
 
 	"infinite-experiment/politburo/internal/livegame/flights"
+	"infinite-experiment/politburo/internal/webhooks/discord"
 )
 
-func TestPackMessagesSplitsOnFlightBoundaries(t *testing.T) {
-	summary := "Active flights · 2026-10-20T14:30:00Z"
-	shortA := strings.Repeat("a", 900)
-	shortB := strings.Repeat("b", 900)
-	wideA := strings.Repeat("c", 1500)
-	wideB := strings.Repeat("d", 1500)
-	exactA := strings.Repeat("e", 1000)
-	exactB := strings.Repeat("f", 1000)
-
-	packedShort := PackMessages(summary, []string{shortA, shortB})
-	if len(packedShort) != 2 {
-		t.Fatalf("short pack len = %d, want summary + one flight message", len(packedShort))
-	}
-	if !strings.Contains(packedShort[1], shortA) || !strings.Contains(packedShort[1], shortB) {
-		t.Fatal("short blocks should share one message")
+func TestBuildPostsPagination(t *testing.T) {
+	at := time.Date(2026, 10, 20, 14, 30, 0, 0, time.UTC)
+	loaded := make([]flights.Flight, 26)
+	for i := range loaded {
+		loaded[i] = flights.Flight{Callsign: fmt.Sprintf("F%02d", i), Altitude: 1000, Speed: 200}
 	}
 
-	packedWide := PackMessages(summary, []string{wideA, wideB})
-	if len(packedWide) != 3 {
-		t.Fatalf("wide pack len = %d, want summary + two flight messages", len(packedWide))
+	posts := BuildPosts(SnapshotInput{
+		At: at, Servers: []string{"expert"}, Matched: 26, Reported: 26,
+		Frequency: "30m", Filters: json.RawMessage(`{}`), Flights: loaded,
+	})
+	if len(posts) != 3 {
+		t.Fatalf("posts = %d, want summary + 2 flight pages", len(posts))
 	}
-	if packedWide[1] != wideA || packedWide[2] != wideB {
-		t.Fatal("wide blocks should each occupy their own message")
+	if posts[0].Title != "Active Flights — Summary" {
+		t.Fatalf("summary title = %q", posts[0].Title)
 	}
-
-	packedExact := PackMessages(summary, []string{exactA, exactB})
-	if len(packedExact) != 3 {
-		t.Fatalf("boundary pack len = %d, want a new message when the next block would pass 2000", len(packedExact))
+	if len(posts[1].Fields) != 25 {
+		t.Fatalf("page 1 fields = %d", len(posts[1].Fields))
 	}
-
-	for _, messages := range [][]string{packedShort, packedWide, packedExact} {
-		if messages[0] != summary {
-			t.Fatalf("summary = %q", messages[0])
-		}
-		for _, message := range messages {
-			if utf8.RuneCountInString(message) > discordContentMax {
-				t.Fatalf("message length %d exceeds %d", utf8.RuneCountInString(message), discordContentMax)
-			}
-		}
+	if len(posts[2].Fields) != 1 {
+		t.Fatalf("page 2 fields = %d", len(posts[2].Fields))
+	}
+	if !strings.Contains(posts[2].Description, "Page 2 of 2") {
+		t.Fatalf("page 2 description = %q", posts[2].Description)
 	}
 }
 
-func TestFormatFlightAndSummary(t *testing.T) {
+func TestBuildPostsSummaryAndFlightField(t *testing.T) {
 	username := "alice"
-	block := FormatFlight(flights.Flight{
-		Callsign:     "IE123",
-		Username:     &username,
-		AircraftName: "A320",
-		LiveryName:   "House",
-		Altitude:     35000,
-		Normalized:   flights.Normalized{Speed: "450 kts"},
+	at := time.Date(2026, 10, 20, 14, 30, 0, 0, time.UTC)
+	posts := BuildPosts(SnapshotInput{
+		At:        at,
+		Servers:   []string{"expert", "casual"},
+		Matched:   120,
+		Reported:  100,
+		Capped:    true,
+		Frequency: "30m",
+		Filters:   json.RawMessage(`{"vaCode":"TEST","pilotState":["active"]}`),
+		Flights: []flights.Flight{{
+			Callsign:     "IE123",
+			Username:     &username,
+			UserID:       "u1",
+			AircraftName: "A320",
+			LiveryName:   "House",
+			Altitude:     35000,
+			Speed:        450,
+			IsConnected:  true,
+			Normalized:   flights.Normalized{Speed: "450 kts", PilotState: "active"},
+		}},
 	})
-	wantLines := []string{
-		"IE123",
-		"\tPilot: alice",
-		"\tAircraft: A320 / House",
-		"\tAltitude: 35000 ft",
-		"\tSpeed: 450 kts",
-		"\tRoute: —",
+
+	summary := posts[0]
+	if summary.Title != "Active Flights — Summary" {
+		t.Fatalf("title = %q", summary.Title)
 	}
-	for _, line := range wantLines {
-		if !strings.Contains(block, line) {
-			t.Fatalf("block missing %q:\n%s", line, block)
+	summaryText := strings.Join(embedFieldText(summary.Fields), " ")
+	for _, part := range []string{"120", "100 (capped at 100)", "expert, casual", "TEST", "Active", "30 min", "House (1)", "35000 ft", "450 kts", "1 / 1", "1"} {
+		if !strings.Contains(summaryText, part) {
+			t.Fatalf("summary missing %q in %q", part, summaryText)
 		}
 	}
 
-	at := time.Date(2026, 10, 20, 14, 30, 0, 0, time.UTC)
-	summary := FormatSummary(at, []serverCount{{Name: "expert", Matched: 80}, {Name: "casual", Matched: 40}}, 120, 100, true)
-	for _, part := range []string{
-		"Active flights · 2026-10-20T14:30:00Z",
-		"Servers: expert, casual",
-		"Matched: 120 · Reported: 100 (capped at 100)",
-		"\texpert: 80",
-		"\tcasual: 40",
-	} {
-		if !strings.Contains(summary, part) {
-			t.Fatalf("summary missing %q:\n%s", part, summary)
+	if len(posts) != 2 {
+		t.Fatalf("posts = %d", len(posts))
+	}
+	value := posts[1].Fields[0].Value
+	for _, line := range []string{"Pilot: alice", "State: active", "Aircraft: A320 / House", "Altitude: 35000 ft", "Speed: 450 kts", "Route: —"} {
+		if !strings.Contains(value, line) {
+			t.Fatalf("flight value missing %q:\n%s", line, value)
 		}
 	}
+	if posts[1].Footer == nil || posts[1].Footer.Text != "Flight Monitor | expert, casual" {
+		t.Fatalf("footer = %+v", posts[1].Footer)
+	}
+}
+
+func TestMostFrequentKeyTieBreak(t *testing.T) {
+	got := mostFrequentKey(map[string]int{"Bravo": 2, "Alpha": 2})
+	if got != "Alpha (2)" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func embedFieldText(fields []discord.EmbedField) []string {
+	out := make([]string, len(fields))
+	for i, field := range fields {
+		out[i] = field.Name + " " + field.Value
+	}
+	return out
 }

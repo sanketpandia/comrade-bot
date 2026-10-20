@@ -66,6 +66,7 @@ func (h *Handler) TriggerVAWebhook(w http.ResponseWriter, r *http.Request) {
 		VACode:           target.VACode,
 		WebhookType:      target.WebhookType,
 		URL:              target.URL,
+		Frequency:        target.Frequency,
 		Filters:          target.Filters,
 		PreferredServers: target.PreferredServers,
 	})

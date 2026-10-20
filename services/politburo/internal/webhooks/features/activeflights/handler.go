@@ -15,6 +15,7 @@ import (
 	"infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/metrics"
 	webhookconfig "infinite-experiment/politburo/internal/webhooks/config"
+	"infinite-experiment/politburo/internal/webhooks/discord"
 	"infinite-experiment/politburo/internal/webhooks/dispatch"
 )
 
@@ -34,7 +35,7 @@ type vaCodes interface {
 }
 
 type poster interface {
-	PostContent(ctx context.Context, webhookType, webhookURL, content string) error
+	PostEmbeds(ctx context.Context, webhookType, webhookURL string, embeds []discord.Embed) error
 }
 
 type collectedFlight struct {
@@ -79,7 +80,7 @@ func (h *Handler) Handle(ctx context.Context, item dispatch.Item) dispatch.Resul
 		return errorResult(err)
 	}
 
-	matched, counts, loaded, err := h.collect(ctx, servers, query)
+	matched, _, loaded, err := h.collect(ctx, servers, query)
 	if err != nil {
 		return errorResult(err)
 	}
@@ -88,15 +89,24 @@ func (h *Handler) Handle(ctx context.Context, item dispatch.Item) dispatch.Resul
 	h.metrics.ObserveActiveFlightsDispatch(FeatureKey, len(servers), matched, reported, capped)
 
 	at := h.now().UTC()
-	blocks := make([]string, len(loaded))
+	flightList := make([]flights.Flight, len(loaded))
 	for i, flight := range loaded {
-		blocks[i] = FormatFlight(flight.flight)
+		flightList[i] = flight.flight
 	}
-	messages := PackMessages(FormatSummary(at, counts, matched, reported, capped), blocks)
+	embeds := BuildPosts(SnapshotInput{
+		At:        at,
+		Servers:   servers,
+		Matched:   matched,
+		Reported:  reported,
+		Capped:    capped,
+		Frequency: item.Frequency,
+		Filters:   item.Filters,
+		Flights:   flightList,
+	})
 
 	sent := 0
-	for _, message := range messages {
-		if err := h.discord.PostContent(ctx, FeatureKey, item.URL, message); err != nil {
+	for _, embed := range embeds {
+		if err := h.discord.PostEmbeds(ctx, FeatureKey, item.URL, []discord.Embed{embed}); err != nil {
 			slog.Warn("discord webhook post failed", "va_id", item.VAID, "webhook_type", FeatureKey, "error", err)
 			return dispatch.Result{
 				Outcome:         dispatch.OutcomeError,

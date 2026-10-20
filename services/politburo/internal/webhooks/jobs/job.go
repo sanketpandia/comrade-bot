@@ -70,6 +70,7 @@ func (j *Job) Run(ctx context.Context) error {
 				VACode:           row.VACode,
 				WebhookType:      entry.Key,
 				URL:              entry.URL,
+				Frequency:        entry.Frequency,
 				Filters:          entry.Filters,
 				PreferredServers: row.PreferredServers,
 			})

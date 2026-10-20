@@ -26,6 +26,7 @@ type Item struct {
 	VACode           string
 	WebhookType      string
 	URL              string
+	Frequency        string
 	Filters          json.RawMessage
 	PreferredServers []string
 }

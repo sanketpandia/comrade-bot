@@ -14,8 +14,33 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
+func TestPostEmbedsSuccess(t *testing.T) {
+	var got webhookPayload
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if err := json.Unmarshal(body, &got); err != nil {
+			t.Errorf("body: %v", err)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	reg := metrics.NewRegistry()
+	client := NewClient(reg)
+	embed := Embed{Title: "Active Flights", Color: 1}
+	if err := client.PostEmbeds(context.Background(), "active_flights", server.URL, []Embed{embed}); err != nil {
+		t.Fatalf("PostEmbeds() = %v", err)
+	}
+	if len(got.Embeds) != 1 || got.Embeds[0].Title != "Active Flights" {
+		t.Fatalf("embeds = %+v", got.Embeds)
+	}
+	if got.Content != "" {
+		t.Fatalf("content = %q", got.Content)
+	}
+}
+
 func TestPostContentSuccess(t *testing.T) {
-	var got payload
+	var got webhookPayload
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Errorf("method = %s", r.Method)

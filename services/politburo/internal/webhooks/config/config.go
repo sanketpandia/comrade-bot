@@ -93,6 +93,24 @@ func Parse(raw json.RawMessage) ([]Entry, error) {
 	return out, nil
 }
 
+// FormatFrequencyDisplay turns a stored frequency token into a short human-readable label.
+func FormatFrequencyDisplay(frequency string) string {
+	switch strings.TrimSpace(frequency) {
+	case Frequency30m:
+		return "30 min"
+	case Frequency60m:
+		return "60 min"
+	case Frequency120m:
+		return "120 min"
+	default:
+		frequency = strings.TrimSpace(frequency)
+		if frequency == "" {
+			return "—"
+		}
+		return frequency
+	}
+}
+
 // Due reports whether a feature frequency should run at the given instant.
 // The clock is converted to UTC. 30m is every tick, 60m only at minute 0,
 // and 120m only at minute 0 of an even hour.
