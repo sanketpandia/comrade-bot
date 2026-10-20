@@ -14,6 +14,7 @@ import (
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	"infinite-experiment/politburo/internal/metrics"
+	"infinite-experiment/politburo/internal/scheduler"
 )
 
 type flightsClientStub struct {
@@ -100,9 +101,50 @@ func testLookup(liveryID string, aircraftName, liveryName string) *gameliveries.
 	}, nil)
 }
 
+type afterSyncStub struct {
+	runs int
+}
+
+func (s *afterSyncStub) Name() string { return "after-sync-stub" }
+func (s *afterSyncStub) Run(context.Context) error {
+	s.runs++
+	return nil
+}
+
+type executorStub struct {
+	last scheduler.Job
+}
+
+func (e *executorStub) Execute(_ context.Context, job scheduler.Job) {
+	e.last = job
+	if job != nil {
+		_ = job.Run(context.Background())
+	}
+}
+
+func TestJobRunInvokesAfterSyncWhenExecutorSet(t *testing.T) {
+	store := &cacheStub{data: withSessions([]infiniteflight.Session{{ID: "session-1", NormalizedName: "casual"}})}
+	after := &afterSyncStub{}
+	exec := &executorStub{}
+	job := New(flightsClientStub{
+		bySession: map[string][]infiniteflight.Flight{
+			"session-1": {{FlightID: "f1", Callsign: "ok", LastReport: "2026-08-15 05:09:53Z"}},
+		},
+	}, store, gameliveries.NewLookup(nil), nil, metrics.NewRegistry(), exec, after)
+	if err := job.Run(context.Background()); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if after.runs != 1 {
+		t.Fatalf("afterSync runs = %d", after.runs)
+	}
+	if exec.last != after {
+		t.Fatal("executor did not receive afterSync job")
+	}
+}
+
 func TestJobRunSkipsWhenSessionsMissing(t *testing.T) {
 	store := &cacheStub{data: map[string]any{}}
-	job := New(flightsClientStub{}, store, gameliveries.NewLookup(nil), metrics.NewRegistry())
+	job := New(flightsClientStub{}, store, gameliveries.NewLookup(nil), nil, metrics.NewRegistry(), nil, nil)
 	if err := job.Run(context.Background()); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -116,7 +158,7 @@ func TestJobRunCachesMotionSnapshot(t *testing.T) {
 	store := &cacheStub{data: withSessions([]infiniteflight.Session{{ID: "session-1", Name: "Casual", NormalizedName: "casual"}})}
 	job := New(flightsClientStub{bySession: map[string][]infiniteflight.Flight{
 		"session-1": {{FlightID: "f1", Callsign: "Swiss 39 Heavy", Speed: 525.6, LiveryID: liveryID, LastReport: "2026-08-15 05:09:53Z", PilotState: 3}},
-	}}, store, testLookup(liveryID, "A350", "Swiss"), metrics.NewRegistry())
+	}}, store, testLookup(liveryID, "A350", "Swiss"), nil, metrics.NewRegistry(), nil, nil)
 	now := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
 	job.now = func() time.Time { return now }
 
@@ -165,7 +207,7 @@ func TestJobRunFastPathOnSecondTick(t *testing.T) {
 	}
 	store.data[cache.KeyFlightRecord("f1")] = prior
 
-	job := New(flightsClientStub{bySession: map[string][]infiniteflight.Flight{"session-1": {upstream}}}, store, testLookup(liveryID, "A350", "Swiss"), metrics.NewRegistry())
+	job := New(flightsClientStub{bySession: map[string][]infiniteflight.Flight{"session-1": {upstream}}}, store, testLookup(liveryID, "A350", "Swiss"), nil, metrics.NewRegistry(), nil, nil)
 	job.now = func() time.Time { return now }
 
 	if err := job.Run(context.Background()); err != nil {
@@ -188,7 +230,7 @@ func TestJobRunContinuesAfterSessionError(t *testing.T) {
 	job := New(flightsClientStub{
 		bySession: map[string][]infiniteflight.Flight{"good": {{FlightID: "f1", Callsign: "ok", LastReport: "2026-08-15 05:09:53Z"}}},
 		errByID:   map[string]error{"bad": errors.New("upstream")},
-	}, store, gameliveries.NewLookup(nil), metrics.NewRegistry())
+	}, store, gameliveries.NewLookup(nil), nil, metrics.NewRegistry(), nil, nil)
 	if err := job.Run(context.Background()); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -207,7 +249,7 @@ func TestJobRunWarnsAtCap(t *testing.T) {
 		upstream[i].LastReport = "2026-08-15 05:09:53Z"
 	}
 	store := &cacheStub{data: withSessions([]infiniteflight.Session{{ID: "session-1", NormalizedName: "casual"}})}
-	job := New(flightsClientStub{bySession: map[string][]infiniteflight.Flight{"session-1": upstream}}, store, gameliveries.NewLookup(nil), metrics.NewRegistry())
+	job := New(flightsClientStub{bySession: map[string][]infiniteflight.Flight{"session-1": upstream}}, store, gameliveries.NewLookup(nil), nil, metrics.NewRegistry(), nil, nil)
 	if err := job.Run(context.Background()); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}

@@ -44,7 +44,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 1 },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
       "id": 1,
       "options": {
         "colorMode": "value",
@@ -81,7 +81,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 1 },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
       "id": 2,
       "options": {
         "colorMode": "value",
@@ -118,7 +118,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 1 },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
       "id": 3,
       "options": {
         "colorMode": "value",
@@ -139,8 +139,126 @@
       "type": "stat"
     },
     {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 120 },
+              { "color": "red", "value": 300 }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "id": 9,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "time() - politburo_jobs_last_success_timestamp_seconds{exported_job=\"infinite-flight-va-flight-index\"}",
+          "legendFormat": "va-index",
+          "refId": "A"
+        }
+      ],
+      "title": "Seconds since VA flight index job success",
+      "type": "stat"
+    },
+    {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 250,
+      "panels": [],
+      "title": "VA live index",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Count from the last infinite-flight-va-flight-index run. Only VAs with at least one matched active flight are updated each tick; other series may show a stale value until the VA matches again.",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 10,
+      "interval": "1m",
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "targets": [
+        {
+          "expr": "politburo_livegame_va_active_flights{va_id=~\"$va_id\"}",
+          "legendFormat": "{{va_id}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Active flights by virtual airline (VA index)",
+      "type": "bargauge"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Count from the last infinite-flight-va-flight-index run. Only VAs with at least one matched active flight are updated each tick; other series may show a stale value until the VA matches again.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 11,
+      "interval": "1m",
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "sortBy": "Last *", "sortDesc": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "politburo_livegame_va_active_flights{va_id=~\"$va_id\"}",
+          "legendFormat": "{{va_id}}",
+          "refId": "A"
+        }
+      ],
+      "title": "VA active flights over time",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
       "id": 200,
       "panels": [],
       "title": "Live flights",
@@ -149,7 +267,7 @@
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": { "defaults": { "mappings": [], "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 6 },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 15 },
       "id": 4,
       "options": {
         "colorMode": "value",
@@ -186,7 +304,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 6 },
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 15 },
       "id": 5,
       "interval": "1m",
       "options": {
@@ -220,7 +338,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 23 },
       "id": 6,
       "interval": "1m",
       "options": {
@@ -239,7 +357,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
       "id": 300,
       "panels": [],
       "title": "Livery and HTTP filters",
@@ -262,7 +380,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
       "id": 7,
       "interval": "5m",
       "options": {
@@ -296,7 +414,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
       "id": 8,
       "interval": "15m",
       "options": {
@@ -339,6 +457,26 @@
         "regex": "",
         "sort": 1,
         "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "definition": "label_values(politburo_livegame_va_active_flights, va_id)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Virtual airline",
+        "multi": true,
+        "name": "va_id",
+        "options": [],
+        "query": {
+          "query": "label_values(politburo_livegame_va_active_flights, va_id)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
       }
     ]
   },
@@ -347,6 +485,6 @@
   "timezone": "utc",
   "title": "Infinite Live metrics",
   "uid": "politburo-livegame",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }

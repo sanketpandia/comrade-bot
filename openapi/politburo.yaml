@@ -136,6 +136,11 @@ paths:
           description: Restrict results to flights whose callsign contains this value.
           schema:
             type: string
+        - name: vaCode
+          in: query
+          description: Restrict results to flights matched to this virtual airline code (uses the VA active-flight index).
+          schema:
+            type: string
       responses:
         '200':
           description: The latest cached motion tracks for active flights on the server
@@ -1100,6 +1105,9 @@ components:
           nullable: true
         callsign:
           type: string
+        normalizedCallsign:
+          type: string
+          description: Callsign with Infinite Flight weight/formation trailers removed for VA affix matching.
         latitude:
           type: number
           format: double
@@ -1142,6 +1150,11 @@ components:
           $ref: '#/components/schemas/ActiveFlightNormalized'
         pathSync:
           $ref: '#/components/schemas/ActiveFlightPathSync'
+        matchedVirtualAirlines:
+          type: array
+          description: Virtual airlines whose BASIC callsign affix rules matched this flight on the current session.
+          items:
+            $ref: '#/components/schemas/ActiveFlightVirtualAirlineMatch'
     ActiveFlightRecordResponse:
       type: object
       required:
@@ -1183,6 +1196,19 @@ components:
           type: string
           format: date-time
           description: When the last flight-plan sync completed, if any.
+    ActiveFlightVirtualAirlineMatch:
+      type: object
+      required:
+        - vaId
+        - vaCode
+      properties:
+        vaId:
+          type: string
+          format: uuid
+          description: Virtual airline identifier.
+        vaCode:
+          type: string
+          description: Virtual airline code.
     Pagination:
       type: object
       required:
@@ -1426,6 +1452,25 @@ components:
       type: object
       additionalProperties: true
       description: Opaque JSON config body for the requested type (validated server-side per type).
+    VAConfigBasic:
+      type: object
+      description: Documented shape for BASIC va config (stored as opaque payload; validated server-side).
+      additionalProperties: true
+      properties:
+        game_callsign:
+          type: object
+          additionalProperties: true
+          properties:
+            prefix:
+              type: string
+            suffix:
+              type: string
+        preferred_servers:
+          type: array
+          description: Normalized Infinite Flight session names (e.g. casual, training, expert).
+          items:
+            type: string
+            minLength: 1
     VAConfigData:
       type: object
       required:

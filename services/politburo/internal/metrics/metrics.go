@@ -22,6 +22,7 @@ type Registry struct {
 	FlightsFPLSyncScheduledTotal  *prometheus.CounterVec
 	FlightsRecordUpdateTotal      *prometheus.CounterVec
 	FlightsRecordCacheMissTotal   *prometheus.CounterVec
+	VAActiveFlights               *prometheus.GaugeVec
 }
 
 func NewRegistry() *Registry {
@@ -136,12 +137,19 @@ func NewRegistry() *Registry {
 		Name:      "flights_record_cache_miss_total",
 		Help:      "Prior enriched flight records missing from cache at compute time.",
 	}, []string{"server"})
+	vaActiveFlights := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "politburo",
+		Subsystem: "livegame",
+		Name:      "va_active_flights",
+		Help:      "Active flights in the latest VA flight index for each virtual airline.",
+	}, []string{"va_id"})
 	registry.MustRegister(
 		requests, duration,
 		cacheOperations, cacheDuration, cachePayloadBytes, cacheInserts,
 		jobRuns, jobDuration, jobRunning, jobLastSuccess,
 		flightsActive, flightsByPilotState, liveryResolveTotal, flightsFilteredTotal,
 		flightsComputeTotal, flightsFPLSyncScheduledTotal, flightsRecordUpdateTotal, flightsRecordCacheMissTotal,
+		vaActiveFlights,
 	)
 	return &Registry{
 		Prometheus: registry, Requests: requests, RequestDuration: duration,
@@ -153,5 +161,6 @@ func NewRegistry() *Registry {
 		LiveryResolveTotal: liveryResolveTotal, FlightsFilteredTotal: flightsFilteredTotal,
 		FlightsComputeTotal: flightsComputeTotal, FlightsFPLSyncScheduledTotal: flightsFPLSyncScheduledTotal,
 		FlightsRecordUpdateTotal: flightsRecordUpdateTotal, FlightsRecordCacheMissTotal: flightsRecordCacheMissTotal,
+		VAActiveFlights: vaActiveFlights,
 	}
 }

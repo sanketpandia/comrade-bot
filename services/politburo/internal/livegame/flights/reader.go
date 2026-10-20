@@ -113,8 +113,19 @@ func (r *Reader) knownServer(ctx context.Context, serverID string) (bool, error)
 
 func (r *Reader) buildTracks(ctx context.Context, snapshot Snapshot, query FilterQuery) ([]Track, error) {
 	ids := SortedTrackFlightIDs(snapshot.Tracks)
+	if query.VAID != "" {
+		vaIDs, err := r.loadVAActiveFlightIDs(ctx, query.VAID)
+		if err != nil {
+			return nil, err
+		}
+		allowed := make(map[string]bool, len(vaIDs))
+		for _, id := range vaIDs {
+			allowed[id] = true
+		}
+		ids = filterIDsBySet(ids, allowed)
+	}
 	pilotSeen := pilotStateSet(query.PilotStates)
-	hasFilters := len(query.PilotStates) > 0 || query.UserName != "" || query.CallSign != ""
+	hasFilters := query.VAID != "" || len(query.PilotStates) > 0 || query.UserName != "" || query.CallSign != ""
 
 	out := make([]Track, 0, len(ids))
 	for _, id := range ids {
@@ -137,6 +148,30 @@ func (r *Reader) buildTracks(ctx context.Context, snapshot Snapshot, query Filte
 		out = append(out, TrackFromFlight(flight))
 	}
 	return out, nil
+}
+
+func (r *Reader) loadVAActiveFlightIDs(ctx context.Context, vaID string) ([]string, error) {
+	var ids []string
+	if err := r.cache.GetJSON(ctx, cache.KeyVAActiveFlights(vaID), &ids); err != nil {
+		if errors.Is(err, cache.ErrMiss) {
+			return nil, nil
+		}
+		return nil, ErrCacheRead
+	}
+	return ids, nil
+}
+
+func filterIDsBySet(ids []string, allowed map[string]bool) []string {
+	if len(allowed) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if allowed[id] {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 func (r *Reader) loadFlightRecord(ctx context.Context, flightID string) (Flight, error) {

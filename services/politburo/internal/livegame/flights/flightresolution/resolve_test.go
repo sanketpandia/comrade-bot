@@ -33,7 +33,8 @@ func TestResolveFlightSkipsEffectsWhenMotionUnchanged(t *testing.T) {
 	}
 	prior := &flights.Flight{
 		FlightID: "f1", Callsign: "Swiss", Speed: 100, AircraftName: "A350",
-		PathSync: &flights.PathSync{},
+		NormalizedCallsign: flights.NormalizedCallsignForAffix("Swiss"),
+		PathSync:           &flights.PathSync{},
 	}
 	motion := flights.MotionFromUpstream(upstream)
 

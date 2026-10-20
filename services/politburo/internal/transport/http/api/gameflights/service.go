@@ -45,6 +45,7 @@ func (s *Service) ListActiveTracks(ctx context.Context, input domainflights.List
 			"pilotState", input.Filters.PilotStates,
 			"userName", input.Filters.UserName,
 			"callSign", input.Filters.CallSign,
+			"vaCode", input.Filters.VACode,
 			"count", len(result.Tracks),
 		)
 	}

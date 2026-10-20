@@ -59,6 +59,18 @@ func (s *Scheduler) Register(job Job, schedule string) error {
 }
 
 func (s *Scheduler) run(job Job) {
+	s.execute(s.ctx, job)
+}
+
+// Execute runs a job immediately with the same Prometheus metrics as cron-triggered runs.
+func (s *Scheduler) Execute(ctx context.Context, job Job) {
+	if job == nil {
+		return
+	}
+	s.execute(ctx, job)
+}
+
+func (s *Scheduler) execute(ctx context.Context, job Job) {
 	name := job.Name()
 	startedAt := time.Now()
 	outcome := "error"
@@ -69,7 +81,7 @@ func (s *Scheduler) run(job Job) {
 		s.metrics.JobDuration.WithLabelValues(name).Observe(time.Since(startedAt).Seconds())
 	}()
 
-	if err := job.Run(s.ctx); err != nil {
+	if err := job.Run(ctx); err != nil {
 		slog.Error("scheduled job failed", "job", name, "error", err)
 		return
 	}

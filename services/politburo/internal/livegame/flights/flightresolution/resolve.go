@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"infinite-experiment/politburo/internal/community/virtualairlines"
 	"infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
@@ -23,6 +24,7 @@ type ComputeContext struct {
 	RefreshedAt    time.Time
 	PriorMotion    flights.FlightMotion
 	HasPriorMotion bool
+	LiveVACatalog  virtualairlines.LiveVACatalog
 }
 
 // Outcome tells the flights job what cache I/O to perform after resolution.

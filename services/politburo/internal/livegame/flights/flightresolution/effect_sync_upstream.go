@@ -33,4 +33,5 @@ func applySyncFromUpstream(env *resolveEnv) {
 	env.hasFlight = true
 	env.syncedUpstream = true
 	env.recordMutated = true
+	applyCallsignAffixFields(env)
 }

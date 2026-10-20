@@ -105,6 +105,8 @@ components:
       $ref: "./components/schemas/ActiveFlightNormalized.yaml"
     ActiveFlightPathSync:
       $ref: "./components/schemas/ActiveFlightPathSync.yaml"
+    ActiveFlightVirtualAirlineMatch:
+      $ref: "./components/schemas/ActiveFlightVirtualAirlineMatch.yaml"
     Pagination:
       $ref: "./components/schemas/Pagination.yaml"
     CreateUserErrorCode:
@@ -145,6 +147,8 @@ components:
       $ref: "./components/schemas/VAConfigType.yaml"
     VAConfigPayload:
       $ref: "./components/schemas/VAConfigPayload.yaml"
+    VAConfigBasic:
+      $ref: "./components/schemas/VAConfigBasic.yaml"
     VAConfigData:
       $ref: "./components/schemas/VAConfigData.yaml"
     VAConfigResponse:

@@ -55,7 +55,7 @@ func TestGetActiveFlightsReturnsTracks(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(body.Data.AvailableFilters) != 3 {
+	if len(body.Data.AvailableFilters) != 4 {
 		t.Fatalf("availableFilters = %#v", body.Data.AvailableFilters)
 	}
 	if len(body.Data.Result) != 2 || body.Data.Pagination.TotalLength != 2 {

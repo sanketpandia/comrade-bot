@@ -3,6 +3,7 @@ package gameflights
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
@@ -51,14 +52,21 @@ func filterQueryFromParams(params politburoapi.GetActiveFlightsParams) (domainfl
 	if params.CallSign != nil {
 		callSign = *params.CallSign
 	}
+	vaCode := ""
+	if params.VaCode != nil {
+		vaCode = strings.TrimSpace(*params.VaCode)
+	}
 	userName, callSign = domainflights.NormalizeFilterStrings(userName, callSign)
 	return domainflights.FilterQuery{
 		PilotStates: states,
 		UserName:    userName,
 		CallSign:    callSign,
+		VACode:      vaCode,
 	}, nil
 }
 
 func isInvalidListRequest(err error) bool {
-	return errors.Is(err, errServerNameRequired) || errors.Is(err, domainflights.ErrInvalidFilter)
+	return errors.Is(err, errServerNameRequired) ||
+		errors.Is(err, domainflights.ErrInvalidFilter) ||
+		errors.Is(err, domainflights.ErrUnknownVACode)
 }

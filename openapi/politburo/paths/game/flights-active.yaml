@@ -46,6 +46,11 @@ get:
       description: Restrict results to flights whose callsign contains this value.
       schema:
         type: string
+    - name: vaCode
+      in: query
+      description: Restrict results to flights matched to this virtual airline code (uses the VA active-flight index).
+      schema:
+        type: string
   responses:
     "200":
       description: The latest cached motion tracks for active flights on the server

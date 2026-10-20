@@ -9,11 +9,13 @@ type FilterQuery struct {
 	PilotStates []string
 	UserName    string
 	CallSign    string
+	VACode      string
+	VAID        string
 }
 
 // HasValues reports whether any filter field is set.
 func (q FilterQuery) HasValues() bool {
-	return len(q.PilotStates) > 0 || q.UserName != "" || q.CallSign != ""
+	return len(q.PilotStates) > 0 || q.UserName != "" || q.CallSign != "" || q.VACode != "" || q.VAID != ""
 }
 
 // AvailableFilter describes one supported query filter for cache-backed list endpoints.
@@ -86,6 +88,13 @@ func BuildAvailableFilters(query FilterQuery) []AvailableFilter {
 			Type:    "string",
 			Desc:    "Restrict results to flights whose callsign contains this value",
 			Current: query.CallSign,
+			Default: "",
+		},
+		{
+			Name:    "vaCode",
+			Type:    "string",
+			Desc:    "Restrict results to flights matched to this virtual airline code",
+			Current: query.VACode,
 			Default: "",
 		},
 	}

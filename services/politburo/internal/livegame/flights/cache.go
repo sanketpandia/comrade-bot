@@ -17,6 +17,11 @@ type PathSync struct {
 	LastFPLSyncAt   time.Time `json:"lastFPLSyncAt,omitempty"`
 }
 
+type VirtualAirlineMatch struct {
+	VAID   string `json:"vaId"`
+	VACode string `json:"vaCode"`
+}
+
 type Normalized struct {
 	Speed         string `json:"speed"`
 	VerticalSpeed string `json:"verticalSpeed"`
@@ -32,6 +37,7 @@ type Flight struct {
 	Username            *string    `json:"username"`
 	VirtualOrganization *string    `json:"virtualOrganization"`
 	Callsign            string     `json:"callsign"`
+	NormalizedCallsign  string     `json:"normalizedCallsign,omitempty"`
 	Latitude            float64    `json:"latitude"`
 	Longitude           float64    `json:"longitude"`
 	Altitude            int        `json:"altitude"`
@@ -46,7 +52,8 @@ type Flight struct {
 	SessionID           string     `json:"sessionId"`
 	NormalizedName      string     `json:"normalizedName"`
 	Normalized          Normalized `json:"normalized"`
-	PathSync            *PathSync  `json:"pathSync,omitempty"`
+	PathSync                *PathSync             `json:"pathSync,omitempty"`
+	MatchedVirtualAirlines  []VirtualAirlineMatch `json:"matchedVirtualAirlines,omitempty"`
 }
 
 type FlightMotion struct {

@@ -26,6 +26,27 @@ func TestValidateBasicRejectsNonStringPrefix(t *testing.T) {
 	}
 }
 
+func TestValidateBasicAcceptsPreferredServers(t *testing.T) {
+	raw := json.RawMessage(`{"preferred_servers":["expert","casual"]}`)
+	if err := Validate(TypeBasic, raw); err != nil {
+		t.Fatalf("Validate() = %v", err)
+	}
+}
+
+func TestValidateBasicRejectsPreferredServersNotArray(t *testing.T) {
+	raw := json.RawMessage(`{"preferred_servers":"expert"}`)
+	if err := Validate(TypeBasic, raw); err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestValidateBasicRejectsEmptyPreferredServerEntry(t *testing.T) {
+	raw := json.RawMessage(`{"preferred_servers":["expert",""]}`)
+	if err := Validate(TypeBasic, raw); err == nil {
+		t.Fatal("expected error")
+	}
+}
+
 func TestValidateUnknownType(t *testing.T) {
 	raw := json.RawMessage(`{}`)
 	if err := Validate("FUTURE", raw); err != ErrUnknownType {

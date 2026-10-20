@@ -8,5 +8,6 @@ var (
 	ErrCacheRead      = errors.New("active flights cache read failed")
 	ErrUnknownServer  = errors.New("unknown normalized server name")
 	ErrInvalidFilter  = errors.New("invalid filter value")
+	ErrUnknownVACode  = errors.New("unknown virtual airline code")
 	ErrSessionNames   = errors.New("session names cache unavailable")
 )

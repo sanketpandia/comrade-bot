@@ -11,12 +11,13 @@ import (
 )
 
 type cacheStub struct {
-	flights  domainflights.Snapshot
-	records  map[string]domainflights.Flight
-	names    []string
-	namesErr error
-	err      error
-	server   string
+	flights   domainflights.Snapshot
+	records   map[string]domainflights.Flight
+	vaIndexes map[string][]string
+	names     []string
+	namesErr  error
+	err       error
+	server    string
 }
 
 func (s cacheStub) GetJSON(_ context.Context, key string, destination any) error {
@@ -33,6 +34,18 @@ func (s cacheStub) GetJSON(_ context.Context, key string, destination any) error
 		}
 		*(destination.(*domainflights.Snapshot)) = s.flights
 		return nil
+	case strings.HasPrefix(key, cache.PrefixGameFlightsVA):
+		if s.err != nil {
+			return s.err
+		}
+		if s.vaIndexes != nil {
+			vaID := strings.TrimPrefix(key, cache.PrefixGameFlightsVA)
+			if ids, ok := s.vaIndexes[vaID]; ok {
+				*(destination.(*[]string)) = ids
+				return nil
+			}
+		}
+		return cache.ErrMiss
 	default:
 		if strings.HasPrefix(key, cache.PrefixGameFlightsRecord) {
 			if s.err != nil {
@@ -54,7 +67,11 @@ func (s cacheStub) GetJSON(_ context.Context, key string, destination any) error
 func (cacheStub) SetJSON(context.Context, string, any, time.Duration) error { return nil }
 
 func testHandler(store cache.Store) *Handler {
-	return NewHandler(domainflights.NewReader(store), metrics.NewRegistry())
+	return testHandlerWithVA(store, nil)
+}
+
+func testHandlerWithVA(store cache.Store, va vaCodeResolver) *Handler {
+	return NewHandler(domainflights.NewReader(store), metrics.NewRegistry(), va)
 }
 
 func flightsFixture(lastCached time.Time, flights ...domainflights.Flight) (domainflights.Snapshot, map[string]domainflights.Flight) {

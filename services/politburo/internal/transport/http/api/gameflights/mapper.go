@@ -3,6 +3,8 @@ package gameflights
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	"infinite-experiment/politburo/internal/cache"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
@@ -72,6 +74,7 @@ func activeFlightRecordFromDomain(flight domainflights.Flight, flightID openapi_
 	record := politburoapi.ActiveFlightRecord{
 		FlightId:       flightID,
 		Callsign:       flight.Callsign,
+		NormalizedCallsign: optionalString(flight.NormalizedCallsign),
 		Latitude:       flight.Latitude,
 		Longitude:      flight.Longitude,
 		Altitude:       flight.Altitude,
@@ -116,5 +119,30 @@ func activeFlightRecordFromDomain(flight domainflights.Flight, flightID openapi_
 		}
 		record.PathSync = &pathSync
 	}
+	if len(flight.MatchedVirtualAirlines) > 0 {
+		record.MatchedVirtualAirlines = matchedVirtualAirlinesFromDomain(flight.MatchedVirtualAirlines)
+	}
 	return record
+}
+
+func optionalString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func matchedVirtualAirlinesFromDomain(matches []domainflights.VirtualAirlineMatch) *[]politburoapi.ActiveFlightVirtualAirlineMatch {
+	out := make([]politburoapi.ActiveFlightVirtualAirlineMatch, len(matches))
+	for i, match := range matches {
+		parsed, err := uuid.Parse(match.VAID)
+		if err != nil {
+			continue
+		}
+		out[i] = politburoapi.ActiveFlightVirtualAirlineMatch{
+			VaId:   openapi_types.UUID(parsed),
+			VaCode: match.VACode,
+		}
+	}
+	return &out
 }
