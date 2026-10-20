@@ -1,0 +1,114 @@
+get:
+  operationId: getVAConfig
+  summary: Read a typed VA configuration block
+  description: |
+    Returns the JSON config block for the virtual airline tied to the caller's session or Discord membership context.
+    Requires VA administrator role (`administrator`).
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: configType
+      in: query
+      required: true
+      description: Typed config block to read (for example `BASIC`).
+      schema:
+        $ref: "../../components/schemas/VAConfigType.yaml"
+  responses:
+    "200":
+      description: VA configuration block
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VAConfigResponse.yaml"
+    "400":
+      description: Unknown or invalid config type query parameter
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "401":
+      description: Missing or inactive API key or session cookie
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Caller is not a VA administrator
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: No virtual airline context, VA not found, or no config for this type
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Failed to load configuration
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+post:
+  operationId: upsertVAConfig
+  summary: Create or replace a typed VA configuration block
+  description: |
+    Validates and stores the JSON config for the requested type. `updatedAt` and `updatedBy` are set by the server
+    from the authenticated Politburo user. Requires VA administrator role (`administrator`).
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: configType
+      in: query
+      required: true
+      description: Typed config block to write (for example `BASIC`).
+      schema:
+        $ref: "../../components/schemas/VAConfigType.yaml"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/VAConfigPayload.yaml"
+  responses:
+    "200":
+      description: Stored configuration block
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VAConfigResponse.yaml"
+    "400":
+      description: Invalid request body or config validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "401":
+      description: Missing authentication or Politburo user for audit
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Caller is not a VA administrator
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: No virtual airline context
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Failed to store configuration
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

@@ -8,7 +8,7 @@ info:
     **Authentication**
     - `X-API-Key` — UUID API key for `/api/v1/*` machine clients (Discord bot, integrations).
     - `X-Discord-User-Id` and `X-Discord-Server-Id` — Discord context on bot-originated requests.
-    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/va`, and related routes).
+    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/va`, `/api/v1/va/config`, and related routes).
 
     **Documentation** — https://sanketpandia.github.io/comrade-bot/api/reference/
 tags:
@@ -54,6 +54,8 @@ paths:
     $ref: "./paths/admin/ban-user.yaml"
   /api/v1/va:
     $ref: "./paths/va/get.yaml"
+  /api/v1/va/config:
+    $ref: "./paths/va/config.yaml"
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -139,6 +141,14 @@ components:
       $ref: "./components/schemas/VADetails.yaml"
     VADetailsResponse:
       $ref: "./components/schemas/VADetailsResponse.yaml"
+    VAConfigType:
+      $ref: "./components/schemas/VAConfigType.yaml"
+    VAConfigPayload:
+      $ref: "./components/schemas/VAConfigPayload.yaml"
+    VAConfigData:
+      $ref: "./components/schemas/VAConfigData.yaml"
+    VAConfigResponse:
+      $ref: "./components/schemas/VAConfigResponse.yaml"
     CurrentUser:
       $ref: "./components/schemas/CurrentUser.yaml"
     CurrentUserResponse:

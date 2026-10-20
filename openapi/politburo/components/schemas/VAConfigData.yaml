@@ -1,0 +1,13 @@
+type: object
+required: [type, config, updatedAt, updatedBy]
+properties:
+  type:
+    $ref: "./VAConfigType.yaml"
+  config:
+    $ref: "./VAConfigPayload.yaml"
+  updatedAt:
+    type: string
+    format: date-time
+  updatedBy:
+    type: string
+    format: uuid

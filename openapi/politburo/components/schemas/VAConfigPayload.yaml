@@ -1,0 +1,3 @@
+type: object
+additionalProperties: true
+description: Opaque JSON config body for the requested type (validated server-side per type).

@@ -1,0 +1,31 @@
+info:
+  name: Upsert VA Config
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{politburo-base-url}}/api/v1/va/config"
+  auth: inherit
+  params:
+    - name: configType
+      value: BASIC
+      type: query
+  body:
+    type: json
+    data: |-
+      {
+        "game_callsign": {
+          "prefix": "IE",
+          "suffix": ""
+        }
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`upsertVAConfig` — validate and store the BASIC config block; server sets updatedAt and updatedBy."
