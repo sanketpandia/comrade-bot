@@ -13,6 +13,8 @@ import (
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	"infinite-experiment/politburo/internal/app"
+
+	openapi_types "github.com/oapi-codegen/runtime/types"
 	"infinite-experiment/politburo/internal/transport/http/api/gameflights"
 	"infinite-experiment/politburo/internal/transport/http/api/gamesessions"
 	"infinite-experiment/politburo/internal/transport/http/api/health"
@@ -177,6 +179,10 @@ func (h apiHandler) GetActiveSessions(w stdhttp.ResponseWriter, r *stdhttp.Reque
 
 func (h apiHandler) GetActiveFlights(w stdhttp.ResponseWriter, r *stdhttp.Request, normalizedServerName string, params politburoapi.GetActiveFlightsParams) {
 	h.flights.GetActiveFlights(w, r, normalizedServerName, params)
+}
+
+func (h apiHandler) GetActiveFlight(w stdhttp.ResponseWriter, r *stdhttp.Request, flightID openapi_types.UUID) {
+	h.flights.GetActiveFlight(w, r, flightID)
 }
 
 func (h apiHandler) GenerateSignedLink(w stdhttp.ResponseWriter, r *stdhttp.Request, _ politburoapi.GenerateSignedLinkParams) {

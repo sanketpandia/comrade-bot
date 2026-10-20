@@ -1,0 +1,13 @@
+info:
+  name: Active Flight
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{politburo-base-url}}/api/v1/game/flight/active/{{flight-id}}"
+  auth:
+    type: apikey
+    key: X-API-Key
+    value: "{{politburo-api-key}}"
+    placement: header

@@ -1,4 +1,5 @@
 import { FlightMap } from '/static/js/map/flight-map.mjs';
+import { getSelectedFlightId, initFlightDetailPanel, loadFlightDetail } from '/static/js/maps/flight-detail-panel.mjs';
 
 const POLL_MS = 60_000;
 const FILTER_DEBOUNCE_MS = 300;
@@ -162,6 +163,10 @@ async function fetchAllFlights(filters) {
   }
 }
 
+function flightIdFromTrack(flight) {
+  return flight?.flightId ?? flight?.flight_id ?? '';
+}
+
 async function loadFlights() {
   const filters = readFiltersFromForm();
   if (!filters.serverId) {
@@ -180,6 +185,10 @@ async function loadFlights() {
     if (flights.length > 0) fittedOnce = true;
     setStatus(totalLength, lastCached);
     setError('');
+    const selectedId = getSelectedFlightId();
+    if (selectedId && flights.some((f) => flightIdFromTrack(f) === selectedId)) {
+      await loadFlightDetail(selectedId, fetchJSON);
+    }
   } catch (err) {
     map.addFlights([], { fitBounds: false });
     setStatus(0, '');
@@ -208,6 +217,12 @@ form.addEventListener('submit', (event) => {
 });
 
 async function start() {
+  initFlightDetailPanel();
+  map.onFlightClick((flight) => {
+    const flightId = flightIdFromTrack(flight);
+    if (!flightId) return;
+    loadFlightDetail(flightId, fetchJSON);
+  });
   await whenServersReady();
   const urlFilters = readFiltersFromURL();
   ensureServerOption(urlFilters.serverId || DEFAULT_SERVER);

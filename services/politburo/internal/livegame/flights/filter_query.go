@@ -11,6 +11,11 @@ type FilterQuery struct {
 	CallSign    string
 }
 
+// HasValues reports whether any filter field is set.
+func (q FilterQuery) HasValues() bool {
+	return len(q.PilotStates) > 0 || q.UserName != "" || q.CallSign != ""
+}
+
 // AvailableFilter describes one supported query filter for cache-backed list endpoints.
 type AvailableFilter struct {
 	Name    string

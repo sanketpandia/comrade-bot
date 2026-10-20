@@ -16,6 +16,7 @@ Single binary `cmd/politburo`. Jobs off unless `JOBS_ENABLED=true` and
 | `GET /health/status` | Live |
 | `GET /api/v1/game/sessions/active` | Live, Redis |
 | `GET /api/v1/game/flights/active/{normalizedServerName}` | Live tracks from Redis; pagination + filters |
+| `GET /api/v1/game/flight/active/{flightId}` | Single enriched flight record from Redis (`game:flights:record:{id}`); 404 if missing |
 | `POST /api/v1/signed-link` | Live, Discord user header, mints `/auth/login?token=` |
 
 Nothing else is on the rewrite contract. Bot calls listed below will 404
