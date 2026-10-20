@@ -1,0 +1,39 @@
+info:
+  name: Upsert WEBHOOKS
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{politburo-base-url}}/api/v1/va/config"
+  auth: inherit
+  params:
+    - name: configType
+      value: WEBHOOKS
+      type: query
+  body:
+    type: json
+    data: |-
+      {
+        "active_flights": {
+          "url": "{{discord-webhook-url}}",
+          "frequency": "30m",
+          "filters": {
+            "pilotState": ["active"],
+            "vaCode": "TEST"
+          }
+        }
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  `upsertVAConfig` — validate and store the WEBHOOKS config block.
+  Set the collection variable `discord-webhook-url` to an HTTPS Discord webhook URL.
+  Do not commit a real webhook secret. `active_flights` messages show `Route: —`
+  until the flight cache carries route data.

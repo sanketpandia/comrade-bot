@@ -1,0 +1,209 @@
+// Package activeflights builds and sends the active_flights Discord webhook.
+package activeflights
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"log/slog"
+	"sort"
+	"strings"
+	"time"
+
+	"infinite-experiment/politburo/internal/community/virtualairlines"
+	"infinite-experiment/politburo/internal/livegame/flights"
+	"infinite-experiment/politburo/internal/livegame/sessions"
+	"infinite-experiment/politburo/internal/metrics"
+	webhookconfig "infinite-experiment/politburo/internal/webhooks/config"
+	"infinite-experiment/politburo/internal/webhooks/dispatch"
+)
+
+const FeatureKey = webhookconfig.FeatureActiveFlights
+
+type flightLister interface {
+	ListActiveTracks(ctx context.Context, input flights.ListActiveTracksInput) (flights.ListActiveTracksResult, error)
+	GetActiveFlight(ctx context.Context, flightID string) (flights.Flight, error)
+}
+
+type sessionLister interface {
+	ListActive(ctx context.Context) (sessions.ListActiveResult, error)
+}
+
+type vaCodes interface {
+	GetByCode(ctx context.Context, code string) (*virtualairlines.VirtualAirline, error)
+}
+
+type poster interface {
+	PostContent(ctx context.Context, webhookType, webhookURL, content string) error
+}
+
+type collectedFlight struct {
+	flight flights.Flight
+}
+
+// Handler queries live flights for one VA and posts packed Discord messages.
+type Handler struct {
+	flights  flightLister
+	sessions sessionLister
+	vas      vaCodes
+	discord  poster
+	metrics  *metrics.Registry
+	now      func() time.Time
+}
+
+func New(flights flightLister, sessions sessionLister, vas vaCodes, discord poster, reg *metrics.Registry) *Handler {
+	return &Handler{
+		flights:  flights,
+		sessions: sessions,
+		vas:      vas,
+		discord:  discord,
+		metrics:  reg,
+		now:      time.Now,
+	}
+}
+
+func (h *Handler) Handle(ctx context.Context, item dispatch.Item) dispatch.Result {
+	if len(item.PreferredServers) == 0 {
+		slog.Warn("skip active_flights webhook; no preferred servers", "va_id", item.VAID, "webhook_type", FeatureKey)
+		return dispatch.Result{Outcome: dispatch.OutcomeSkipped, SkipReason: dispatch.SkipNoPreferredServers}
+	}
+
+	active, err := h.sessions.ListActive(ctx)
+	if err != nil {
+		return errorResult(err)
+	}
+	servers := onlinePreferred(item.PreferredServers, active.Sessions)
+
+	query, err := h.filterQuery(ctx, item.Filters)
+	if err != nil {
+		return errorResult(err)
+	}
+
+	matched, counts, loaded, err := h.collect(ctx, servers, query)
+	if err != nil {
+		return errorResult(err)
+	}
+	reported := len(loaded)
+	capped := matched > maxReportedFlights
+	h.metrics.ObserveActiveFlightsDispatch(FeatureKey, len(servers), matched, reported, capped)
+
+	at := h.now().UTC()
+	blocks := make([]string, len(loaded))
+	for i, flight := range loaded {
+		blocks[i] = FormatFlight(flight.flight)
+	}
+	messages := PackMessages(FormatSummary(at, counts, matched, reported, capped), blocks)
+
+	sent := 0
+	for _, message := range messages {
+		if err := h.discord.PostContent(ctx, FeatureKey, item.URL, message); err != nil {
+			slog.Warn("discord webhook post failed", "va_id", item.VAID, "webhook_type", FeatureKey, "error", err)
+			return dispatch.Result{
+				Outcome:         dispatch.OutcomeError,
+				DiscordMessages: sent,
+				ErrorMessage:    err.Error(),
+			}
+		}
+		sent++
+	}
+	return dispatch.Result{Outcome: dispatch.OutcomeSuccess, DiscordMessages: sent}
+}
+
+func (h *Handler) filterQuery(ctx context.Context, raw json.RawMessage) (flights.FilterQuery, error) {
+	var filters struct {
+		PilotState []string `json:"pilotState"`
+		VACode     string   `json:"vaCode"`
+	}
+	if len(strings.TrimSpace(string(raw))) > 0 && string(raw) != "null" {
+		if err := json.Unmarshal(raw, &filters); err != nil {
+			return flights.FilterQuery{}, err
+		}
+	}
+	states, err := flights.ParseFilterPilotStates(filters.PilotState)
+	if err != nil {
+		return flights.FilterQuery{}, err
+	}
+	query := flights.FilterQuery{PilotStates: states}
+	code := strings.TrimSpace(filters.VACode)
+	if code == "" {
+		return query, nil
+	}
+	va, err := h.vas.GetByCode(ctx, code)
+	if err != nil {
+		return flights.FilterQuery{}, err
+	}
+	if va == nil {
+		return flights.FilterQuery{}, flights.ErrUnknownVACode
+	}
+	query.VAID = va.ID
+	query.VACode = strings.ToUpper(code)
+	return query, nil
+}
+
+func (h *Handler) collect(ctx context.Context, servers []string, query flights.FilterQuery) (int, []serverCount, []collectedFlight, error) {
+	matched := 0
+	counts := make([]serverCount, 0, len(servers))
+	var loaded []collectedFlight
+	for _, server := range servers {
+		result, err := h.flights.ListActiveTracks(ctx, flights.ListActiveTracksInput{
+			Server:     server,
+			PageNumber: flights.DefaultPageNumber,
+			PageLength: flights.MaxPageLength,
+			Filters:    query,
+		})
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		matched += result.TotalLength
+		counts = append(counts, serverCount{Name: server, Matched: result.TotalLength})
+		if len(loaded) >= maxReportedFlights {
+			continue
+		}
+		for _, track := range result.Tracks {
+			if len(loaded) >= maxReportedFlights {
+				break
+			}
+			flight, err := h.flights.GetActiveFlight(ctx, track.FlightID)
+			if errors.Is(err, flights.ErrCacheMiss) {
+				continue
+			}
+			if err != nil {
+				return 0, nil, nil, err
+			}
+			loaded = append(loaded, collectedFlight{flight: flight})
+		}
+	}
+	return matched, counts, loaded, nil
+}
+
+func onlinePreferred(preferred []string, active []sessions.ActiveSession) []string {
+	online := make(map[string]struct{}, len(active))
+	for _, session := range active {
+		name := strings.ToLower(strings.TrimSpace(session.NormalizedName))
+		if name != "" {
+			online[name] = struct{}{}
+		}
+	}
+	seen := map[string]struct{}{}
+	var out []string
+	for _, server := range preferred {
+		name := strings.ToLower(strings.TrimSpace(server))
+		if name == "" {
+			continue
+		}
+		if _, ok := online[name]; !ok {
+			continue
+		}
+		if _, dup := seen[name]; dup {
+			continue
+		}
+		seen[name] = struct{}{}
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func errorResult(err error) dispatch.Result {
+	return dispatch.Result{Outcome: dispatch.OutcomeError, ErrorMessage: err.Error()}
+}

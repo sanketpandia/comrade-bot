@@ -1,0 +1,40 @@
+type: object
+description: |
+  Feature map for Discord webhook dispatches. Keys are feature ids (`active_flights` is the first).
+  Each entry has an HTTPS Discord webhook `url`, a `frequency` of `30m`, `60m`, or `120m`, and a `filters` object.
+  Unknown feature keys are stored without feature-specific validation.
+  `active_flights` filters accept optional `pilotState` (pilot state names) and `vaCode`.
+  Messages include callsign, pilot, aircraft, altitude, and speed. Route is shown as `Route: —`
+  until the flight cache carries route data.
+additionalProperties:
+  type: object
+  required: [url, frequency, filters]
+  properties:
+    url:
+      type: string
+      format: uri
+      description: HTTPS Discord webhook URL (`https://discord.com/api/webhooks/{id}/{token}`).
+      example: https://discord.com/api/webhooks/123456789012345678/token
+    frequency:
+      type: string
+      enum: [30m, 60m, 120m]
+    filters:
+      type: object
+      description: Feature-specific filters. For `active_flights`, optional `pilotState` and `vaCode`.
+      additionalProperties: true
+      properties:
+        pilotState:
+          type: array
+          items:
+            type: string
+            enum: [active, away_in_flight, away_parked, in_background]
+        vaCode:
+          type: string
+          minLength: 1
+example:
+  active_flights:
+    url: https://discord.com/api/webhooks/123456789012345678/token
+    frequency: 30m
+    filters:
+      pilotState: [active]
+      vaCode: TEST

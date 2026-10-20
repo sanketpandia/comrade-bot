@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 )
 
@@ -44,6 +45,17 @@ func TestValidateBasicRejectsEmptyPreferredServerEntry(t *testing.T) {
 	raw := json.RawMessage(`{"preferred_servers":["expert",""]}`)
 	if err := Validate(TypeBasic, raw); err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+func TestValidateWebhooksDelegates(t *testing.T) {
+	raw := json.RawMessage(`{"active_flights":{"url":"https://discord.com/api/webhooks/123/token","frequency":"30m","filters":{"pilotState":["active"]}}}`)
+	if err := Validate(TypeWebhooks, raw); err != nil {
+		t.Fatalf("Validate() = %v", err)
+	}
+	bad := json.RawMessage(`{"active_flights":{"url":"http://discord.com/api/webhooks/123/token","frequency":"30m","filters":{}}}`)
+	if err := Validate(TypeWebhooks, bad); !errors.Is(err, ErrInvalidConfig) {
+		t.Fatalf("err = %v", err)
 	}
 }
 

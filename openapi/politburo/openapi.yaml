@@ -149,6 +149,8 @@ components:
       $ref: "./components/schemas/VAConfigPayload.yaml"
     VAConfigBasic:
       $ref: "./components/schemas/VAConfigBasic.yaml"
+    VAConfigWebhooks:
+      $ref: "./components/schemas/VAConfigWebhooks.yaml"
     VAConfigData:
       $ref: "./components/schemas/VAConfigData.yaml"
     VAConfigResponse:

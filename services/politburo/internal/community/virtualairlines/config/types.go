@@ -5,7 +5,10 @@ import (
 	"time"
 )
 
-const TypeBasic = "BASIC"
+const (
+	TypeBasic    = "BASIC"
+	TypeWebhooks = "WEBHOOKS"
+)
 
 type Block struct {
 	VAID       string

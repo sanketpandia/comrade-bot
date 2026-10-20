@@ -6,14 +6,21 @@ import (
 	"infinite-experiment/politburo/internal/cache"
 	"infinite-experiment/politburo/internal/community/users"
 	"infinite-experiment/politburo/internal/community/virtualairlines"
+	gameflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	flightsjob "infinite-experiment/politburo/internal/livegame/jobs/flights"
-	vaflightindexjob "infinite-experiment/politburo/internal/livegame/jobs/vaflightindex"
 	liveriesjob "infinite-experiment/politburo/internal/livegame/jobs/liveries"
 	sessionsjob "infinite-experiment/politburo/internal/livegame/jobs/sessions"
+	vaflightindexjob "infinite-experiment/politburo/internal/livegame/jobs/vaflightindex"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
+	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/metrics"
 	"infinite-experiment/politburo/internal/scheduler"
+	"infinite-experiment/politburo/internal/webhooks/discord"
+	"infinite-experiment/politburo/internal/webhooks/dispatch"
+	"infinite-experiment/politburo/internal/webhooks/features/activeflights"
+	webhookjobs "infinite-experiment/politburo/internal/webhooks/jobs"
+	"infinite-experiment/politburo/internal/webhooks/runlog"
 )
 
 // Register is the single composition point for scheduled work.
@@ -36,5 +43,20 @@ func Register(
 	vaService := virtualairlines.NewService(db, users.NewRepository(db), vaRepo)
 	indexJob := vaflightindexjob.New(cacheStore, metricsRegistry)
 	flightsJob := flightsjob.New(client, cacheStore, lookup, vaService, metricsRegistry, jobScheduler, indexJob)
-	return jobScheduler.Register(flightsJob, cache.ScheduleFlightsSync)
+	if err := jobScheduler.Register(flightsJob, cache.ScheduleFlightsSync); err != nil {
+		return err
+	}
+
+	registry := dispatch.NewRegistry()
+	registry.Register(activeflights.FeatureKey, activeflights.New(
+		gameflights.NewReader(cacheStore),
+		gamesessions.NewReader(cacheStore),
+		vaRepo,
+		discord.NewClient(metricsRegistry),
+		metricsRegistry,
+	))
+	return jobScheduler.Register(
+		webhookjobs.New(vaService, registry, runlog.NewRepository(db), metricsRegistry),
+		cache.ScheduleWebhooksSync,
+	)
 }
