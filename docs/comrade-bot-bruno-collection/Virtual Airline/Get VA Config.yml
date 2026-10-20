@@ -1,0 +1,22 @@
+info:
+  name: Get VA Config
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{politburo-base-url}}/api/v1/va/config?configType=BASIC"
+  params:
+    - name: configType
+      value: BASIC
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`getVAConfig` — read the BASIC typed JSON config block for the authenticated VA administrator's airline."

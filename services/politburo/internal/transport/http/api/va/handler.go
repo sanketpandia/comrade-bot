@@ -6,7 +6,9 @@ import (
 	"net/http"
 
 	"infinite-experiment/politburo/internal/access/auth"
+	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/community/virtualairlines"
+	"infinite-experiment/politburo/internal/community/users"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
 
@@ -15,11 +17,13 @@ type vaLoader interface {
 }
 
 type Handler struct {
-	vas vaLoader
+	vas     vaLoader
+	configs configBlocksRepo
+	users   discordUserLookup
 }
 
-func NewHandler(vas *virtualairlines.Repository) *Handler {
-	return &Handler{vas: vas}
+func NewHandler(vas *virtualairlines.Repository, configs *vaconfig.Repository, users *users.Repository) *Handler {
+	return &Handler{vas: vas, configs: configs, users: users}
 }
 
 func (h *Handler) GetVA(w http.ResponseWriter, r *http.Request) {

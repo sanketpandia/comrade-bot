@@ -86,6 +86,7 @@ func (s *Server) router() stdhttp.Handler {
 	router.Use(middleware.Recoverer)
 	router.Use(appmiddleware.AccessLog(s.app.Metrics))
 	router.Use(appmiddleware.AuthenticateAPI(s.app.APIKeys, s.app.Sessions))
+	router.Use(appmiddleware.VAConfigQueryAlias())
 
 	healthHandler := health.NewHandler(s.app.DB, s.app.Cache, s.app.Config.Jobs.Enabled, s.app.StartedAt)
 	sessionsHandler := gamesessions.NewHandler(s.app.SessionsReader)
@@ -95,7 +96,7 @@ func (s *Server) router() stdhttp.Handler {
 		s.app.Registration, s.app.Membership, s.app.VAInit, s.app.Status,
 		s.app.Reports, s.app.Operator, s.app.VirtualAirlines,
 	)
-	vaHandler := vaapi.NewHandler(s.app.VirtualAirlines)
+	vaHandler := vaapi.NewHandler(s.app.VirtualAirlines, s.app.VAConfigs, s.app.Users)
 	userHandler := userapi.NewHandler(s.app.Users)
 	uiHandler := uihttp.NewHandler(s.app.UI, s.app.Sessions, s.app.Tickets, s.app.Reports, s.app.Operator, s.app.Config.PlatformOperatorDiscordIDs, s.app.SessionsReader)
 	handler := apiHandler{
@@ -216,6 +217,18 @@ func (h apiHandler) BanUser(w stdhttp.ResponseWriter, r *stdhttp.Request, params
 func (h apiHandler) GetVA(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	h.withMiddleware(h.vaAdminMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.va.GetVA(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) GetVAConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.GetVAConfigParams) {
+	h.withMiddleware(h.vaAdminMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.va.GetVAConfig(w, r, string(params.ConfigType))
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) UpsertVAConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.UpsertVAConfigParams) {
+	h.withMiddleware(h.vaAdminMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.va.UpsertVAConfig(w, r, string(params.ConfigType))
 	})).ServeHTTP(w, r)
 }
 

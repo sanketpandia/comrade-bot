@@ -19,6 +19,7 @@ import (
 	"infinite-experiment/politburo/internal/community/users"
 	"infinite-experiment/politburo/internal/community/users/status"
 	"infinite-experiment/politburo/internal/community/virtualairlines"
+	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/community/virtualairlines/lookup"
 	"infinite-experiment/politburo/internal/config"
 	"infinite-experiment/politburo/internal/database"
@@ -57,6 +58,7 @@ type App struct {
 	Resolver         *resolver.Resolver
 	VALookup         *lookup.VALookup
 	VirtualAirlines  *virtualairlines.Repository
+	VAConfigs        *vaconfig.Repository
 	IFUsers          infiniteflight.UsersClient
 	LiveryLookup     *gameliveries.Lookup
 	FlightsReader    *gameflights.Reader
@@ -110,6 +112,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 
 	userRepo := users.NewRepository(db)
 	vaRepo := virtualairlines.NewRepository(db)
+	vaConfigRepo := vaconfig.NewRepository(db)
 	membershipRepo := membership.NewRepository(db)
 	reportRepo := reports.NewRepository(db)
 
@@ -133,6 +136,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		Resolver:        resolver.NewResolver(userRepo, vaRepo, membershipRepo),
 		VALookup:        lookup.NewVALookup(vaRepo),
 		VirtualAirlines: vaRepo,
+		VAConfigs:       vaConfigRepo,
 		IFUsers:      ifUsers,
 		LiveryLookup: liveryLookup,
 		FlightsReader:  gameflights.NewReader(cacheStore),

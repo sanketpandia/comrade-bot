@@ -99,7 +99,7 @@ command or stay with `/register` as the only join path.
 | `api_keys` | Bot/service keys | Keep |
 | `virtual_airlines` | Tenant: Discord guild, code, flight-modes JSON | Keep |
 | `va_user_roles` | Membership, callsign, Airtable/career ids, role enum | Keep |
-| `va_configs` | Key/value VA settings | Keep as config bag or replace with typed columns — discuss |
+| `va_configs` | Typed JSON VA settings per `config_type` (`BASIC`, …) | Rewrite table (`002_va_configs.sql`); legacy prod used key/value text — different shape |
 | `va_data_provider_configs` | Airtable (later RDBMS) credentials + schema maps + `features_enabled` | Keep as the mapper home |
 | `va_provider_validation_history` | Wizard audit | Keep if we keep the wizard |
 | `va_sync_history` | Sync bookkeeping | Likely drop if we do not warehouse |
