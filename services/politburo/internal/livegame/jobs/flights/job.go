@@ -8,24 +8,50 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
+	"infinite-experiment/politburo/internal/community/virtualairlines"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/metrics"
+	"infinite-experiment/politburo/internal/scheduler"
 )
 
 const jobName = "infinite-flight-flights"
 
-type Job struct {
-	client  infiniteflight.FlightsClient
-	cache   cache.Store
-	lookup  *gameliveries.Lookup
-	metrics *metrics.Registry
-	now     func() time.Time
+// LiveVACatalogLoader loads VA affix rules for live flight classification.
+type LiveVACatalogLoader interface {
+	LoadLiveFlightVACatalog(ctx context.Context) (virtualairlines.LiveVACatalog, error)
 }
 
-func New(client infiniteflight.FlightsClient, cacheStore cache.Store, lookup *gameliveries.Lookup, metricsRegistry *metrics.Registry) *Job {
-	return &Job{client: client, cache: cacheStore, lookup: lookup, metrics: metricsRegistry, now: time.Now}
+// JobExecutor runs a job with scheduler-level metrics (e.g. chained after-sync work).
+type JobExecutor interface {
+	Execute(context.Context, scheduler.Job)
+}
+
+type Job struct {
+	client        infiniteflight.FlightsClient
+	cache         cache.Store
+	lookup        *gameliveries.Lookup
+	vaCatalog     LiveVACatalogLoader
+	metrics       *metrics.Registry
+	executor      JobExecutor
+	afterSync     scheduler.Job
+	now           func() time.Time
+}
+
+func New(
+	client infiniteflight.FlightsClient,
+	cacheStore cache.Store,
+	lookup *gameliveries.Lookup,
+	vaCatalog LiveVACatalogLoader,
+	metricsRegistry *metrics.Registry,
+	executor JobExecutor,
+	afterSync scheduler.Job,
+) *Job {
+	return &Job{
+		client: client, cache: cacheStore, lookup: lookup, vaCatalog: vaCatalog,
+		metrics: metricsRegistry, executor: executor, afterSync: afterSync, now: time.Now,
+	}
 }
 
 func (j *Job) Name() string {
@@ -56,18 +82,34 @@ func (j *Job) Run(ctx context.Context) error {
 	}
 
 	refreshedAt := j.now().UTC()
+	liveVACatalog := virtualairlines.LiveVACatalog{Servers: map[string][]string{}}
+	if j.vaCatalog != nil {
+		catalog, err := j.vaCatalog.LoadLiveFlightVACatalog(ctx)
+		if err != nil {
+			slog.Error("failed to load live VA catalog; continuing with empty catalog", "error", err)
+		} else {
+			liveVACatalog = catalog
+		}
+	}
 	totalFlights := 0
 	for _, session := range sessionsSnapshot.Result {
 		if session.ID == "" || session.NormalizedName == "" {
 			continue
 		}
-		count, err := j.refreshSession(ctx, session, refreshedAt)
+		count, err := j.refreshSession(ctx, session, refreshedAt, liveVACatalog)
 		if err != nil {
 			slog.Error("failed to refresh session flights", "sessionId", session.ID, "server", session.NormalizedName, "error", err)
 			continue
 		}
 		totalFlights += count
 	}
-	slog.Info("Infinite Flight flights refreshed", "sessions", len(sessionsSnapshot.Result), "flights", totalFlights)
+	slog.Info("Infinite Flight flights refreshed",
+		"sessions", len(sessionsSnapshot.Result),
+		"flights", totalFlights,
+		"vaCatalogRules", len(liveVACatalog.Rules),
+	)
+	if j.executor != nil && j.afterSync != nil {
+		j.executor.Execute(ctx, j.afterSync)
+	}
 	return nil
 }

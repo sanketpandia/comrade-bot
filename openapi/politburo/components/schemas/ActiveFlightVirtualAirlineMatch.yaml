@@ -1,0 +1,10 @@
+type: object
+required: [vaId, vaCode]
+properties:
+  vaId:
+    type: string
+    format: uuid
+    description: Virtual airline identifier.
+  vaCode:
+    type: string
+    description: Virtual airline code.

@@ -90,7 +90,7 @@ func (s *Server) router() stdhttp.Handler {
 
 	healthHandler := health.NewHandler(s.app.DB, s.app.Cache, s.app.Config.Jobs.Enabled, s.app.StartedAt)
 	sessionsHandler := gamesessions.NewHandler(s.app.SessionsReader)
-	flightsHandler := gameflights.NewHandler(s.app.FlightsReader, s.app.Metrics)
+	flightsHandler := gameflights.NewHandler(s.app.FlightsReader, s.app.Metrics, s.app.VirtualAirlines)
 	signedLinkHandler := signedlink.NewHandler(s.app.Users, s.app.Tickets, s.app.Resolver, s.app.VALookup, s.app.Config.Auth.UIBaseURL)
 	identityHandler := identity.NewHandler(
 		s.app.Registration, s.app.Membership, s.app.VAInit, s.app.Status,

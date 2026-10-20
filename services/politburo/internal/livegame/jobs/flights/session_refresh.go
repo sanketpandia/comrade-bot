@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
+	"infinite-experiment/politburo/internal/community/virtualairlines"
 	gameflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/livegame/flights/flightresolution"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 )
 
-func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session, refreshedAt time.Time) (int, error) {
+func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session, refreshedAt time.Time, liveVACatalog virtualairlines.LiveVACatalog) (int, error) {
 	items, err := j.fetchUpstreamFlights(ctx, session)
 	if err != nil {
 		return 0, err
@@ -25,10 +26,11 @@ func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session
 	pilotStateCounts := map[string]float64{}
 
 	computeBase := flightresolution.ComputeContext{
-		Context:     ctx,
-		Deps:        flightresolution.ComputeDeps{Lookup: j.lookup, Metrics: j.metrics},
-		Session:     session,
-		RefreshedAt: refreshedAt,
+		Context:       ctx,
+		Deps:          flightresolution.ComputeDeps{Lookup: j.lookup, Metrics: j.metrics},
+		Session:       session,
+		RefreshedAt:   refreshedAt,
+		LiveVACatalog: liveVACatalog,
 	}
 
 	for _, item := range items {

@@ -9,6 +9,7 @@ type EffectDecision struct {
 
 var flightEffects = []EffectDecision{
 	syncFromUpstreamEffect,
+	vaMatchEffect,
 	liveryEnrichEffect,
 	pathSyncUpdateEffect,
 	fplSyncEnqueueEffect,

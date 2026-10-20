@@ -27,7 +27,7 @@ func writeGetActiveFlightError(w http.ResponseWriter, flightID string, err error
 
 func writeListActiveTracksError(w http.ResponseWriter, server string, query domainflights.FilterQuery, err error) {
 	switch {
-	case errors.Is(err, domainflights.ErrUnknownServer), errors.Is(err, domainflights.ErrInvalidFilter):
+	case errors.Is(err, domainflights.ErrUnknownServer), errors.Is(err, domainflights.ErrInvalidFilter), errors.Is(err, domainflights.ErrUnknownVACode):
 		response.WriteError(w, http.StatusBadRequest, "INVALID_QUERY_FILTER", err.Error())
 	case errors.Is(err, domainflights.ErrCacheMiss):
 		slog.Warn("active flights cache miss", "serverId", server, "error", err)
@@ -48,8 +48,11 @@ func writeListActiveTracksError(w http.ResponseWriter, server string, query doma
 func writeListActiveTracksRequestError(w http.ResponseWriter, err error) {
 	if isInvalidListRequest(err) {
 		msg := err.Error()
-		if errors.Is(err, domainflights.ErrInvalidFilter) {
+		switch {
+		case errors.Is(err, domainflights.ErrInvalidFilter):
 			msg = "invalid pilotState value"
+		case errors.Is(err, domainflights.ErrUnknownVACode):
+			msg = "unknown virtual airline code"
 		}
 		response.WriteError(w, http.StatusBadRequest, "INVALID_QUERY_FILTER", msg)
 		return

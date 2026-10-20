@@ -23,6 +23,9 @@ const (
 	// PrefixGameFlightsRecord namespaces per-flight enriched flight records.
 	PrefixGameFlightsRecord = PrefixGameFlights + "record:"
 
+	// PrefixGameFlightsVA namespaces per-VA active flight ID lists.
+	PrefixGameFlightsVA = PrefixGameFlights + "va:"
+
 	// PrefixAuth namespaces short-lived authentication cache entries.
 	PrefixAuth = "auth:"
 
@@ -54,4 +57,8 @@ func KeyActiveFlights(normalizedName string) string {
 
 func KeyFlightRecord(flightID string) string {
 	return PrefixGameFlightsRecord + flightID
+}
+
+func KeyVAActiveFlights(vaID string) string {
+	return PrefixGameFlightsVA + vaID
 }

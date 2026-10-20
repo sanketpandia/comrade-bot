@@ -4,8 +4,11 @@ import (
 	"database/sql"
 
 	"infinite-experiment/politburo/internal/cache"
+	"infinite-experiment/politburo/internal/community/users"
+	"infinite-experiment/politburo/internal/community/virtualairlines"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	flightsjob "infinite-experiment/politburo/internal/livegame/jobs/flights"
+	vaflightindexjob "infinite-experiment/politburo/internal/livegame/jobs/vaflightindex"
 	liveriesjob "infinite-experiment/politburo/internal/livegame/jobs/liveries"
 	sessionsjob "infinite-experiment/politburo/internal/livegame/jobs/sessions"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
@@ -29,5 +32,9 @@ func Register(
 	if err := jobScheduler.Register(liveriesjob.New(client, liveryRepo, lookup), cache.ScheduleLiveriesSync); err != nil {
 		return err
 	}
-	return jobScheduler.Register(flightsjob.New(client, cacheStore, lookup, metricsRegistry), cache.ScheduleFlightsSync)
+	vaRepo := virtualairlines.NewRepository(db)
+	vaService := virtualairlines.NewService(db, users.NewRepository(db), vaRepo)
+	indexJob := vaflightindexjob.New(cacheStore, metricsRegistry)
+	flightsJob := flightsjob.New(client, cacheStore, lookup, vaService, metricsRegistry, jobScheduler, indexJob)
+	return jobScheduler.Register(flightsJob, cache.ScheduleFlightsSync)
 }

@@ -1,10 +1,14 @@
 package gameflights
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
+	"log/slog"
+
 	"infinite-experiment/politburo/internal/metrics"
 	"infinite-experiment/politburo/internal/transport/http/response"
 
@@ -12,11 +16,12 @@ import (
 )
 
 type Handler struct {
-	svc *Service
+	svc      *Service
+	vaLookup vaCodeResolver
 }
 
-func NewHandler(reader *domainflights.Reader, metricsRegistry *metrics.Registry) *Handler {
-	return &Handler{svc: NewService(reader, metricsRegistry)}
+func NewHandler(reader *domainflights.Reader, metricsRegistry *metrics.Registry, vaLookup vaCodeResolver) *Handler {
+	return &Handler{svc: NewService(reader, metricsRegistry), vaLookup: vaLookup}
 }
 
 func (h *Handler) GetActiveFlight(w http.ResponseWriter, r *http.Request, flightID openapi_types.UUID) {
@@ -33,6 +38,20 @@ func (h *Handler) GetActiveFlights(w http.ResponseWriter, r *http.Request, norma
 	if err != nil {
 		writeListActiveTracksRequestError(w, err)
 		return
+	}
+	if input.Filters.VACode != "" {
+		vaID, err := resolveVACode(r.Context(), h.vaLookup, input.Filters.VACode)
+		if err != nil {
+			if errors.Is(err, domainflights.ErrUnknownVACode) {
+				writeListActiveTracksRequestError(w, err)
+				return
+			}
+			slog.Error("resolve virtual airline code", "error", err, "vaCode", input.Filters.VACode)
+			response.WriteError(w, http.StatusInternalServerError, "ACTIVE_FLIGHTS_CACHE_UNAVAILABLE", "active flights cache is unavailable")
+			return
+		}
+		input.Filters.VAID = vaID
+		input.Filters.VACode = strings.ToUpper(strings.TrimSpace(input.Filters.VACode))
 	}
 
 	resp, err := h.svc.ListActiveTracks(r.Context(), input)

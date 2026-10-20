@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 func validateBasic(raw json.RawMessage) error {
@@ -16,6 +17,28 @@ func validateBasic(raw json.RawMessage) error {
 	if cs, ok := top["game_callsign"]; ok {
 		if err := validateGameCallsign(cs); err != nil {
 			return err
+		}
+	}
+	if ps, ok := top["preferred_servers"]; ok {
+		if err := validatePreferredServers(ps); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validatePreferredServers(raw json.RawMessage) error {
+	var items []json.RawMessage
+	if err := json.Unmarshal(raw, &items); err != nil {
+		return fmt.Errorf("%w: preferred_servers must be an array", ErrInvalidConfig)
+	}
+	for i, item := range items {
+		var s string
+		if err := json.Unmarshal(item, &s); err != nil {
+			return fmt.Errorf("%w: preferred_servers[%d] must be a string", ErrInvalidConfig, i)
+		}
+		if strings.TrimSpace(s) == "" {
+			return fmt.Errorf("%w: preferred_servers[%d] must not be empty", ErrInvalidConfig, i)
 		}
 	}
 	return nil

@@ -1,0 +1,18 @@
+type: object
+description: Documented shape for BASIC va config (stored as opaque payload; validated server-side).
+additionalProperties: true
+properties:
+  game_callsign:
+    type: object
+    additionalProperties: true
+    properties:
+      prefix:
+        type: string
+      suffix:
+        type: string
+  preferred_servers:
+    type: array
+    description: Normalized Infinite Flight session names (e.g. casual, training, expert).
+    items:
+      type: string
+      minLength: 1

@@ -18,7 +18,8 @@ http:
         "game_callsign": {
           "prefix": "IE",
           "suffix": ""
-        }
+        },
+        "preferred_servers": ["expert", "casual"]
       }
 
 settings:

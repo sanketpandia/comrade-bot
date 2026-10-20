@@ -39,6 +39,7 @@ func MapFlight(upstream infiniteflight.Flight, session infiniteflight.Session, n
 		Username:            upstream.Username,
 		VirtualOrganization: upstream.VirtualOrganization,
 		Callsign:            upstream.Callsign,
+		NormalizedCallsign:  NormalizedCallsignForAffix(upstream.Callsign),
 		Latitude:            math.Round(upstream.Latitude*10000) / 10000,
 		Longitude:           math.Round(upstream.Longitude*10000) / 10000,
 		Altitude:            int(math.Round(upstream.Altitude)),

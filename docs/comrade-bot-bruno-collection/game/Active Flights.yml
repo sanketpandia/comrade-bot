@@ -5,14 +5,14 @@ info:
 
 http:
   method: GET
-  url: "{{politburo-base-url}}/api/v1/game/flights/active/{{politburo-server-id}}"
+  url: "{{politburo-base-url}}/api/v1/game/flights/active/{{politburo-server-id}}?pageNumber=2&pageLength=5000"
   params:
     - name: pageNumber
-      value: "1"
+      value: "2"
       type: query
       description: 1-based page number
     - name: pageLength
-      value: "50"
+      value: "5000"
       type: query
       description: Flights per page
   auth: inherit
@@ -22,6 +22,6 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
+  forwardAuthorizationHeader: true
 
-docs: |-
-  `getActiveFlights` — paged motion tracks for active flights on one server (`normalizedServerName` path segment).
+docs: "`getActiveFlights` — paged motion tracks for active flights on one server (`normalizedServerName` path segment)."

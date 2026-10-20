@@ -24,6 +24,7 @@ function readFiltersFromForm() {
     callSign: String(data.get('callSign') || '').trim(),
     userName: String(data.get('userName') || '').trim(),
     pilotState: data.getAll('pilotState').map(String),
+    vaCode: String(data.get('vaCode') || '').trim(),
     showCallsigns: data.get('showCallsigns') != null,
   };
 }
@@ -34,6 +35,7 @@ function applyFiltersToForm(filters) {
   }
   form.elements.callSign.value = filters.callSign || '';
   form.elements.userName.value = filters.userName || '';
+  form.elements.vaCode.value = filters.vaCode || '';
   for (const input of form.querySelectorAll('input[name="pilotState"]')) {
     input.checked = filters.pilotState.includes(input.value);
   }
@@ -48,6 +50,7 @@ function readFiltersFromURL() {
     callSign: (params.get('callSign') || '').trim(),
     userName: (params.get('userName') || '').trim(),
     pilotState: params.getAll('pilotState'),
+    vaCode: (params.get('vaCode') || '').trim(),
     showCallsigns: showCallsignsParam === null ? true : showCallsignsParam !== '0',
   };
 }
@@ -60,6 +63,7 @@ function writeFiltersToURL(filters) {
   }
   if (filters.callSign) params.set('callSign', filters.callSign);
   if (filters.userName) params.set('userName', filters.userName);
+  if (filters.vaCode) params.set('vaCode', filters.vaCode);
   if (!filters.showCallsigns) params.set('showCallsigns', '0');
   const query = params.toString();
   const next = query ? `${window.location.pathname}?${query}` : window.location.pathname;
@@ -141,6 +145,7 @@ function flightsURL(filters, pageNumber) {
   }
   if (filters.callSign) params.set('callSign', filters.callSign);
   if (filters.userName) params.set('userName', filters.userName);
+  if (filters.vaCode) params.set('vaCode', filters.vaCode);
   const query = params.toString();
   return `/api/v1/game/flights/active/${encodeURIComponent(filters.serverId)}?${query}`;
 }
