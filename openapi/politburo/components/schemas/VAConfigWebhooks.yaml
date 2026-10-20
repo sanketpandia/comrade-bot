@@ -13,7 +13,7 @@ additionalProperties:
     url:
       type: string
       format: uri
-      description: HTTPS Discord webhook URL (`https://discord.com/api/webhooks/{id}/{token}`).
+      description: HTTPS Discord webhook URL on discord.com or discordapp.com (`/api/webhooks/{id}/{token}`).
       example: https://discord.com/api/webhooks/123456789012345678/token
     frequency:
       type: string

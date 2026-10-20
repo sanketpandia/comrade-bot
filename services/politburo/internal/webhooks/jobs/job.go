@@ -79,28 +79,9 @@ func (j *Job) Run(ctx context.Context) error {
 	var mu sync.Mutex
 	var insertErr error
 	err = dispatch.Run(ctx, dispatch.DefaultWorkers, len(due), func(ctx context.Context, i int) error {
-		item := due[i]
-		started := time.Now().UTC()
-		result := j.registry.Handle(ctx, item)
-		finished := time.Now().UTC()
-		if result.Outcome == "" {
-			result.Outcome = dispatch.OutcomeError
-			if result.ErrorMessage == "" {
-				result.ErrorMessage = "webhook handler returned an empty outcome"
-			}
-		}
-		j.metrics.ObserveWebhookDispatch(item.WebhookType, result.Outcome, finished.Sub(started).Seconds())
-		if err := j.runs.Insert(ctx, runlog.Row{
-			VAID:            item.VAID,
-			WebhookType:     item.WebhookType,
-			Outcome:         result.Outcome,
-			SkipReason:      result.SkipReason,
-			DiscordMessages: result.DiscordMessages,
-			ErrorMessage:    result.ErrorMessage,
-			StartedAt:       started,
-			FinishedAt:      finished,
-		}); err != nil {
-			slog.Error("record webhook run", "va_id", item.VAID, "webhook_type", item.WebhookType, "error", err)
+		_, err := j.DispatchOne(ctx, due[i])
+		if err != nil {
+			slog.Error("record webhook run", "va_id", due[i].VAID, "webhook_type", due[i].WebhookType, "error", err)
 			mu.Lock()
 			insertErr = errors.Join(insertErr, err)
 			mu.Unlock()
@@ -111,4 +92,31 @@ func (j *Job) Run(ctx context.Context) error {
 		return err
 	}
 	return insertErr
+}
+
+// DispatchOne runs one webhook feature, records metrics, and persists a run log row.
+func (j *Job) DispatchOne(ctx context.Context, item dispatch.Item) (dispatch.Result, error) {
+	started := time.Now().UTC()
+	result := j.registry.Handle(ctx, item)
+	finished := time.Now().UTC()
+	if result.Outcome == "" {
+		result.Outcome = dispatch.OutcomeError
+		if result.ErrorMessage == "" {
+			result.ErrorMessage = "webhook handler returned an empty outcome"
+		}
+	}
+	j.metrics.ObserveWebhookDispatch(item.WebhookType, result.Outcome, finished.Sub(started).Seconds())
+	if err := j.runs.Insert(ctx, runlog.Row{
+		VAID:            item.VAID,
+		WebhookType:     item.WebhookType,
+		Outcome:         result.Outcome,
+		SkipReason:      result.SkipReason,
+		DiscordMessages: result.DiscordMessages,
+		ErrorMessage:    result.ErrorMessage,
+		StartedAt:       started,
+		FinishedAt:      finished,
+	}); err != nil {
+		return result, err
+	}
+	return result, nil
 }

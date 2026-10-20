@@ -31,6 +31,13 @@ func TestValidate(t *testing.T) {
 				"filters": {}
 			}
 		}`, ok: false},
+		{name: "discordapp host", raw: `{
+			"active_flights": {
+				"url": "https://discordapp.com/api/webhooks/123/token",
+				"frequency": "30m",
+				"filters": {}
+			}
+		}`, ok: true},
 		{name: "wrong host", raw: `{
 			"active_flights": {
 				"url": "https://example.com/api/webhooks/1/token",

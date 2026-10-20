@@ -5,8 +5,7 @@ info:
 
 http:
   method: POST
-  url: "{{politburo-base-url}}/api/v1/va/config"
-  auth: inherit
+  url: "{{politburo-base-url}}/api/v1/va/config?configType=WEBHOOKS"
   params:
     - name: configType
       value: WEBHOOKS
@@ -24,6 +23,12 @@ http:
           }
         }
       }
+  auth: inherit
+
+runtime:
+  variables:
+    - name: discord-webhook-url
+      value: https://discordapp.com/api/webhooks/1480653763579609261/Pk6Vu9mWyHMCNE4anIQ9H4IAaC1nM1aMjB6lQFMdEd8vyau-GWSWjsFgMJcS8fKASUbO
 
 settings:
   encodeUrl: true

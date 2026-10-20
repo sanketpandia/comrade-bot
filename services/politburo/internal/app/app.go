@@ -31,6 +31,8 @@ import (
 	"infinite-experiment/politburo/internal/scheduler"
 	"infinite-experiment/politburo/internal/logging"
 	"infinite-experiment/politburo/internal/metrics"
+	webhookjobs "infinite-experiment/politburo/internal/webhooks/jobs"
+	"infinite-experiment/politburo/internal/webhooks"
 	"infinite-experiment/politburo/internal/operations/operator"
 	"infinite-experiment/politburo/internal/operations/reports"
 	"infinite-experiment/politburo/internal/ui"
@@ -63,6 +65,7 @@ type App struct {
 	LiveryLookup     *gameliveries.Lookup
 	FlightsReader    *gameflights.Reader
 	SessionsReader   *gamesessions.Reader
+	VAWebhookJob     *webhookjobs.Job
 	closeOnce        sync.Once
 }
 
@@ -112,6 +115,8 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 
 	userRepo := users.NewRepository(db)
 	vaRepo := virtualairlines.NewRepository(db)
+	vaInit := virtualairlines.NewService(db, userRepo, vaRepo)
+	vaWebhookDispatch := webhooks.NewDispatchJob(cacheStore, db, vaInit, vaRepo, metricsRegistry)
 	vaConfigRepo := vaconfig.NewRepository(db)
 	membershipRepo := membership.NewRepository(db)
 	reportRepo := reports.NewRepository(db)
@@ -129,7 +134,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		Metrics: metricsRegistry, Scheduler: jobScheduler, UI: renderer,
 		Registration: registration.NewService(userRepo, ifUsers),
 		Membership:   membership.NewService(userRepo, membershipRepo, vaRepo, roster.Noop{}),
-		VAInit:       virtualairlines.NewService(db, userRepo, vaRepo),
+		VAInit:       vaInit,
 		Status:       status.NewBuilder(userRepo, membershipRepo, vaRepo),
 		Reports:      reportRepo,
 		Operator:     operator.NewService(db, userRepo, membershipRepo, reportRepo, vaRepo),
@@ -141,6 +146,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		LiveryLookup: liveryLookup,
 		FlightsReader:  gameflights.NewReader(cacheStore),
 		SessionsReader: gamesessions.NewReader(cacheStore),
+		VAWebhookJob:   vaWebhookDispatch,
 	}
 	slog.Info("application initialized", "environment", cfg.Environment, "jobs_enabled", cfg.Jobs.Enabled)
 	return application, nil

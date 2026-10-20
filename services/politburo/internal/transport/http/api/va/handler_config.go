@@ -9,9 +9,11 @@ import (
 	"net/http"
 
 	"infinite-experiment/politburo/internal/access/auth"
-	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/community/users"
+	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/transport/http/response"
+
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
 const maxConfigBodyBytes = 64 << 10
@@ -62,6 +64,12 @@ func (h *Handler) UpsertVAConfig(w http.ResponseWriter, r *http.Request, configT
 	}
 
 	if err := vaconfig.Validate(configType, raw); err != nil {
+		slog.Warn("reject va config",
+			"request_id", chimiddleware.GetReqID(r.Context()),
+			"va_id", vaID,
+			"type", configType,
+			"error", err,
+		)
 		if errors.Is(err, vaconfig.ErrUnknownType) {
 			response.WriteError(w, http.StatusBadRequest, "UNKNOWN_CONFIG_TYPE", err.Error())
 			return

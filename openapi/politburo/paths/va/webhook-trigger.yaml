@@ -1,0 +1,54 @@
+post:
+  operationId: triggerVAWebhook
+  summary: Manually trigger a VA Discord webhook feature
+  description: |
+    Loads the requested WEBHOOKS feature for the caller's virtual airline and dispatches it immediately,
+    using the same handler, metrics, and run log persistence as the scheduled webhook job.
+    Requires VA administrator role (`administrator`).
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/VAWebhookTriggerRequest.yaml"
+  responses:
+    "200":
+      description: Webhook dispatch finished (including skipped or error outcomes)
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VAWebhookTriggerResponse.yaml"
+    "400":
+      description: Invalid request body
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "401":
+      description: Missing or inactive API key or session cookie
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Caller is not a VA administrator
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: No virtual airline context, WEBHOOKS config missing, or unknown webhook type
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Failed to load config or persist dispatch
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

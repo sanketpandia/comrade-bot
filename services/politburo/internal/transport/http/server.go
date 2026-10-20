@@ -96,7 +96,7 @@ func (s *Server) router() stdhttp.Handler {
 		s.app.Registration, s.app.Membership, s.app.VAInit, s.app.Status,
 		s.app.Reports, s.app.Operator, s.app.VirtualAirlines,
 	)
-	vaHandler := vaapi.NewHandler(s.app.VirtualAirlines, s.app.VAConfigs, s.app.Users)
+	vaHandler := vaapi.NewHandler(s.app.VirtualAirlines, s.app.VAConfigs, s.app.Users, s.app.VAInit, s.app.VAWebhookJob)
 	userHandler := userapi.NewHandler(s.app.Users)
 	uiHandler := uihttp.NewHandler(s.app.UI, s.app.Sessions, s.app.Tickets, s.app.Reports, s.app.Operator, s.app.Config.PlatformOperatorDiscordIDs, s.app.SessionsReader)
 	handler := apiHandler{
@@ -229,6 +229,12 @@ func (h apiHandler) GetVAConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, pa
 func (h apiHandler) UpsertVAConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.UpsertVAConfigParams) {
 	h.withMiddleware(h.vaAdminMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.va.UpsertVAConfig(w, r, string(params.ConfigType))
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) TriggerVAWebhook(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.withMiddleware(h.vaAdminMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.va.TriggerVAWebhook(w, r)
 	})).ServeHTTP(w, r)
 }
 

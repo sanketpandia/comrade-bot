@@ -1,0 +1,20 @@
+type: object
+required: [webhookType, outcome]
+properties:
+  webhookType:
+    type: string
+    description: Feature key that was dispatched.
+  outcome:
+    type: string
+    enum: [success, skipped, error]
+    description: Dispatch outcome recorded in the webhook run log.
+  skipReason:
+    type: string
+    description: Present when outcome is `skipped`.
+  discordMessages:
+    type: integer
+    minimum: 0
+    description: Number of Discord messages posted for this run.
+  errorMessage:
+    type: string
+    description: Present when outcome is `error`.

@@ -124,7 +124,7 @@ func validateActiveFlights(raw json.RawMessage) error {
 		return errors.New("url must be a string")
 	}
 	if !ValidDiscordWebhookURL(webhookURL) {
-		return errors.New("url must be an https://discord.com/api/webhooks/{id}/{token} URL")
+		return errors.New("url must be https://discord.com/api/webhooks/{id}/{token} or https://discordapp.com/api/webhooks/{id}/{token}")
 	}
 
 	freqRaw, ok := fields["frequency"]
@@ -183,7 +183,9 @@ func ValidDiscordWebhookURL(raw string) bool {
 	if err != nil || u.Scheme != "https" || u.User != nil || u.Hostname() == "" || u.Port() != "" {
 		return false
 	}
-	if !strings.EqualFold(u.Hostname(), "discord.com") {
+	switch strings.ToLower(u.Hostname()) {
+	case "discord.com", "discordapp.com":
+	default:
 		return false
 	}
 	path := strings.TrimSuffix(u.EscapedPath(), "/")
