@@ -3,6 +3,7 @@ package flights
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
@@ -67,6 +68,14 @@ func (r *Reader) ListActiveTracks(ctx context.Context, input ListActiveTracksInp
 		PageNumber:       input.PageNumber,
 		PageLength:       input.PageLength,
 	}, nil
+}
+
+// GetActiveFlight returns the enriched per-flight cache record for flightID.
+func (r *Reader) GetActiveFlight(ctx context.Context, flightID string) (Flight, error) {
+	if strings.TrimSpace(flightID) == "" {
+		return Flight{}, ErrInvalidFilter
+	}
+	return r.loadFlightRecord(ctx, flightID)
 }
 
 func (r *Reader) loadSnapshot(ctx context.Context, server string) (Snapshot, error) {

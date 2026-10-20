@@ -136,6 +136,19 @@ func TestAuthenticateAPIFallsBackToAPIKeyOnGamePaths(t *testing.T) {
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204", recorder.Code)
 	}
+
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flight/active/c34118e7-cbdd-4e22-8751-0cda93e41d75", nil))
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("active flight status = %d, want 401", recorder.Code)
+	}
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/game/flight/active/c34118e7-cbdd-4e22-8751-0cda93e41d75", nil)
+	req.Header.Set(APIKeyHeader, "good")
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("active flight with key status = %d, want 204", recorder.Code)
+	}
 }
 
 func TestAuthenticateAPIRequiresAPIKeyForSignedLink(t *testing.T) {

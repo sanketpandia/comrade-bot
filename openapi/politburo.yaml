@@ -167,6 +167,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/game/flight/active/{flightId}:
+    get:
+      operationId: getActiveFlight
+      summary: Read cached enriched record for one active flight
+      tags:
+        - Game
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: flightId
+          in: path
+          required: true
+          description: Infinite Flight flight identifier (UUID).
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The latest cached enriched flight record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveFlightRecordResponse'
+        '400':
+          description: An invalid flight identifier was supplied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or inactive API key or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No cached record exists for the flight
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: The cache entry could not be read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/signed-link:
     post:
       operationId: generateSignedLink
@@ -898,6 +946,126 @@ components:
           $ref: '#/components/schemas/CacheMetadata'
         pagination:
           $ref: '#/components/schemas/Pagination'
+    ActiveFlightRecord:
+      type: object
+      required:
+        - flightId
+        - callsign
+        - latitude
+        - longitude
+        - altitude
+        - speed
+        - verticalSpeed
+        - track
+        - lastReport
+        - pilotState
+        - isConnected
+        - sessionId
+        - normalizedName
+        - normalized
+      properties:
+        flightId:
+          type: string
+          format: uuid
+          description: Infinite Flight flight identifier.
+        userId:
+          type: string
+          description: Infinite Flight user identifier.
+        aircraftId:
+          type: string
+        liveryId:
+          type: string
+        username:
+          type: string
+          nullable: true
+        virtualOrganization:
+          type: string
+          nullable: true
+        callsign:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        altitude:
+          type: integer
+          description: Altitude in feet.
+        speed:
+          type: integer
+          description: Ground speed in knots (rounded).
+        verticalSpeed:
+          type: number
+          format: double
+          description: Vertical speed in feet per minute.
+        track:
+          type: number
+          format: double
+          description: Ground track in degrees clockwise from north.
+        lastReport:
+          type: string
+          format: date-time
+          description: Timestamp of the latest upstream position report.
+        pilotState:
+          type: integer
+          description: Raw Infinite Flight pilot state code.
+        isConnected:
+          type: boolean
+        aircraftName:
+          type: string
+        liveryName:
+          type: string
+        sessionId:
+          type: string
+        normalizedName:
+          type: string
+          description: Normalized session name (for example casual, expert, training).
+        normalized:
+          $ref: '#/components/schemas/ActiveFlightNormalized'
+        pathSync:
+          $ref: '#/components/schemas/ActiveFlightPathSync'
+    ActiveFlightRecordResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ActiveFlightRecord'
+    ActiveFlightNormalized:
+      type: object
+      required:
+        - speed
+        - verticalSpeed
+        - pilotState
+        - isConnected
+      properties:
+        speed:
+          type: string
+          description: Display-formatted ground speed (for example "186 kts").
+        verticalSpeed:
+          type: string
+          description: Display-formatted vertical speed (for example "-434.3 ft/min").
+        pilotState:
+          $ref: '#/components/schemas/PilotStateName'
+        isConnected:
+          type: string
+          enum:
+            - connected
+            - disconnected
+          description: Human-readable connection status.
+    ActiveFlightPathSync:
+      type: object
+      required:
+        - fplSyncRequired
+      properties:
+        fplSyncRequired:
+          type: boolean
+          description: Whether a flight-plan sync is pending for this flight.
+        lastFPLSyncAt:
+          type: string
+          format: date-time
+          description: When the last flight-plan sync completed, if any.
     Pagination:
       type: object
       required:

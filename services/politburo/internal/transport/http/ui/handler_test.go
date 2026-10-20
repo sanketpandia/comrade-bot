@@ -279,6 +279,9 @@ func TestActiveFlightsMapRenders(t *testing.T) {
 	if !strings.Contains(body, `id="leaflet-map"`) || !strings.Contains(body, `id="maps-filters"`) {
 		t.Fatalf("missing map shell: %s", body)
 	}
+	if !strings.Contains(body, `id="maps-detail-panel"`) {
+		t.Fatalf("missing flight detail panel: %s", body)
+	}
 	if !strings.Contains(body, `aria-label="Primary"`) || !strings.Contains(body, `class="maps-page"`) {
 		t.Fatalf("map is outside the app shell: %s", body)
 	}

@@ -34,6 +34,11 @@ func (s cacheStub) GetJSON(_ context.Context, key string, destination any) error
 		*(destination.(*domainflights.Snapshot)) = s.flights
 		return nil
 	default:
+		if strings.HasPrefix(key, cache.PrefixGameFlightsRecord) {
+			if s.err != nil {
+				return s.err
+			}
+		}
 		if s.records != nil {
 			for id, flight := range s.records {
 				if key == cache.KeyFlightRecord(id) {
