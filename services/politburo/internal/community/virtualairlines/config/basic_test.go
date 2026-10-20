@@ -8,60 +8,68 @@ import (
 
 func TestValidateBasicAcceptsGameCallsign(t *testing.T) {
 	raw := json.RawMessage(`{"game_callsign":{"prefix":"IE","suffix":"Heavy"}}`)
-	if err := Validate(TypeBasic, raw); err != nil {
-		t.Fatalf("Validate() = %v", err)
+	if err := ValidateBasic(raw); err != nil {
+		t.Fatalf("ValidateBasic() = %v", err)
 	}
 }
 
 func TestValidateBasicAllowsExtraKeys(t *testing.T) {
 	raw := json.RawMessage(`{"game_callsign":{"prefix":"IE"},"future_flag":true}`)
-	if err := Validate(TypeBasic, raw); err != nil {
-		t.Fatalf("Validate() = %v", err)
+	if err := ValidateBasic(raw); err != nil {
+		t.Fatalf("ValidateBasic() = %v", err)
 	}
 }
 
 func TestValidateBasicRejectsNonStringPrefix(t *testing.T) {
 	raw := json.RawMessage(`{"game_callsign":{"prefix":1}}`)
-	if err := Validate(TypeBasic, raw); err == nil {
-		t.Fatal("expected error")
+	err := ValidateBasic(raw)
+	if !errors.Is(err, ErrInvalidConfig) {
+		t.Fatalf("err = %v, want ErrInvalidConfig", err)
+	}
+	if err.Error() != "invalid config: game_callsign.prefix must be a string" {
+		t.Fatalf("message = %q", err.Error())
 	}
 }
 
 func TestValidateBasicAcceptsPreferredServers(t *testing.T) {
 	raw := json.RawMessage(`{"preferred_servers":["expert","casual"]}`)
-	if err := Validate(TypeBasic, raw); err != nil {
-		t.Fatalf("Validate() = %v", err)
+	if err := ValidateBasic(raw); err != nil {
+		t.Fatalf("ValidateBasic() = %v", err)
 	}
 }
 
 func TestValidateBasicRejectsPreferredServersNotArray(t *testing.T) {
 	raw := json.RawMessage(`{"preferred_servers":"expert"}`)
-	if err := Validate(TypeBasic, raw); err == nil {
-		t.Fatal("expected error")
+	if err := ValidateBasic(raw); !errors.Is(err, ErrInvalidConfig) {
+		t.Fatalf("err = %v, want ErrInvalidConfig", err)
 	}
 }
 
 func TestValidateBasicRejectsEmptyPreferredServerEntry(t *testing.T) {
 	raw := json.RawMessage(`{"preferred_servers":["expert",""]}`)
-	if err := Validate(TypeBasic, raw); err == nil {
-		t.Fatal("expected error")
+	if err := ValidateBasic(raw); !errors.Is(err, ErrInvalidConfig) {
+		t.Fatalf("err = %v, want ErrInvalidConfig", err)
 	}
 }
 
-func TestValidateWebhooksDelegates(t *testing.T) {
-	raw := json.RawMessage(`{"active_flights":{"url":"https://discord.com/api/webhooks/123/token","frequency":"30m","filters":{"pilotState":["active"]}}}`)
-	if err := Validate(TypeWebhooks, raw); err != nil {
-		t.Fatalf("Validate() = %v", err)
-	}
-	bad := json.RawMessage(`{"active_flights":{"url":"http://discord.com/api/webhooks/123/token","frequency":"30m","filters":{}}}`)
-	if err := Validate(TypeWebhooks, bad); !errors.Is(err, ErrInvalidConfig) {
-		t.Fatalf("err = %v", err)
+func TestValidateBasicRejectsNonObjectBody(t *testing.T) {
+	if err := ValidateBasic(json.RawMessage(`[]`)); !errors.Is(err, ErrInvalidConfig) {
+		t.Fatalf("err = %v, want ErrInvalidConfig", err)
 	}
 }
 
-func TestValidateUnknownType(t *testing.T) {
-	raw := json.RawMessage(`{}`)
-	if err := Validate("FUTURE", raw); err != ErrUnknownType {
-		t.Fatalf("err = %v, want ErrUnknownType", err)
+func TestParseBasicNormalizes(t *testing.T) {
+	basic, err := ParseBasic(json.RawMessage(`{
+		"game_callsign":{"prefix":" IE ","suffix":""},
+		"preferred_servers":[" Expert ","expert","casual"]
+	}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if basic.GameCallsign.Prefix != "IE" {
+		t.Fatalf("prefix = %q", basic.GameCallsign.Prefix)
+	}
+	if len(basic.PreferredServers) != 2 || basic.PreferredServers[0] != "casual" || basic.PreferredServers[1] != "expert" {
+		t.Fatalf("preferred servers = %#v", basic.PreferredServers)
 	}
 }

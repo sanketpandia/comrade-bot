@@ -1,7 +1,6 @@
 package gameflights
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,19 +8,35 @@ import (
 	"time"
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
-	"infinite-experiment/politburo/internal/community/virtualairlines"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
 )
 
-type vaCodeStub struct {
-	byCode map[string]*virtualairlines.VirtualAirline
+func getActiveFlightsWithVA(t *testing.T, store cacheStub, vaCode string, states ...politburoapi.PilotStateName) *httptest.ResponseRecorder {
+	t.Helper()
+	params := politburoapi.GetActiveFlightsParams{VaCode: &vaCode}
+	if len(states) > 0 {
+		params.PilotState = &states
+	}
+	recorder := httptest.NewRecorder()
+	testHandler(store).GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil), "casual", params)
+	return recorder
 }
 
-func (s vaCodeStub) GetByCode(_ context.Context, code string) (*virtualairlines.VirtualAirline, error) {
-	if s.byCode == nil {
-		return nil, nil
+func decodeTrackIDs(t *testing.T, recorder *httptest.ResponseRecorder) []string {
+	t.Helper()
+	var body struct {
+		Data struct {
+			Result []activeFlightTrack `json:"result"`
+		} `json:"data"`
 	}
-	return s.byCode[code], nil
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	ids := make([]string, len(body.Data.Result))
+	for i, track := range body.Data.Result {
+		ids[i] = track.FlightID
+	}
+	return ids
 }
 
 func TestGetActiveFlightsFiltersByVACode(t *testing.T) {
@@ -34,39 +49,19 @@ func TestGetActiveFlightsFiltersByVACode(t *testing.T) {
 	other.FlightID = "flight-other"
 	snapshot, records := flightsFixture(lastCached, active, bg, other)
 
-	handler := testHandlerWithVA(cacheStub{
-		names:   []string{"casual"},
-		flights: snapshot,
-		records: records,
-		vaIndexes: map[string][]string{
-			"va-1": {"flight-active", "flight-bg", "not-on-server"},
-		},
-	}, vaCodeStub{byCode: map[string]*virtualairlines.VirtualAirline{
-		"TEST": {ID: "va-1", Code: "TEST"},
-	}})
-
-	vaCode := "test"
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual?vaCode=test", nil), "casual", politburoapi.GetActiveFlightsParams{
-		VaCode: &vaCode,
-	})
+	recorder := getActiveFlightsWithVA(t, cacheStub{
+		names:     []string{"casual"},
+		flights:   snapshot,
+		records:   records,
+		vaCodes:   map[string]string{"TEST": "va-1"},
+		vaIndexes: map[string][]string{"va-1": {"flight-active", "flight-bg", "not-on-server"}},
+	}, " test ")
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
 	}
-	var body struct {
-		Data struct {
-			Result []activeFlightTrack `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if len(body.Data.Result) != 2 {
-		t.Fatalf("result = %#v", body.Data.Result)
-	}
-	ids := []string{body.Data.Result[0].FlightID, body.Data.Result[1].FlightID}
-	if ids[0] != "flight-active" || ids[1] != "flight-bg" {
-		t.Fatalf("sorted ids = %v", ids)
+	ids := decodeTrackIDs(t, recorder)
+	if len(ids) != 2 || ids[0] != "flight-active" || ids[1] != "flight-bg" {
+		t.Fatalf("ids = %v", ids)
 	}
 }
 
@@ -78,53 +73,62 @@ func TestGetActiveFlightsVACodeWithPilotState(t *testing.T) {
 	bg.FlightID = "flight-bg"
 	snapshot, records := flightsFixture(lastCached, active, bg)
 
-	handler := testHandlerWithVA(cacheStub{
+	recorder := getActiveFlightsWithVA(t, cacheStub{
 		names:     []string{"casual"},
 		flights:   snapshot,
 		records:   records,
+		vaCodes:   map[string]string{"TEST": "va-1"},
 		vaIndexes: map[string][]string{"va-1": {"flight-active", "flight-bg"}},
-	}, vaCodeStub{byCode: map[string]*virtualairlines.VirtualAirline{
-		"TEST": {ID: "va-1", Code: "TEST"},
-	}})
-
-	vaCode := "TEST"
-	states := []politburoapi.PilotStateName{"active"}
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual?vaCode=TEST&pilotState=active", nil), "casual", politburoapi.GetActiveFlightsParams{
-		VaCode:     &vaCode,
-		PilotState: &states,
-	})
+	}, "TEST", "active")
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
 	}
-	var body struct {
-		Data struct {
-			Result []activeFlightTrack `json:"result"`
-		} `json:"data"`
+	if ids := decodeTrackIDs(t, recorder); len(ids) != 1 || ids[0] != "flight-active" {
+		t.Fatalf("ids = %v", ids)
 	}
-	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
+}
+
+func TestGetActiveFlightsVACodeWithNoMatchedFlights(t *testing.T) {
+	lastCached := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
+	snapshot, records := flightsFixture(lastCached, sampleFlight(domainflights.PilotStateNameActive))
+	recorder := getActiveFlightsWithVA(t, cacheStub{
+		names:     []string{"casual"},
+		flights:   snapshot,
+		records:   records,
+		vaCodes:   map[string]string{"TEST": "va-1"},
+		vaIndexes: map[string][]string{"va-1": {}},
+	}, "TEST")
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
 	}
-	if len(body.Data.Result) != 1 || body.Data.Result[0].FlightID != "flight-active" {
-		t.Fatalf("result = %#v", body.Data.Result)
+	if ids := decodeTrackIDs(t, recorder); len(ids) != 0 {
+		t.Fatalf("ids = %v", ids)
 	}
 }
 
 func TestGetActiveFlightsUnknownVACode(t *testing.T) {
 	lastCached := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
 	snapshot, records := flightsFixture(lastCached, sampleFlight(domainflights.PilotStateNameActive))
-	handler := testHandlerWithVA(cacheStub{
+	recorder := getActiveFlightsWithVA(t, cacheStub{
 		names:   []string{"casual"},
 		flights: snapshot,
 		records: records,
-	}, vaCodeStub{byCode: map[string]*virtualairlines.VirtualAirline{}})
-
-	vaCode := "NOPE"
-	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual?vaCode=NOPE", nil), "casual", politburoapi.GetActiveFlightsParams{
-		VaCode: &vaCode,
-	})
+		vaCodes: map[string]string{"TEST": "va-1"},
+	}, "NOPE")
 	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
+	}
+}
+
+func TestGetActiveFlightsVACodeIndexMissIsUnavailable(t *testing.T) {
+	lastCached := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
+	snapshot, records := flightsFixture(lastCached, sampleFlight(domainflights.PilotStateNameActive))
+	recorder := getActiveFlightsWithVA(t, cacheStub{
+		names:   []string{"casual"},
+		flights: snapshot,
+		records: records,
+	}, "TEST")
+	if recorder.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
 	}
 }

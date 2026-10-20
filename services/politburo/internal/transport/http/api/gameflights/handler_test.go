@@ -13,6 +13,7 @@ import (
 type cacheStub struct {
 	flights   domainflights.Snapshot
 	records   map[string]domainflights.Flight
+	vaCodes   map[string]string
 	vaIndexes map[string][]string
 	names     []string
 	namesErr  error
@@ -27,6 +28,12 @@ func (s cacheStub) GetJSON(_ context.Context, key string, destination any) error
 			return s.namesErr
 		}
 		*(destination.(*[]string)) = s.names
+		return nil
+	case key == cache.KeyVACodeIndex:
+		if s.vaCodes == nil {
+			return cache.ErrMiss
+		}
+		*(destination.(*map[string]string)) = s.vaCodes
 		return nil
 	case strings.HasPrefix(key, cache.PrefixGameFlightsActive):
 		if s.err != nil {
@@ -67,11 +74,7 @@ func (s cacheStub) GetJSON(_ context.Context, key string, destination any) error
 func (cacheStub) SetJSON(context.Context, string, any, time.Duration) error { return nil }
 
 func testHandler(store cache.Store) *Handler {
-	return testHandlerWithVA(store, nil)
-}
-
-func testHandlerWithVA(store cache.Store, va vaCodeResolver) *Handler {
-	return NewHandler(domainflights.NewReader(store), metrics.NewRegistry(), va)
+	return NewHandler(domainflights.NewReader(store), metrics.NewRegistry())
 }
 
 func flightsFixture(lastCached time.Time, flights ...domainflights.Flight) (domainflights.Snapshot, map[string]domainflights.Flight) {

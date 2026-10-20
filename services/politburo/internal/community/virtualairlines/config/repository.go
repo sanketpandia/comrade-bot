@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 )
 
@@ -52,6 +53,123 @@ RETURNING `+blockColumns,
 		return nil, fmt.Errorf("upsert va config block: %w", err)
 	}
 	return block, nil
+}
+
+// ActiveBasic is an active VA's parsed BASIC block.
+type ActiveBasic struct {
+	VAID   string
+	VACode string
+	Basic  Basic
+}
+
+// ActiveWebhooks is an active VA's raw WEBHOOKS block. PreferredServers comes from the
+// VA's BASIC block and is empty when BASIC is missing or invalid.
+type ActiveWebhooks struct {
+	VAID             string
+	VACode           string
+	Webhooks         json.RawMessage
+	PreferredServers []string
+}
+
+const listActiveBasicQuery = `
+SELECT va.id, va.code, vc.config
+FROM public.va_configs vc
+INNER JOIN public.virtual_airlines va ON va.id = vc.va_id
+WHERE vc.config_type = $1 AND va.is_active = true
+ORDER BY va.code`
+
+const activeWebhooksColumns = `
+SELECT va.id, va.code, wh.config, basic.config
+FROM public.va_configs wh
+INNER JOIN public.virtual_airlines va ON va.id = wh.va_id
+LEFT JOIN public.va_configs basic ON basic.va_id = va.id AND basic.config_type = $2
+WHERE wh.config_type = $1 AND va.is_active = true`
+
+const listActiveWebhooksQuery = activeWebhooksColumns + `
+ORDER BY va.code`
+
+const getActiveWebhooksQuery = activeWebhooksColumns + `
+  AND va.id = $3`
+
+// ListActiveBasic returns parsed BASIC blocks for active VAs. Rows that fail to parse are logged and skipped.
+func (r *Repository) ListActiveBasic(ctx context.Context) ([]ActiveBasic, error) {
+	rows, err := r.db.QueryContext(ctx, listActiveBasicQuery, TypeBasic)
+	if err != nil {
+		return nil, fmt.Errorf("list active basic configs: %w", err)
+	}
+	defer rows.Close()
+
+	var out []ActiveBasic
+	for rows.Next() {
+		var row ActiveBasic
+		var raw []byte
+		if err := rows.Scan(&row.VAID, &row.VACode, &raw); err != nil {
+			return nil, fmt.Errorf("scan active basic config: %w", err)
+		}
+		basic, err := ParseBasic(raw)
+		if err != nil {
+			slog.Warn("skip invalid BASIC va config", "va_id", row.VAID, "error", err)
+			continue
+		}
+		row.Basic = basic
+		out = append(out, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate active basic configs: %w", err)
+	}
+	return out, nil
+}
+
+// ListActiveWebhooks returns WEBHOOKS blocks for active VAs, ordered by VA code.
+func (r *Repository) ListActiveWebhooks(ctx context.Context) ([]ActiveWebhooks, error) {
+	rows, err := r.db.QueryContext(ctx, listActiveWebhooksQuery, TypeWebhooks, TypeBasic)
+	if err != nil {
+		return nil, fmt.Errorf("list active webhooks configs: %w", err)
+	}
+	defer rows.Close()
+
+	var out []ActiveWebhooks
+	for rows.Next() {
+		row, err := scanActiveWebhooks(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan active webhooks config: %w", err)
+		}
+		out = append(out, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate active webhooks configs: %w", err)
+	}
+	return out, nil
+}
+
+// GetActiveWebhooks returns one active VA's WEBHOOKS block, or ErrNotFound.
+func (r *Repository) GetActiveWebhooks(ctx context.Context, vaID string) (ActiveWebhooks, error) {
+	row, err := scanActiveWebhooks(r.db.QueryRowContext(ctx, getActiveWebhooksQuery, TypeWebhooks, TypeBasic, vaID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return ActiveWebhooks{}, ErrNotFound
+	}
+	if err != nil {
+		return ActiveWebhooks{}, fmt.Errorf("get active webhooks config: %w", err)
+	}
+	return row, nil
+}
+
+func scanActiveWebhooks(row interface{ Scan(dest ...any) error }) (ActiveWebhooks, error) {
+	var out ActiveWebhooks
+	var webhooks, basicRaw []byte
+	if err := row.Scan(&out.VAID, &out.VACode, &webhooks, &basicRaw); err != nil {
+		return ActiveWebhooks{}, err
+	}
+	out.Webhooks = json.RawMessage(webhooks)
+	if len(basicRaw) > 0 {
+		basic, err := ParseBasic(basicRaw)
+		if err != nil {
+			slog.Warn("ignore preferred servers from invalid BASIC va config", "va_id", out.VAID, "error", err)
+		} else {
+			out.PreferredServers = basic.PreferredServers
+		}
+	}
+	return out, nil
 }
 
 func scanBlock(row interface{ Scan(dest ...any) error }) (*Block, error) {

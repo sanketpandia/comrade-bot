@@ -3,13 +3,14 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 	"testing"
 	"time"
 
 	dto "github.com/prometheus/client_model/go"
 
-	"infinite-experiment/politburo/internal/community/virtualairlines"
+	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/metrics"
 	"infinite-experiment/politburo/internal/webhooks/dispatch"
 	"infinite-experiment/politburo/internal/webhooks/features/activeflights"
@@ -25,7 +26,7 @@ func TestRunDispatchesDueFeaturesOnly(t *testing.T) {
 		"hourly": {"url":"https://discord.com/api/webhooks/1/token","frequency":"60m","filters":{}},
 		"mystery": {"url":"https://discord.com/api/webhooks/1/token","frequency":"30m","filters":{}}
 	}`)
-	loader := &stubLoader{rows: []virtualairlines.WebhookDispatchRow{{
+	loader := &stubLoader{rows: []vaconfig.ActiveWebhooks{{
 		VAID: "va-1", VACode: "TEST", Webhooks: raw, PreferredServers: []string{"expert"},
 	}}}
 	handler := &stubHandler{result: dispatch.Result{Outcome: dispatch.OutcomeSuccess, DiscordMessages: 1}}
@@ -86,7 +87,7 @@ func TestDispatchMetrics(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			raw := json.RawMessage(`{"active_flights":{"url":"https://discord.com/api/webhooks/1/token","frequency":"30m","filters":{}}}`)
-			loader := &stubLoader{rows: []virtualairlines.WebhookDispatchRow{{VAID: "va-1", Webhooks: raw}}}
+			loader := &stubLoader{rows: []vaconfig.ActiveWebhooks{{VAID: "va-1", Webhooks: raw}}}
 			registry := dispatch.NewRegistry()
 			registry.Register(activeflights.FeatureKey, &stubHandler{result: tt.result})
 			reg := metrics.NewRegistry()
@@ -114,12 +115,50 @@ func TestDispatchMetrics(t *testing.T) {
 	}
 }
 
-type stubLoader struct {
-	rows []virtualairlines.WebhookDispatchRow
+func TestTriggerDispatchesRequestedFeatureRegardlessOfFrequency(t *testing.T) {
+	raw := json.RawMessage(`{"active_flights":{"url":"https://discord.com/api/webhooks/1/token","frequency":"120m","filters":{}}}`)
+	handler := &stubHandler{result: dispatch.Result{Outcome: dispatch.OutcomeSuccess, DiscordMessages: 1}}
+	registry := dispatch.NewRegistry()
+	registry.Register(activeflights.FeatureKey, handler)
+	runs := &stubRuns{}
+	job := New(&stubLoader{rows: []vaconfig.ActiveWebhooks{{VAID: "va-1", Webhooks: raw}}}, registry, runs, metrics.NewRegistry())
+
+	result, err := job.Trigger(context.Background(), "va-1", " active_flights ")
+	if err != nil || result.Outcome != dispatch.OutcomeSuccess {
+		t.Fatalf("Trigger() = %+v, %v", result, err)
+	}
+	if len(runs.rows) != 1 || runs.rows[0].WebhookType != activeflights.FeatureKey {
+		t.Fatalf("runs = %+v", runs.rows)
+	}
 }
 
-func (s *stubLoader) LoadWebhookDispatchRows(ctx context.Context) ([]virtualairlines.WebhookDispatchRow, error) {
+func TestTriggerNotFound(t *testing.T) {
+	raw := json.RawMessage(`{"active_flights":{"url":"https://discord.com/api/webhooks/1/token","frequency":"30m","filters":{}}}`)
+	job := New(&stubLoader{rows: []vaconfig.ActiveWebhooks{{VAID: "va-1", Webhooks: raw}}}, dispatch.NewRegistry(), &stubRuns{}, metrics.NewRegistry())
+
+	if _, err := job.Trigger(context.Background(), "va-1", "hourly"); !errors.Is(err, ErrFeatureNotFound) {
+		t.Fatalf("unknown feature err = %v", err)
+	}
+	if _, err := job.Trigger(context.Background(), "va-2", "active_flights"); !errors.Is(err, vaconfig.ErrNotFound) {
+		t.Fatalf("missing config err = %v", err)
+	}
+}
+
+type stubLoader struct {
+	rows []vaconfig.ActiveWebhooks
+}
+
+func (s *stubLoader) ListActiveWebhooks(context.Context) ([]vaconfig.ActiveWebhooks, error) {
 	return s.rows, nil
+}
+
+func (s *stubLoader) GetActiveWebhooks(_ context.Context, vaID string) (vaconfig.ActiveWebhooks, error) {
+	for _, row := range s.rows {
+		if row.VAID == vaID {
+			return row, nil
+		}
+	}
+	return vaconfig.ActiveWebhooks{}, vaconfig.ErrNotFound
 }
 
 type stubHandler struct {

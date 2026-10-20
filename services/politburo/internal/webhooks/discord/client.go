@@ -1,4 +1,4 @@
-// Package discord posts a single Discord-ready content string to a webhook URL.
+// Package discord posts Discord embeds to a webhook URL.
 package discord
 
 import (
@@ -34,18 +34,9 @@ func NewClient(reg *metrics.Registry) *Client {
 	}
 }
 
-// PostContent sends one JSON body with content. webhookType is a metric label only and is not logged with the URL.
-func (c *Client) PostContent(ctx context.Context, webhookType, webhookURL, content string) error {
-	return c.post(ctx, webhookType, webhookURL, webhookPayload{Content: content})
-}
-
 // PostEmbeds sends one JSON body with embeds. webhookType is a metric label only and is not logged with the URL.
 func (c *Client) PostEmbeds(ctx context.Context, webhookType, webhookURL string, embeds []Embed) error {
-	return c.post(ctx, webhookType, webhookURL, webhookPayload{Embeds: embeds})
-}
-
-func (c *Client) post(ctx context.Context, webhookType, webhookURL string, body webhookPayload) error {
-	encoded, err := json.Marshal(body)
+	encoded, err := json.Marshal(webhookPayload{Embeds: embeds})
 	if err != nil {
 		return fmt.Errorf("encode discord webhook body: %w", err)
 	}

@@ -10,44 +10,27 @@ import (
 	"testing"
 
 	"infinite-experiment/politburo/internal/access/auth"
-	"infinite-experiment/politburo/internal/community/virtualairlines"
+	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/webhooks/dispatch"
+	webhookjobs "infinite-experiment/politburo/internal/webhooks/jobs"
 )
 
-type webhookTargetStub struct {
-	target virtualairlines.WebhookDispatchTarget
-	err    error
+type webhookTriggerStub struct {
+	result      dispatch.Result
+	err         error
+	vaID        string
+	webhookType string
 }
 
-func (s webhookTargetStub) LoadWebhookDispatchTarget(_ context.Context, _, _ string) (virtualairlines.WebhookDispatchTarget, error) {
-	if s.err != nil {
-		return virtualairlines.WebhookDispatchTarget{}, s.err
-	}
-	return s.target, nil
-}
-
-type webhookDispatchStub struct {
-	result dispatch.Result
-	err    error
-}
-
-func (s webhookDispatchStub) DispatchOne(_ context.Context, _ dispatch.Item) (dispatch.Result, error) {
+func (s *webhookTriggerStub) Trigger(_ context.Context, vaID, webhookType string) (dispatch.Result, error) {
+	s.vaID, s.webhookType = vaID, webhookType
 	return s.result, s.err
 }
 
 func TestTriggerVAWebhookSuccess(t *testing.T) {
-	handler := &Handler{
-		vas: configTestVA(),
-		webhookTargets: webhookTargetStub{target: virtualairlines.WebhookDispatchTarget{
-			VAID: "va-1", VACode: "TST", WebhookType: "active_flights",
-			URL: "https://discord.com/api/webhooks/1/t",
-		}},
-		webhookDispatch: webhookDispatchStub{result: dispatch.Result{
-			Outcome:         dispatch.OutcomeSuccess,
-			DiscordMessages: 1,
-		}},
-	}
-	body := bytes.NewBufferString(`{"webhookType":"active_flights"}`)
+	trigger := &webhookTriggerStub{result: dispatch.Result{Outcome: dispatch.OutcomeSuccess, DiscordMessages: 1}}
+	handler := &Handler{vas: configTestVA(), webhooks: trigger}
+	body := bytes.NewBufferString(`{"webhookType":" active_flights "}`)
 	recorder := httptest.NewRecorder()
 	req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/webhook/trigger", body), auth.Claims{
 		PbServerID: "va-1",
@@ -61,31 +44,32 @@ func TestTriggerVAWebhookSuccess(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("json: %v", err)
 	}
-	if payload["data"]["outcome"] != dispatch.OutcomeSuccess {
+	if payload["data"]["outcome"] != dispatch.OutcomeSuccess || payload["data"]["webhookType"] != "active_flights" {
 		t.Fatalf("data = %#v", payload["data"])
+	}
+	if trigger.vaID != "va-1" || trigger.webhookType != "active_flights" {
+		t.Fatalf("trigger = %+v", trigger)
 	}
 }
 
 func TestTriggerVAWebhookNotFound(t *testing.T) {
-	handler := &Handler{
-		vas:            configTestVA(),
-		webhookTargets: webhookTargetStub{err: virtualairlines.ErrWebhookTypeNotFound},
-		webhookDispatch: webhookDispatchStub{},
-	}
-	body := bytes.NewBufferString(`{"webhookType":"hourly"}`)
-	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/webhook/trigger", body), auth.Claims{
-		PbServerID: "va-1",
-		Role:       "administrator",
-	})
-	handler.TriggerVAWebhook(recorder, req)
-	if recorder.Code != http.StatusNotFound {
-		t.Fatalf("status = %d", recorder.Code)
+	for _, err := range []error{webhookjobs.ErrFeatureNotFound, vaconfig.ErrNotFound} {
+		handler := &Handler{vas: configTestVA(), webhooks: &webhookTriggerStub{err: err}}
+		body := bytes.NewBufferString(`{"webhookType":"hourly"}`)
+		recorder := httptest.NewRecorder()
+		req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/webhook/trigger", body), auth.Claims{
+			PbServerID: "va-1",
+			Role:       "administrator",
+		})
+		handler.TriggerVAWebhook(recorder, req)
+		if recorder.Code != http.StatusNotFound {
+			t.Fatalf("%v: status = %d", err, recorder.Code)
+		}
 	}
 }
 
 func TestTriggerVAWebhookInvalidBody(t *testing.T) {
-	handler := &Handler{vas: configTestVA(), webhookTargets: webhookTargetStub{}, webhookDispatch: webhookDispatchStub{}}
+	handler := &Handler{vas: configTestVA(), webhooks: &webhookTriggerStub{}}
 	recorder := httptest.NewRecorder()
 	req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/webhook/trigger", bytes.NewBufferString(`{}`)), auth.Claims{
 		PbServerID: "va-1",
@@ -98,13 +82,7 @@ func TestTriggerVAWebhookInvalidBody(t *testing.T) {
 }
 
 func TestTriggerVAWebhookDispatchError(t *testing.T) {
-	handler := &Handler{
-		vas: configTestVA(),
-		webhookTargets: webhookTargetStub{target: virtualairlines.WebhookDispatchTarget{
-			VAID: "va-1", WebhookType: "active_flights",
-		}},
-		webhookDispatch: webhookDispatchStub{err: errors.New("db down")},
-	}
+	handler := &Handler{vas: configTestVA(), webhooks: &webhookTriggerStub{err: errors.New("db down")}}
 	body := bytes.NewBufferString(`{"webhookType":"active_flights"}`)
 	recorder := httptest.NewRecorder()
 	req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/webhook/trigger", body), auth.Claims{

@@ -12,7 +12,7 @@ import (
 func expertIECatalog() virtualairlines.LiveVACatalog {
 	return virtualairlines.LiveVACatalog{
 		Rules: []virtualairlines.CallsignAffix{
-			{VAID: "va-1", VACode: "IE", Prefix: "IE", PreferredServers: []string{"expert"}},
+			{VAID: "va-1", VACode: "IE", Prefix: "IE"},
 		},
 		Servers: map[string][]string{"expert": {"va-1"}},
 	}

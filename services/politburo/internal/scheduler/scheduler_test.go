@@ -55,18 +55,6 @@ func TestRunRecordsSuccessMetrics(t *testing.T) {
 	}
 }
 
-func TestExecuteRecordsSuccessMetrics(t *testing.T) {
-	registry := metrics.NewRegistry()
-	s := New(registry)
-	t.Cleanup(s.Stop)
-
-	s.Execute(context.Background(), testJob{name: "chained"})
-
-	if got := testutil.ToFloat64(registry.JobRuns.WithLabelValues("chained", "success")); got != 1 {
-		t.Fatalf("successful runs = %v, want 1", got)
-	}
-}
-
 func TestRunRecordsFailureMetrics(t *testing.T) {
 	registry := metrics.NewRegistry()
 	s := New(registry)

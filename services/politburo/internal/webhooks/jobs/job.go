@@ -1,14 +1,16 @@
-// Package jobs runs the scheduled VA webhook dispatcher.
+// Package jobs runs the scheduled VA webhook dispatcher and on-demand triggers.
 package jobs
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
-	"infinite-experiment/politburo/internal/community/virtualairlines"
+	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/metrics"
 	webhookconfig "infinite-experiment/politburo/internal/webhooks/config"
 	"infinite-experiment/politburo/internal/webhooks/dispatch"
@@ -17,8 +19,12 @@ import (
 
 const JobName = "infinite-flight-webhooks"
 
+// ErrFeatureNotFound means the VA's WEBHOOKS config has no entry for the requested feature.
+var ErrFeatureNotFound = errors.New("webhook type not found")
+
 type configLoader interface {
-	LoadWebhookDispatchRows(ctx context.Context) ([]virtualairlines.WebhookDispatchRow, error)
+	ListActiveWebhooks(ctx context.Context) ([]vaconfig.ActiveWebhooks, error)
+	GetActiveWebhooks(ctx context.Context, vaID string) (vaconfig.ActiveWebhooks, error)
 }
 
 type runInserter interface {
@@ -49,7 +55,7 @@ func (j *Job) Name() string {
 }
 
 func (j *Job) Run(ctx context.Context) error {
-	rows, err := j.loader.LoadWebhookDispatchRows(ctx)
+	rows, err := j.loader.ListActiveWebhooks(ctx)
 	if err != nil {
 		return err
 	}
@@ -65,15 +71,7 @@ func (j *Job) Run(ctx context.Context) error {
 			if !webhookconfig.Due(entry.Frequency, tick) {
 				continue
 			}
-			due = append(due, dispatch.Item{
-				VAID:             row.VAID,
-				VACode:           row.VACode,
-				WebhookType:      entry.Key,
-				URL:              entry.URL,
-				Frequency:        entry.Frequency,
-				Filters:          entry.Filters,
-				PreferredServers: row.PreferredServers,
-			})
+			due = append(due, dispatchItem(row, entry))
 		}
 	}
 
@@ -93,6 +91,27 @@ func (j *Job) Run(ctx context.Context) error {
 		return err
 	}
 	return insertErr
+}
+
+// Trigger dispatches one feature from an active VA's WEBHOOKS config immediately, regardless
+// of its frequency. It returns vaconfig.ErrNotFound when the VA has no WEBHOOKS config and
+// ErrFeatureNotFound when the config has no entry for webhookType.
+func (j *Job) Trigger(ctx context.Context, vaID, webhookType string) (dispatch.Result, error) {
+	webhookType = strings.TrimSpace(webhookType)
+	row, err := j.loader.GetActiveWebhooks(ctx, vaID)
+	if err != nil {
+		return dispatch.Result{}, err
+	}
+	entries, err := webhookconfig.Parse(row.Webhooks)
+	if err != nil {
+		return dispatch.Result{}, fmt.Errorf("parse webhooks config: %w", err)
+	}
+	for _, entry := range entries {
+		if entry.Key == webhookType {
+			return j.DispatchOne(ctx, dispatchItem(row, entry))
+		}
+	}
+	return dispatch.Result{}, ErrFeatureNotFound
 }
 
 // DispatchOne runs one webhook feature, records metrics, and persists a run log row.
@@ -120,4 +139,16 @@ func (j *Job) DispatchOne(ctx context.Context, item dispatch.Item) (dispatch.Res
 		return result, err
 	}
 	return result, nil
+}
+
+func dispatchItem(row vaconfig.ActiveWebhooks, entry webhookconfig.Entry) dispatch.Item {
+	return dispatch.Item{
+		VAID:             row.VAID,
+		VACode:           row.VACode,
+		WebhookType:      entry.Key,
+		URL:              entry.URL,
+		Frequency:        entry.Frequency,
+		Filters:          entry.Filters,
+		PreferredServers: row.PreferredServers,
+	}
 }

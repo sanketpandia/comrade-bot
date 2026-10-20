@@ -1,26 +1,24 @@
 package virtualairlines
 
 import (
-	"encoding/json"
 	"sort"
 	"strings"
 
-	"infinite-experiment/politburo/internal/livegame/flights"
+	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 )
 
-// VirtualAirlineMatch is a VA that matched a live flight callsign on a session.
+// VirtualAirlineMatch is a VA whose callsign rule matched a live flight on a session.
 type VirtualAirlineMatch struct {
-	VAID   string
-	VACode string
+	VAID   string `json:"vaId"`
+	VACode string `json:"vaCode"`
 }
 
 // CallsignAffix is one VA's callsign matching rule from BASIC config.
 type CallsignAffix struct {
-	VAID             string
-	VACode           string
-	Prefix           string
-	Suffix           string
-	PreferredServers []string // normalized; empty means server-unscoped
+	VAID   string
+	VACode string
+	Prefix string
+	Suffix string
 }
 
 // LiveVACatalog holds affix rules and server eligibility for live flight classification.
@@ -34,29 +32,29 @@ func normalizeSessionName(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
 }
 
-// BuildLiveVACatalog assembles a catalog from parsed BASIC config rows.
-func BuildLiveVACatalog(rows []basicConfigRow) LiveVACatalog {
+// BuildLiveVACatalog assembles a catalog from active VAs' BASIC config. VAs without
+// a prefix or suffix are skipped; VAs without preferred servers match on every session.
+func BuildLiveVACatalog(rows []vaconfig.ActiveBasic) LiveVACatalog {
 	catalog := LiveVACatalog{Servers: map[string][]string{}}
 	unscopedSet := map[string]bool{}
 
 	for _, row := range rows {
-		if row.Prefix == "" && row.Suffix == "" {
+		callsign := row.Basic.GameCallsign
+		if callsign.Prefix == "" && callsign.Suffix == "" {
 			continue
 		}
-		rule := CallsignAffix{
-			VAID:             row.VAID,
-			VACode:           row.VACode,
-			Prefix:           row.Prefix,
-			Suffix:           row.Suffix,
-			PreferredServers: row.PreferredServers,
-		}
-		catalog.Rules = append(catalog.Rules, rule)
+		catalog.Rules = append(catalog.Rules, CallsignAffix{
+			VAID:   row.VAID,
+			VACode: row.VACode,
+			Prefix: callsign.Prefix,
+			Suffix: callsign.Suffix,
+		})
 
-		if len(row.PreferredServers) == 0 {
+		if len(row.Basic.PreferredServers) == 0 {
 			unscopedSet[row.VAID] = true
 			continue
 		}
-		for _, server := range row.PreferredServers {
+		for _, server := range row.Basic.PreferredServers {
 			appendUniqueVAID(catalog.Servers, server, row.VAID)
 		}
 	}
@@ -87,18 +85,17 @@ func appendUniqueVAID(servers map[string][]string, server, vaID string) {
 	servers[server] = append(list, vaID)
 }
 
-// Match returns VAs whose affix rules match callsign on the given session.
-func (c LiveVACatalog) Match(callsign, sessionNormalizedName string) []VirtualAirlineMatch {
+// Match returns VAs whose affix rules match a flight on the given session. callsign is the
+// upstream callsign; normalizedCallsign has game trailers (for example " Heavy") removed so
+// suffix rules can match either form.
+func (c LiveVACatalog) Match(callsign, normalizedCallsign, sessionNormalizedName string) []VirtualAirlineMatch {
 	callsign = strings.TrimSpace(callsign)
-	session := normalizeSessionName(sessionNormalizedName)
-	candidates := candidateVAIDs(c, session)
+	normalizedCallsign = strings.TrimSpace(normalizedCallsign)
+	candidates := candidateVAIDs(c, normalizeSessionName(sessionNormalizedName))
 
 	var matches []VirtualAirlineMatch
 	for _, rule := range c.Rules {
-		if !candidates[rule.VAID] {
-			continue
-		}
-		if !flights.CallsignAffixMatches(callsign, rule.Prefix, rule.Suffix) {
+		if !candidates[rule.VAID] || !rule.matches(callsign, normalizedCallsign) {
 			continue
 		}
 		matches = append(matches, VirtualAirlineMatch{VAID: rule.VAID, VACode: rule.VACode})
@@ -112,31 +109,17 @@ func (c LiveVACatalog) Match(callsign, sessionNormalizedName string) []VirtualAi
 	return matches
 }
 
-// AffixMissReason explains why Match returned no VAs (empty string when rules matched or catalog is empty).
-func (c LiveVACatalog) AffixMissReason(callsign, sessionNormalizedName string) string {
-	if len(c.Rules) == 0 {
-		return "empty_catalog"
+func (r CallsignAffix) matches(callsign, normalizedCallsign string) bool {
+	if r.Prefix == "" && r.Suffix == "" {
+		return false
 	}
-	session := normalizeSessionName(sessionNormalizedName)
-	candidates := candidateVAIDs(c, session)
-	if len(candidates) == 0 {
-		return "no_eligible_vas_for_session"
+	if r.Prefix != "" && !strings.HasPrefix(callsign, r.Prefix) {
+		return false
 	}
-	callsign = strings.TrimSpace(callsign)
-	eligibleRules := 0
-	for _, rule := range c.Rules {
-		if !candidates[rule.VAID] {
-			continue
-		}
-		eligibleRules++
-		if flights.CallsignAffixMatches(callsign, rule.Prefix, rule.Suffix) {
-			return ""
-		}
+	if r.Suffix != "" && !strings.HasSuffix(callsign, r.Suffix) && !strings.HasSuffix(normalizedCallsign, r.Suffix) {
+		return false
 	}
-	if eligibleRules == 0 {
-		return "no_eligible_vas_for_session"
-	}
-	return "affix_mismatch"
+	return true
 }
 
 func candidateVAIDs(c LiveVACatalog, session string) map[string]bool {
@@ -147,52 +130,5 @@ func candidateVAIDs(c LiveVACatalog, session string) map[string]bool {
 	for _, id := range c.UnscopedVAIDs {
 		out[id] = true
 	}
-	return out
-}
-
-type basicConfigRow struct {
-	VAID             string
-	VACode           string
-	Prefix           string
-	Suffix           string
-	PreferredServers []string
-}
-
-func parseBasicConfigRow(vaID, vaCode string, config []byte) (basicConfigRow, error) {
-	var top struct {
-		GameCallsign struct {
-			Prefix string `json:"prefix"`
-			Suffix string `json:"suffix"`
-		} `json:"game_callsign"`
-		PreferredServers []string `json:"preferred_servers"`
-	}
-	if err := json.Unmarshal(config, &top); err != nil {
-		return basicConfigRow{}, err
-	}
-	servers := normalizePreferredServers(top.PreferredServers)
-	return basicConfigRow{
-		VAID:             vaID,
-		VACode:           vaCode,
-		Prefix:           strings.TrimSpace(top.GameCallsign.Prefix),
-		Suffix:           strings.TrimSpace(top.GameCallsign.Suffix),
-		PreferredServers: servers,
-	}, nil
-}
-
-func normalizePreferredServers(servers []string) []string {
-	if len(servers) == 0 {
-		return nil
-	}
-	seen := map[string]bool{}
-	var out []string
-	for _, s := range servers {
-		n := normalizeSessionName(s)
-		if n == "" || seen[n] {
-			continue
-		}
-		seen[n] = true
-		out = append(out, n)
-	}
-	sort.Strings(out)
 	return out
 }

@@ -3,6 +3,7 @@ package vaflightindex
 import (
 	"testing"
 
+	"infinite-experiment/politburo/internal/community/virtualairlines"
 	gameflights "infinite-experiment/politburo/internal/livegame/flights"
 )
 
@@ -13,9 +14,9 @@ func TestBuildVAFlightIndexMultiServerAndMultiVA(t *testing.T) {
 			"casual": {"f3"},
 		},
 		Records: map[string]gameflights.Flight{
-			"f1": {FlightID: "f1", MatchedVirtualAirlines: []gameflights.VirtualAirlineMatch{{VAID: "va-1"}}},
-			"f2": {FlightID: "f2", MatchedVirtualAirlines: []gameflights.VirtualAirlineMatch{{VAID: "va-1"}, {VAID: "va-2"}}},
-			"f3": {FlightID: "f3", MatchedVirtualAirlines: []gameflights.VirtualAirlineMatch{{VAID: "va-2"}}},
+			"f1": {FlightID: "f1", MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1"}}},
+			"f2": {FlightID: "f2", MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1"}, {VAID: "va-2"}}},
+			"f3": {FlightID: "f3", MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-2"}}},
 		},
 	}
 	index := BuildVAFlightIndex(input)
@@ -31,7 +32,7 @@ func TestBuildVAFlightIndexSkipsMissingRecord(t *testing.T) {
 	input := BuildInput{
 		ActiveFlightIDs: map[string][]string{"expert": {"f1", "f-miss"}},
 		Records: map[string]gameflights.Flight{
-			"f1": {FlightID: "f1", MatchedVirtualAirlines: []gameflights.VirtualAirlineMatch{{VAID: "va-1"}}},
+			"f1": {FlightID: "f1", MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1"}}},
 		},
 	}
 	index := BuildVAFlightIndex(input)
@@ -47,7 +48,7 @@ func TestBuildVAFlightIndexDedupesFlightPerVA(t *testing.T) {
 			"casual": {"f1"},
 		},
 		Records: map[string]gameflights.Flight{
-			"f1": {FlightID: "f1", MatchedVirtualAirlines: []gameflights.VirtualAirlineMatch{{VAID: "va-1"}}},
+			"f1": {FlightID: "f1", MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1"}}},
 		},
 	}
 	index := BuildVAFlightIndex(input)

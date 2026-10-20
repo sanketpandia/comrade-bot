@@ -9,19 +9,16 @@ import (
 	"net/http"
 	"strings"
 
-	"infinite-experiment/politburo/internal/community/virtualairlines"
+	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/transport/http/response"
 	"infinite-experiment/politburo/internal/webhooks/dispatch"
+	webhookjobs "infinite-experiment/politburo/internal/webhooks/jobs"
 )
 
 const maxWebhookTriggerBodyBytes = 4 << 10
 
-type webhookTargetLoader interface {
-	LoadWebhookDispatchTarget(ctx context.Context, vaID, webhookType string) (virtualairlines.WebhookDispatchTarget, error)
-}
-
-type webhookDispatcher interface {
-	DispatchOne(ctx context.Context, item dispatch.Item) (dispatch.Result, error)
+type webhookTrigger interface {
+	Trigger(ctx context.Context, vaID, webhookType string) (dispatch.Result, error)
 }
 
 type webhookTriggerRequest struct {
@@ -31,11 +28,6 @@ type webhookTriggerRequest struct {
 func (h *Handler) TriggerVAWebhook(w http.ResponseWriter, r *http.Request) {
 	vaID, ok := h.vaContext(w, r)
 	if !ok {
-		return
-	}
-	if h.webhookTargets == nil || h.webhookDispatch == nil {
-		slog.Error("webhook trigger not configured")
-		response.WriteError(w, http.StatusInternalServerError, "DISPATCH_FAILED", "webhook dispatch unavailable")
 		return
 	}
 
@@ -50,34 +42,22 @@ func (h *Handler) TriggerVAWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	target, err := h.webhookTargets.LoadWebhookDispatchTarget(r.Context(), vaID, webhookType)
+	result, err := h.webhooks.Trigger(r.Context(), vaID, webhookType)
 	if err != nil {
-		if errors.Is(err, virtualairlines.ErrWebhookConfigNotFound) || errors.Is(err, virtualairlines.ErrWebhookTypeNotFound) {
+		switch {
+		case errors.Is(err, vaconfig.ErrNotFound):
+			response.WriteError(w, http.StatusNotFound, "NOT_FOUND", "webhooks config not found")
+		case errors.Is(err, webhookjobs.ErrFeatureNotFound):
 			response.WriteError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
-			return
+		default:
+			slog.Error("trigger webhook", "va_id", vaID, "webhook_type", webhookType, "error", err)
+			response.WriteError(w, http.StatusInternalServerError, "DISPATCH_FAILED", "failed to dispatch webhook")
 		}
-		slog.Error("load webhook dispatch target", "va_id", vaID, "webhook_type", webhookType, "error", err)
-		response.WriteError(w, http.StatusInternalServerError, "LOAD_FAILED", "failed to load webhook configuration")
-		return
-	}
-
-	result, err := h.webhookDispatch.DispatchOne(r.Context(), dispatch.Item{
-		VAID:             target.VAID,
-		VACode:           target.VACode,
-		WebhookType:      target.WebhookType,
-		URL:              target.URL,
-		Frequency:        target.Frequency,
-		Filters:          target.Filters,
-		PreferredServers: target.PreferredServers,
-	})
-	if err != nil {
-		slog.Error("dispatch webhook", "va_id", vaID, "webhook_type", webhookType, "error", err)
-		response.WriteError(w, http.StatusInternalServerError, "DISPATCH_FAILED", "failed to record webhook dispatch")
 		return
 	}
 
 	data := map[string]any{
-		"webhookType": target.WebhookType,
+		"webhookType": webhookType,
 		"outcome":     result.Outcome,
 	}
 	if result.SkipReason != "" {

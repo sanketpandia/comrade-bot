@@ -10,12 +10,11 @@ type FilterQuery struct {
 	UserName    string
 	CallSign    string
 	VACode      string
-	VAID        string
 }
 
 // HasValues reports whether any filter field is set.
 func (q FilterQuery) HasValues() bool {
-	return len(q.PilotStates) > 0 || q.UserName != "" || q.CallSign != "" || q.VACode != "" || q.VAID != ""
+	return len(q.PilotStates) > 0 || q.UserName != "" || q.CallSign != "" || q.VACode != ""
 }
 
 // AvailableFilter describes one supported query filter for cache-backed list endpoints.

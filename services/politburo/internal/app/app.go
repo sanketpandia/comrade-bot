@@ -23,19 +23,19 @@ import (
 	"infinite-experiment/politburo/internal/community/virtualairlines/lookup"
 	"infinite-experiment/politburo/internal/config"
 	"infinite-experiment/politburo/internal/database"
-	"infinite-experiment/politburo/internal/livegame/infiniteflight"
-	gameflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/jobs"
+	gameflights "infinite-experiment/politburo/internal/livegame/flights"
+	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
-	"infinite-experiment/politburo/internal/scheduler"
 	"infinite-experiment/politburo/internal/logging"
 	"infinite-experiment/politburo/internal/metrics"
-	webhookjobs "infinite-experiment/politburo/internal/webhooks/jobs"
-	"infinite-experiment/politburo/internal/webhooks"
 	"infinite-experiment/politburo/internal/operations/operator"
 	"infinite-experiment/politburo/internal/operations/reports"
+	"infinite-experiment/politburo/internal/scheduler"
 	"infinite-experiment/politburo/internal/ui"
+	"infinite-experiment/politburo/internal/webhooks"
+	webhookjobs "infinite-experiment/politburo/internal/webhooks/jobs"
 )
 
 type App struct {
@@ -51,22 +51,22 @@ type App struct {
 	Scheduler *scheduler.Scheduler
 	UI        *ui.Renderer
 
-	Registration *registration.Service
-	Membership   *membership.Service
-	VAInit       *virtualairlines.Service
-	Status       *status.Builder
-	Reports      *reports.Repository
-	Operator     *operator.Service
-	Resolver         *resolver.Resolver
-	VALookup         *lookup.VALookup
-	VirtualAirlines  *virtualairlines.Repository
-	VAConfigs        *vaconfig.Repository
-	IFUsers          infiniteflight.UsersClient
-	LiveryLookup     *gameliveries.Lookup
-	FlightsReader    *gameflights.Reader
-	SessionsReader   *gamesessions.Reader
-	VAWebhookJob     *webhookjobs.Job
-	closeOnce        sync.Once
+	Registration    *registration.Service
+	Membership      *membership.Service
+	VAInit          *virtualairlines.Service
+	Status          *status.Builder
+	Reports         *reports.Repository
+	Operator        *operator.Service
+	Resolver        *resolver.Resolver
+	VALookup        *lookup.VALookup
+	VirtualAirlines *virtualairlines.Repository
+	VAConfigs       *vaconfig.Repository
+	IFUsers         infiniteflight.UsersClient
+	LiveryLookup    *gameliveries.Lookup
+	FlightsReader   *gameflights.Reader
+	SessionsReader  *gamesessions.Reader
+	VAWebhookJob    *webhookjobs.Job
+	closeOnce       sync.Once
 }
 
 func New(ctx context.Context, cfg config.Config) (*App, error) {
@@ -116,7 +116,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	userRepo := users.NewRepository(db)
 	vaRepo := virtualairlines.NewRepository(db)
 	vaInit := virtualairlines.NewService(db, userRepo, vaRepo)
-	vaWebhookDispatch := webhooks.NewDispatchJob(cacheStore, db, vaInit, vaRepo, metricsRegistry)
+	vaWebhookDispatch := webhooks.NewJob(cacheStore, db, metricsRegistry)
 	vaConfigRepo := vaconfig.NewRepository(db)
 	membershipRepo := membership.NewRepository(db)
 	reportRepo := reports.NewRepository(db)
@@ -132,21 +132,21 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		Users:   userRepo, Sessions: session.NewService(cacheStore),
 		Tickets: auth.NewTickets(cacheStore, cfg.Auth.SignedLinkSecret),
 		Metrics: metricsRegistry, Scheduler: jobScheduler, UI: renderer,
-		Registration: registration.NewService(userRepo, ifUsers),
-		Membership:   membership.NewService(userRepo, membershipRepo, vaRepo, roster.Noop{}),
-		VAInit:       vaInit,
-		Status:       status.NewBuilder(userRepo, membershipRepo, vaRepo),
-		Reports:      reportRepo,
-		Operator:     operator.NewService(db, userRepo, membershipRepo, reportRepo, vaRepo),
+		Registration:    registration.NewService(userRepo, ifUsers),
+		Membership:      membership.NewService(userRepo, membershipRepo, vaRepo, roster.Noop{}),
+		VAInit:          vaInit,
+		Status:          status.NewBuilder(userRepo, membershipRepo, vaRepo),
+		Reports:         reportRepo,
+		Operator:        operator.NewService(db, userRepo, membershipRepo, reportRepo, vaRepo),
 		Resolver:        resolver.NewResolver(userRepo, vaRepo, membershipRepo),
 		VALookup:        lookup.NewVALookup(vaRepo),
 		VirtualAirlines: vaRepo,
 		VAConfigs:       vaConfigRepo,
-		IFUsers:      ifUsers,
-		LiveryLookup: liveryLookup,
-		FlightsReader:  gameflights.NewReader(cacheStore),
-		SessionsReader: gamesessions.NewReader(cacheStore),
-		VAWebhookJob:   vaWebhookDispatch,
+		IFUsers:         ifUsers,
+		LiveryLookup:    liveryLookup,
+		FlightsReader:   gameflights.NewReader(cacheStore),
+		SessionsReader:  gamesessions.NewReader(cacheStore),
+		VAWebhookJob:    vaWebhookDispatch,
 	}
 	slog.Info("application initialized", "environment", cfg.Environment, "jobs_enabled", cfg.Jobs.Enabled)
 	return application, nil

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"infinite-experiment/politburo/internal/community/virtualairlines"
 	"infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/metrics"
@@ -30,10 +29,6 @@ type sessionLister interface {
 	ListActive(ctx context.Context) (sessions.ListActiveResult, error)
 }
 
-type vaCodes interface {
-	GetByCode(ctx context.Context, code string) (*virtualairlines.VirtualAirline, error)
-}
-
 type poster interface {
 	PostEmbeds(ctx context.Context, webhookType, webhookURL string, embeds []discord.Embed) error
 }
@@ -46,17 +41,15 @@ type collectedFlight struct {
 type Handler struct {
 	flights  flightLister
 	sessions sessionLister
-	vas      vaCodes
 	discord  poster
 	metrics  *metrics.Registry
 	now      func() time.Time
 }
 
-func New(flights flightLister, sessions sessionLister, vas vaCodes, discord poster, reg *metrics.Registry) *Handler {
+func New(flights flightLister, sessions sessionLister, discord poster, reg *metrics.Registry) *Handler {
 	return &Handler{
 		flights:  flights,
 		sessions: sessions,
-		vas:      vas,
 		discord:  discord,
 		metrics:  reg,
 		now:      time.Now,
@@ -75,12 +68,12 @@ func (h *Handler) Handle(ctx context.Context, item dispatch.Item) dispatch.Resul
 	}
 	servers := onlinePreferred(item.PreferredServers, active.Sessions)
 
-	query, err := h.filterQuery(ctx, item.Filters)
+	query, err := filterQuery(item.Filters)
 	if err != nil {
 		return errorResult(err)
 	}
 
-	matched, _, loaded, err := h.collect(ctx, servers, query)
+	matched, loaded, err := h.collect(ctx, servers, query)
 	if err != nil {
 		return errorResult(err)
 	}
@@ -119,7 +112,7 @@ func (h *Handler) Handle(ctx context.Context, item dispatch.Item) dispatch.Resul
 	return dispatch.Result{Outcome: dispatch.OutcomeSuccess, DiscordMessages: sent}
 }
 
-func (h *Handler) filterQuery(ctx context.Context, raw json.RawMessage) (flights.FilterQuery, error) {
+func filterQuery(raw json.RawMessage) (flights.FilterQuery, error) {
 	var filters struct {
 		PilotState []string `json:"pilotState"`
 		VACode     string   `json:"vaCode"`
@@ -133,26 +126,14 @@ func (h *Handler) filterQuery(ctx context.Context, raw json.RawMessage) (flights
 	if err != nil {
 		return flights.FilterQuery{}, err
 	}
-	query := flights.FilterQuery{PilotStates: states}
-	code := strings.TrimSpace(filters.VACode)
-	if code == "" {
-		return query, nil
-	}
-	va, err := h.vas.GetByCode(ctx, code)
-	if err != nil {
-		return flights.FilterQuery{}, err
-	}
-	if va == nil {
-		return flights.FilterQuery{}, flights.ErrUnknownVACode
-	}
-	query.VAID = va.ID
-	query.VACode = strings.ToUpper(code)
-	return query, nil
+	return flights.FilterQuery{
+		PilotStates: states,
+		VACode:      strings.ToUpper(strings.TrimSpace(filters.VACode)),
+	}, nil
 }
 
-func (h *Handler) collect(ctx context.Context, servers []string, query flights.FilterQuery) (int, []serverCount, []collectedFlight, error) {
+func (h *Handler) collect(ctx context.Context, servers []string, query flights.FilterQuery) (int, []collectedFlight, error) {
 	matched := 0
-	counts := make([]serverCount, 0, len(servers))
 	var loaded []collectedFlight
 	for _, server := range servers {
 		result, err := h.flights.ListActiveTracks(ctx, flights.ListActiveTracksInput{
@@ -162,10 +143,9 @@ func (h *Handler) collect(ctx context.Context, servers []string, query flights.F
 			Filters:    query,
 		})
 		if err != nil {
-			return 0, nil, nil, err
+			return 0, nil, err
 		}
 		matched += result.TotalLength
-		counts = append(counts, serverCount{Name: server, Matched: result.TotalLength})
 		if len(loaded) >= maxReportedFlights {
 			continue
 		}
@@ -178,12 +158,12 @@ func (h *Handler) collect(ctx context.Context, servers []string, query flights.F
 				continue
 			}
 			if err != nil {
-				return 0, nil, nil, err
+				return 0, nil, err
 			}
 			loaded = append(loaded, collectedFlight{flight: flight})
 		}
 	}
-	return matched, counts, loaded, nil
+	return matched, loaded, nil
 }
 
 func onlinePreferred(preferred []string, active []sessions.ActiveSession) []string {

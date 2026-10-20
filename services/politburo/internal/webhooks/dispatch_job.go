@@ -4,24 +4,18 @@ import (
 	"database/sql"
 
 	"infinite-experiment/politburo/internal/cache"
-	"infinite-experiment/politburo/internal/community/virtualairlines"
+	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/metrics"
 	webhookjobs "infinite-experiment/politburo/internal/webhooks/jobs"
 	"infinite-experiment/politburo/internal/webhooks/runlog"
 )
 
-// NewDispatchJob builds a webhook dispatcher for on-demand runs (for example HTTP triggers).
-// It is not registered on the scheduler; scheduled work uses the job created in jobs.Register.
-func NewDispatchJob(
-	cacheStore cache.Store,
-	db *sql.DB,
-	vaService *virtualairlines.Service,
-	vaRepo *virtualairlines.Repository,
-	metricsRegistry *metrics.Registry,
-) *webhookjobs.Job {
+// NewJob builds the webhook dispatcher used by both the scheduler (jobs.Register) and
+// the manual HTTP trigger, so both paths share handlers, metrics, and run logging.
+func NewJob(cacheStore cache.Store, db *sql.DB, metricsRegistry *metrics.Registry) *webhookjobs.Job {
 	return webhookjobs.New(
-		vaService,
-		NewRegistry(cacheStore, vaRepo, metricsRegistry),
+		vaconfig.NewRepository(db),
+		NewRegistry(cacheStore, metricsRegistry),
 		runlog.NewRepository(db),
 		metricsRegistry,
 	)

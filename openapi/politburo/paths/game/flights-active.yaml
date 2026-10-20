@@ -48,7 +48,10 @@ get:
         type: string
     - name: vaCode
       in: query
-      description: Restrict results to flights matched to this virtual airline code (uses the VA active-flight index).
+      description: |
+        Restrict results to flights matched to this active virtual airline code (case-insensitive).
+        Resolved from the cached VA code index and per-VA active-flight index written by the
+        `infinite-flight-va-flight-index` job; the database is never queried.
       schema:
         type: string
   responses:
@@ -59,7 +62,7 @@ get:
           schema:
             $ref: "../../components/schemas/ActiveFlightsResponse.yaml"
     "400":
-      description: An invalid query value was supplied
+      description: An invalid query value was supplied, or `vaCode` is not an active virtual airline
       content:
         application/json:
           schema:
@@ -77,7 +80,7 @@ get:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yaml"
     "503":
-      description: No active-flight snapshot is currently cached for the server
+      description: No active-flight snapshot is currently cached for the server, or the VA flight index is not cached yet when `vaCode` is set
       content:
         application/json:
           schema:

@@ -4,8 +4,8 @@ import (
 	"net/url"
 	"testing"
 
-	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	"github.com/oapi-codegen/runtime"
+	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 )
 
 func TestGetVAConfigQueryTypeBinding(t *testing.T) {

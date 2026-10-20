@@ -34,43 +34,16 @@ func TestPostEmbedsSuccess(t *testing.T) {
 	if len(got.Embeds) != 1 || got.Embeds[0].Title != "Active Flights" {
 		t.Fatalf("embeds = %+v", got.Embeds)
 	}
-	if got.Content != "" {
-		t.Fatalf("content = %q", got.Content)
-	}
-}
-
-func TestPostContentSuccess(t *testing.T) {
-	var got webhookPayload
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			t.Errorf("method = %s", r.Method)
-		}
-		body, _ := io.ReadAll(r.Body)
-		if err := json.Unmarshal(body, &got); err != nil {
-			t.Errorf("body: %v", err)
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer server.Close()
-
-	reg := metrics.NewRegistry()
-	client := NewClient(reg)
-	if err := client.PostContent(context.Background(), "active_flights", server.URL, "hello"); err != nil {
-		t.Fatalf("PostContent() = %v", err)
-	}
-	if got.Content != "hello" {
-		t.Fatalf("content = %q", got.Content)
-	}
 	if n := testutil.ToFloat64(reg.WebhookDiscordPosts.WithLabelValues("active_flights", "success")); n != 1 {
 		t.Fatalf("success posts = %v", n)
 	}
 }
 
-func TestPostContentTransportErrorOmitsURL(t *testing.T) {
+func TestPostEmbedsTransportErrorOmitsURL(t *testing.T) {
 	reg := metrics.NewRegistry()
 	client := NewClient(reg)
 	webhookURL := "http://127.0.0.1:1/api/webhooks/1/super-secret-token"
-	err := client.PostContent(context.Background(), "active_flights", webhookURL, "hello")
+	err := client.PostEmbeds(context.Background(), "active_flights", webhookURL, []Embed{{Title: "x"}})
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -79,7 +52,7 @@ func TestPostContentTransportErrorOmitsURL(t *testing.T) {
 	}
 }
 
-func TestPostContentErrorOmitsURL(t *testing.T) {
+func TestPostEmbedsErrorOmitsURL(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "nope", http.StatusBadRequest)
 	}))
@@ -88,7 +61,7 @@ func TestPostContentErrorOmitsURL(t *testing.T) {
 	reg := metrics.NewRegistry()
 	client := NewClient(reg)
 	webhookURL := server.URL + "/api/webhooks/1/super-secret-token"
-	err := client.PostContent(context.Background(), "active_flights", webhookURL, "hello")
+	err := client.PostEmbeds(context.Background(), "active_flights", webhookURL, []Embed{{Title: "x"}})
 	if err == nil {
 		t.Fatal("expected error")
 	}

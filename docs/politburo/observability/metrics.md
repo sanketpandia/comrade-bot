@@ -72,8 +72,25 @@ Grafana dashboard **Infinite Live metrics** (`politburo-livegame`).
 - `politburo_livegame_flights_filtered_total{server,endpoint}` — flights
   returned after HTTP query filters (`endpoint` is `active` or `trimmed`).
 
+- `politburo_livegame_va_active_flights{va_id}` — matched active flights per
+  active VA from the latest `infinite-flight-va-flight-index` run (0 when none;
+  deactivated VAs are dropped). Requested explicitly as a feature gauge.
+
 Livery resolves per 15 minutes:
 
 ```promql
 sum by (outcome) (increase(politburo_livegame_livery_resolve_total[15m]))
 ```
+
+## Webhooks
+
+Grafana dashboard **Politburo webhooks** (`politburo-webhooks`). Details in
+`architecture/webhooks.md`.
+
+- `politburo_webhooks_dispatch_total{webhook_type,outcome}` — feature dispatches
+  (`success`, `skipped`, `error`).
+- `politburo_webhooks_dispatch_duration_seconds{webhook_type}` — handler duration.
+- `politburo_webhooks_discord_posts_total{webhook_type,outcome}` — Discord HTTP posts.
+- `politburo_webhooks_active_flights_servers_searched{webhook_type}` (histogram),
+  `politburo_webhooks_active_flights_matched_total`, `_reported_total`,
+  `_capped_total` — `active_flights` volume and report-cap hits.

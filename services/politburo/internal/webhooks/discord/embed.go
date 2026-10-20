@@ -23,6 +23,5 @@ type Embed struct {
 }
 
 type webhookPayload struct {
-	Content string  `json:"content,omitempty"`
-	Embeds  []Embed `json:"embeds,omitempty"`
+	Embeds []Embed `json:"embeds"`
 }

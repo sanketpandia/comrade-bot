@@ -7,19 +7,23 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
+	"infinite-experiment/politburo/internal/community/virtualairlines"
 	gameflights "infinite-experiment/politburo/internal/livegame/flights"
-	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
+	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/metrics"
+
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 type cacheStub struct {
 	data   map[string]any
-	writes []struct {
-		key   string
-		value any
-		ttl   time.Duration
-	}
+	writes map[string]cacheWrite
+}
+
+type cacheWrite struct {
+	value any
+	ttl   time.Duration
 }
 
 func (s *cacheStub) GetJSON(_ context.Context, key string, destination any) error {
@@ -35,11 +39,10 @@ func (s *cacheStub) GetJSON(_ context.Context, key string, destination any) erro
 }
 
 func (s *cacheStub) SetJSON(_ context.Context, key string, value any, ttl time.Duration) error {
-	s.writes = append(s.writes, struct {
-		key   string
-		value any
-		ttl   time.Duration
-	}{key: key, value: value, ttl: ttl})
+	if s.writes == nil {
+		s.writes = map[string]cacheWrite{}
+	}
+	s.writes[key] = cacheWrite{value: value, ttl: ttl}
 	if s.data == nil {
 		s.data = map[string]any{}
 	}
@@ -47,34 +50,89 @@ func (s *cacheStub) SetJSON(_ context.Context, key string, value any, ttl time.D
 	return nil
 }
 
-func TestRunWritesVAKeysForMatchedFlights(t *testing.T) {
-	store := &cacheStub{data: map[string]any{
+type vaListerStub []virtualairlines.VirtualAirline
+
+func (s vaListerStub) ListActive(context.Context) ([]virtualairlines.VirtualAirline, error) {
+	return s, nil
+}
+
+func liveStore(record gameflights.Flight) *cacheStub {
+	return &cacheStub{data: map[string]any{
 		cache.KeyActiveSessions: gamesessions.Snapshot{
 			Result: []infiniteflight.Session{{ID: "s1", NormalizedName: "expert"}},
 		},
 		cache.KeyActiveFlights("expert"): gameflights.Snapshot{
-			Tracks: map[string]gameflights.FlightMotion{"f1": {}},
+			Tracks: map[string]gameflights.FlightMotion{record.FlightID: {}},
 		},
-		cache.KeyFlightRecord("f1"): gameflights.Flight{
-			FlightID:               "f1",
-			MatchedVirtualAirlines: []gameflights.VirtualAirlineMatch{{VAID: "va-1", VACode: "TST"}},
-		},
+		cache.KeyFlightRecord(record.FlightID): record,
 	}}
-	job := New(store, metrics.NewRegistry())
-	if err := job.Run(context.Background()); err != nil {
+}
+
+var twoVAs = vaListerStub{{ID: "va-1", Code: "TST"}, {ID: "va-2", Code: "idle"}}
+
+func TestRunWritesCodeIndexAndListsForEveryActiveVA(t *testing.T) {
+	store := liveStore(gameflights.Flight{
+		FlightID:               "f1",
+		MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1", VACode: "TST"}},
+	})
+	if err := New(store, twoVAs, metrics.NewRegistry()).Run(context.Background()); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if len(store.writes) != 1 {
-		t.Fatalf("writes = %d", len(store.writes))
+
+	codes, ok := store.writes[cache.KeyVACodeIndex]
+	if !ok || codes.ttl != cache.ActiveFlightsTTL {
+		t.Fatalf("code index write = %#v", codes)
 	}
-	if store.writes[0].key != cache.KeyVAActiveFlights("va-1") {
-		t.Fatalf("key = %q", store.writes[0].key)
+	codeMap := codes.value.(map[string]string)
+	if codeMap["TST"] != "va-1" || codeMap["IDLE"] != "va-2" {
+		t.Fatalf("code index = %#v", codeMap)
 	}
-	ids, ok := store.writes[0].value.([]string)
-	if !ok || len(ids) != 1 || ids[0] != "f1" {
-		t.Fatalf("value = %#v", store.writes[0].value)
+
+	matched := store.writes[cache.KeyVAActiveFlights("va-1")]
+	if ids := matched.value.([]string); len(ids) != 1 || ids[0] != "f1" || matched.ttl != cache.ActiveFlightsTTL {
+		t.Fatalf("va-1 write = %#v", matched)
 	}
-	if store.writes[0].ttl != cache.ActiveFlightsTTL {
-		t.Fatalf("ttl = %v", store.writes[0].ttl)
+	idle, ok := store.writes[cache.KeyVAActiveFlights("va-2")]
+	if !ok || len(idle.value.([]string)) != 0 {
+		t.Fatalf("va-2 write = %#v", idle)
+	}
+}
+
+func TestRunGaugeReportsZeroWhenVALosesMatches(t *testing.T) {
+	record := gameflights.Flight{
+		FlightID:               "f1",
+		MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1", VACode: "TST"}},
+	}
+	store := liveStore(record)
+	registry := metrics.NewRegistry()
+	job := New(store, vaListerStub{{ID: "va-1", Code: "TST"}}, registry)
+	if err := job.Run(context.Background()); err != nil {
+		t.Fatalf("first Run() error = %v", err)
+	}
+	if got := testutil.ToFloat64(registry.VAActiveFlights.WithLabelValues("va-1")); got != 1 {
+		t.Fatalf("gauge after match = %v", got)
+	}
+
+	record.MatchedVirtualAirlines = nil
+	store.data[cache.KeyFlightRecord("f1")] = record
+	if err := job.Run(context.Background()); err != nil {
+		t.Fatalf("second Run() error = %v", err)
+	}
+	if got := testutil.ToFloat64(registry.VAActiveFlights.WithLabelValues("va-1")); got != 0 {
+		t.Fatalf("gauge after VA lost matches = %v", got)
+	}
+}
+
+func TestRunDropsGaugeForDeactivatedVA(t *testing.T) {
+	store := liveStore(gameflights.Flight{FlightID: "f1"})
+	registry := metrics.NewRegistry()
+	if err := New(store, twoVAs, registry).Run(context.Background()); err != nil {
+		t.Fatalf("first Run() error = %v", err)
+	}
+	if err := New(store, vaListerStub{{ID: "va-1", Code: "TST"}}, registry).Run(context.Background()); err != nil {
+		t.Fatalf("second Run() error = %v", err)
+	}
+	if got := testutil.CollectAndCount(registry.VAActiveFlights); got != 1 {
+		t.Fatalf("series = %d, want only active VA", got)
 	}
 }

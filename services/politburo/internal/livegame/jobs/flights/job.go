@@ -9,48 +9,39 @@ import (
 
 	"infinite-experiment/politburo/internal/cache"
 	"infinite-experiment/politburo/internal/community/virtualairlines"
+	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/metrics"
-	"infinite-experiment/politburo/internal/scheduler"
 )
 
 const jobName = "infinite-flight-flights"
 
-// LiveVACatalogLoader loads VA affix rules for live flight classification.
-type LiveVACatalogLoader interface {
-	LoadLiveFlightVACatalog(ctx context.Context) (virtualairlines.LiveVACatalog, error)
-}
-
-// JobExecutor runs a job with scheduler-level metrics (e.g. chained after-sync work).
-type JobExecutor interface {
-	Execute(context.Context, scheduler.Job)
+// BasicConfigLister loads active VAs' BASIC config for live flight classification.
+type BasicConfigLister interface {
+	ListActiveBasic(ctx context.Context) ([]vaconfig.ActiveBasic, error)
 }
 
 type Job struct {
-	client        infiniteflight.FlightsClient
-	cache         cache.Store
-	lookup        *gameliveries.Lookup
-	vaCatalog     LiveVACatalogLoader
-	metrics       *metrics.Registry
-	executor      JobExecutor
-	afterSync     scheduler.Job
-	now           func() time.Time
+	client    infiniteflight.FlightsClient
+	cache     cache.Store
+	lookup    *gameliveries.Lookup
+	vaConfigs BasicConfigLister
+	metrics   *metrics.Registry
+	now       func() time.Time
 }
 
 func New(
 	client infiniteflight.FlightsClient,
 	cacheStore cache.Store,
 	lookup *gameliveries.Lookup,
-	vaCatalog LiveVACatalogLoader,
+	vaConfigs BasicConfigLister,
 	metricsRegistry *metrics.Registry,
-	executor JobExecutor,
-	afterSync scheduler.Job,
 ) *Job {
 	return &Job{
-		client: client, cache: cacheStore, lookup: lookup, vaCatalog: vaCatalog,
-		metrics: metricsRegistry, executor: executor, afterSync: afterSync, now: time.Now,
+		client: client, cache: cacheStore, lookup: lookup, vaConfigs: vaConfigs,
+		metrics: metricsRegistry, now: time.Now,
 	}
 }
 
@@ -82,15 +73,7 @@ func (j *Job) Run(ctx context.Context) error {
 	}
 
 	refreshedAt := j.now().UTC()
-	liveVACatalog := virtualairlines.LiveVACatalog{Servers: map[string][]string{}}
-	if j.vaCatalog != nil {
-		catalog, err := j.vaCatalog.LoadLiveFlightVACatalog(ctx)
-		if err != nil {
-			slog.Error("failed to load live VA catalog; continuing with empty catalog", "error", err)
-		} else {
-			liveVACatalog = catalog
-		}
-	}
+	liveVACatalog := j.loadLiveVACatalog(ctx)
 	totalFlights := 0
 	for _, session := range sessionsSnapshot.Result {
 		if session.ID == "" || session.NormalizedName == "" {
@@ -108,8 +91,19 @@ func (j *Job) Run(ctx context.Context) error {
 		"flights", totalFlights,
 		"vaCatalogRules", len(liveVACatalog.Rules),
 	)
-	if j.executor != nil && j.afterSync != nil {
-		j.executor.Execute(ctx, j.afterSync)
-	}
 	return nil
+}
+
+// loadLiveVACatalog never fails the run: without a catalog, flights still refresh
+// and simply carry no VA matches.
+func (j *Job) loadLiveVACatalog(ctx context.Context) virtualairlines.LiveVACatalog {
+	if j.vaConfigs == nil {
+		return virtualairlines.BuildLiveVACatalog(nil)
+	}
+	rows, err := j.vaConfigs.ListActiveBasic(ctx)
+	if err != nil {
+		slog.Error("failed to load live VA catalog; continuing with empty catalog", "error", err)
+		return virtualairlines.BuildLiveVACatalog(nil)
+	}
+	return virtualairlines.BuildLiveVACatalog(rows)
 }

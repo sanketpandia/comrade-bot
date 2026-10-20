@@ -86,17 +86,16 @@ func (s *Server) router() stdhttp.Handler {
 	router.Use(middleware.Recoverer)
 	router.Use(appmiddleware.AccessLog(s.app.Metrics))
 	router.Use(appmiddleware.AuthenticateAPI(s.app.APIKeys, s.app.Sessions))
-	router.Use(appmiddleware.VAConfigQueryAlias())
 
 	healthHandler := health.NewHandler(s.app.DB, s.app.Cache, s.app.Config.Jobs.Enabled, s.app.StartedAt)
 	sessionsHandler := gamesessions.NewHandler(s.app.SessionsReader)
-	flightsHandler := gameflights.NewHandler(s.app.FlightsReader, s.app.Metrics, s.app.VirtualAirlines)
+	flightsHandler := gameflights.NewHandler(s.app.FlightsReader, s.app.Metrics)
 	signedLinkHandler := signedlink.NewHandler(s.app.Users, s.app.Tickets, s.app.Resolver, s.app.VALookup, s.app.Config.Auth.UIBaseURL)
 	identityHandler := identity.NewHandler(
 		s.app.Registration, s.app.Membership, s.app.VAInit, s.app.Status,
 		s.app.Reports, s.app.Operator, s.app.VirtualAirlines,
 	)
-	vaHandler := vaapi.NewHandler(s.app.VirtualAirlines, s.app.VAConfigs, s.app.Users, s.app.VAInit, s.app.VAWebhookJob)
+	vaHandler := vaapi.NewHandler(s.app.VirtualAirlines, s.app.VAConfigs, s.app.Users, s.app.VAWebhookJob)
 	userHandler := userapi.NewHandler(s.app.Users)
 	uiHandler := uihttp.NewHandler(s.app.UI, s.app.Sessions, s.app.Tickets, s.app.Reports, s.app.Operator, s.app.Config.PlatformOperatorDiscordIDs, s.app.SessionsReader)
 	handler := apiHandler{
@@ -222,6 +221,10 @@ func (h apiHandler) GetVA(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 
 func (h apiHandler) GetVAConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.GetVAConfigParams) {
 	h.withMiddleware(h.vaAdminMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		if !params.ConfigType.Valid() {
+			response.WriteError(w, stdhttp.StatusBadRequest, "UNKNOWN_CONFIG_TYPE", "unknown config type")
+			return
+		}
 		h.va.GetVAConfig(w, r, string(params.ConfigType))
 	})).ServeHTTP(w, r)
 }

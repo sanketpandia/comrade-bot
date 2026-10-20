@@ -18,11 +18,6 @@ const (
 	embedColor         = 0x4A5568
 )
 
-type serverCount struct {
-	Name    string
-	Matched int
-}
-
 // SnapshotInput is the data needed to build Discord embed posts for one dispatch.
 type SnapshotInput struct {
 	At        time.Time

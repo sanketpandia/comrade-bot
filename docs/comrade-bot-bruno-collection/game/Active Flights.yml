@@ -5,14 +5,14 @@ info:
 
 http:
   method: GET
-  url: "{{politburo-base-url}}/api/v1/game/flights/active/{{politburo-server-id}}?pageNumber=2&pageLength=5000"
+  url: "{{politburo-base-url}}/api/v1/game/flights/active/{{politburo-server-id}}?pageNumber=1&pageLength=50"
   params:
     - name: pageNumber
-      value: "2"
+      value: "1"
       type: query
       description: 1-based page number
     - name: pageLength
-      value: "5000"
+      value: "50"
       type: query
       description: Flights per page
   auth: inherit

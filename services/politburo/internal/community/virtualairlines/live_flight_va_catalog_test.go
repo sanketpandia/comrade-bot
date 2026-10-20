@@ -1,17 +1,32 @@
 package virtualairlines
 
-import "testing"
+import (
+	"testing"
+
+	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
+)
+
+func basicRow(vaID, vaCode, prefix, suffix string, servers ...string) vaconfig.ActiveBasic {
+	return vaconfig.ActiveBasic{
+		VAID:   vaID,
+		VACode: vaCode,
+		Basic: vaconfig.Basic{
+			GameCallsign:     vaconfig.GameCallsign{Prefix: prefix, Suffix: suffix},
+			PreferredServers: servers,
+		},
+	}
+}
 
 func TestBuildLiveVACatalogServerIndexAndUnscoped(t *testing.T) {
-	catalog := BuildLiveVACatalog([]basicConfigRow{
-		{VAID: "va-1", VACode: "AAA", Prefix: "IE", PreferredServers: []string{"expert", "casual", "expert"}},
-		{VAID: "va-2", VACode: "BBB", Prefix: "SW", PreferredServers: nil},
+	catalog := BuildLiveVACatalog([]vaconfig.ActiveBasic{
+		basicRow("va-1", "AAA", "IE", "", "casual", "expert"),
+		basicRow("va-2", "BBB", "SW", ""),
 	})
 
-	if catalog.Servers["expert"] == nil || catalog.Servers["expert"][0] != "va-1" || len(catalog.Servers["expert"]) != 1 {
+	if len(catalog.Servers["expert"]) != 1 || catalog.Servers["expert"][0] != "va-1" {
 		t.Fatalf("expert servers = %v", catalog.Servers["expert"])
 	}
-	if catalog.Servers["casual"] == nil || catalog.Servers["casual"][0] != "va-1" {
+	if len(catalog.Servers["casual"]) != 1 || catalog.Servers["casual"][0] != "va-1" {
 		t.Fatalf("casual servers = %v", catalog.Servers["casual"])
 	}
 	if len(catalog.UnscopedVAIDs) != 1 || catalog.UnscopedVAIDs[0] != "va-2" {
@@ -19,94 +34,65 @@ func TestBuildLiveVACatalogServerIndexAndUnscoped(t *testing.T) {
 	}
 }
 
+func TestBuildLiveVACatalogSkipsVAWithoutAffix(t *testing.T) {
+	catalog := BuildLiveVACatalog([]vaconfig.ActiveBasic{basicRow("va-1", "AAA", "", "", "expert")})
+	if len(catalog.Rules) != 0 || len(catalog.Servers) != 0 {
+		t.Fatalf("catalog = %#v", catalog)
+	}
+}
+
 func TestLiveVACatalogMatchServerScoped(t *testing.T) {
-	catalog := BuildLiveVACatalog([]basicConfigRow{
-		{VAID: "va-1", VACode: "IE", Prefix: "IE", PreferredServers: []string{"expert"}},
-	})
-	matches := catalog.Match("IE123", "expert")
+	catalog := BuildLiveVACatalog([]vaconfig.ActiveBasic{basicRow("va-1", "IE", "IE", "", "expert")})
+	matches := catalog.Match("IE123", "IE123", "expert")
 	if len(matches) != 1 || matches[0].VAID != "va-1" {
 		t.Fatalf("expert match = %#v", matches)
 	}
-	if len(catalog.Match("IE123", "casual")) != 0 {
+	if len(catalog.Match("IE123", "IE123", "casual")) != 0 {
 		t.Fatal("expected no match on casual")
 	}
 }
 
 func TestLiveVACatalogMatchUnscopedAllSessions(t *testing.T) {
-	catalog := BuildLiveVACatalog([]basicConfigRow{
-		{VAID: "va-1", VACode: "IE", Prefix: "IE", PreferredServers: nil},
-	})
+	catalog := BuildLiveVACatalog([]vaconfig.ActiveBasic{basicRow("va-1", "IE", "IE", "")})
 	for _, session := range []string{"casual", "expert", "training"} {
-		if len(catalog.Match("IE123", session)) != 1 {
-			t.Fatalf("session %s: %#v", session, catalog.Match("IE123", session))
+		if len(catalog.Match("IE123", "IE123", session)) != 1 {
+			t.Fatalf("session %s: no match", session)
 		}
 	}
 }
 
-func TestLiveVACatalogMatchPrefixAndSuffix(t *testing.T) {
-	catalog := BuildLiveVACatalog([]basicConfigRow{
-		{VAID: "va-1", VACode: "SW", Prefix: "SW", Suffix: "Heavy", PreferredServers: []string{"expert"}},
-	})
-	if len(catalog.Match("SW39 Heavy", "expert")) != 1 {
-		t.Fatal("expected prefix+suffix match")
+func TestLiveVACatalogMatchIsCaseSensitive(t *testing.T) {
+	catalog := BuildLiveVACatalog([]vaconfig.ActiveBasic{basicRow("va-1", "IE", "ie", "")})
+	if len(catalog.Match("IE123", "IE123", "expert")) != 0 {
+		t.Fatal("expected case-sensitive prefix miss")
 	}
-	if len(catalog.Match("SW39", "expert")) != 0 {
+}
+
+func TestLiveVACatalogMatchLiteralTrailerSuffix(t *testing.T) {
+	catalog := BuildLiveVACatalog([]vaconfig.ActiveBasic{basicRow("va-1", "SW", "SW", "Heavy", "expert")})
+	if len(catalog.Match("SW39 Heavy", "SW39", "expert")) != 1 {
+		t.Fatal("expected prefix+suffix match on the upstream callsign")
+	}
+	if len(catalog.Match("SW39", "SW39", "expert")) != 0 {
 		t.Fatal("expected suffix miss")
 	}
 }
 
-func TestLiveVACatalogMatchMultipleVAs(t *testing.T) {
-	catalog := BuildLiveVACatalog([]basicConfigRow{
-		{VAID: "va-1", VACode: "AA", Prefix: "DAL", PreferredServers: []string{"expert"}},
-		{VAID: "va-2", VACode: "BB", Suffix: "Heavy", PreferredServers: []string{"expert"}},
-	})
-	matches := catalog.Match("DAL123 Heavy", "expert")
-	if len(matches) != 2 {
-		t.Fatalf("matches = %#v", matches)
-	}
-}
-
-func TestSuffixMatchesAfterFlightOfTrailer(t *testing.T) {
-	catalog := BuildLiveVACatalog([]basicConfigRow{
-		{VAID: "va-1", VACode: "TST", Suffix: "VA", PreferredServers: []string{"expert"}},
-	})
-	matches := catalog.Match("Airline 001VA Flight of 5", "expert")
-	if len(matches) != 1 {
-		t.Fatalf("matches = %#v", matches)
-	}
-}
-
-func TestLiveVACatalogMatchSuffixBeforeWeightClass(t *testing.T) {
-	catalog := BuildLiveVACatalog([]basicConfigRow{
-		{VAID: "va-1", VACode: "DAL", Suffix: "AK", PreferredServers: []string{"expert"}},
-	})
-	matches := catalog.Match("Delta 095AK Heavy", "expert")
+func TestLiveVACatalogMatchSuffixOnNormalizedCallsign(t *testing.T) {
+	catalog := BuildLiveVACatalog([]vaconfig.ActiveBasic{basicRow("va-1", "DAL", "", "AK", "expert")})
+	matches := catalog.Match("Delta 095AK Heavy", "Delta 095AK", "expert")
 	if len(matches) != 1 || matches[0].VAID != "va-1" {
 		t.Fatalf("matches = %#v", matches)
 	}
 }
 
-func TestAffixMissReason(t *testing.T) {
-	catalog := BuildLiveVACatalog([]basicConfigRow{
-		{VAID: "va-1", VACode: "DAL", Suffix: "AK", PreferredServers: []string{"expert"}},
+func TestLiveVACatalogMatchMultipleVAs(t *testing.T) {
+	catalog := BuildLiveVACatalog([]vaconfig.ActiveBasic{
+		basicRow("va-1", "AA", "DAL", "", "expert"),
+		basicRow("va-2", "BB", "", "Heavy", "expert"),
 	})
-	if catalog.AffixMissReason("Delta 095AK Heavy", "casual") != "no_eligible_vas_for_session" {
-		t.Fatalf("casual reason = %q", catalog.AffixMissReason("Delta 095AK Heavy", "casual"))
-	}
-	if catalog.AffixMissReason("Delta 095AK Heavy", "expert") != "" {
-		t.Fatalf("expert reason = %q", catalog.AffixMissReason("Delta 095AK Heavy", "expert"))
-	}
-}
-
-func TestParseBasicConfigRow(t *testing.T) {
-	row, err := parseBasicConfigRow("id-1", "TST", []byte(`{
-		"game_callsign":{"prefix":" IE ","suffix":""},
-		"preferred_servers":[" Expert ","expert"]
-	}`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if row.Prefix != "IE" || len(row.PreferredServers) != 1 || row.PreferredServers[0] != "expert" {
-		t.Fatalf("row = %#v", row)
+	matches := catalog.Match("DAL123 Heavy", "DAL123", "expert")
+	if len(matches) != 2 || matches[0].VACode != "AA" || matches[1].VACode != "BB" {
+		t.Fatalf("matches = %#v", matches)
 	}
 }

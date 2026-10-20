@@ -3,6 +3,7 @@ module infinite-experiment/politburo
 go 1.25.0
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/go-chi/chi/v5 v5.2.2
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.6
@@ -15,7 +16,6 @@ require (
 )
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.5.2 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

@@ -1,69 +1,84 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"reflect"
+	"sort"
 	"strings"
 )
 
-func validateBasic(raw json.RawMessage) error {
-	if len(raw) == 0 {
-		return fmt.Errorf("%w: empty body", ErrInvalidConfig)
-	}
-	var top map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &top); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidConfig, err)
-	}
-	if cs, ok := top["game_callsign"]; ok {
-		if err := validateGameCallsign(cs); err != nil {
-			return err
-		}
-	}
-	if ps, ok := top["preferred_servers"]; ok {
-		if err := validatePreferredServers(ps); err != nil {
-			return err
-		}
-	}
-	return nil
+// Basic is the typed shape of a BASIC config block. Unknown keys are allowed and ignored.
+type Basic struct {
+	GameCallsign     GameCallsign `json:"game_callsign"`
+	PreferredServers []string     `json:"preferred_servers"`
 }
 
-func validatePreferredServers(raw json.RawMessage) error {
-	var items []json.RawMessage
-	if err := json.Unmarshal(raw, &items); err != nil {
-		return fmt.Errorf("%w: preferred_servers must be an array", ErrInvalidConfig)
-	}
-	for i, item := range items {
-		var s string
-		if err := json.Unmarshal(item, &s); err != nil {
-			return fmt.Errorf("%w: preferred_servers[%d] must be a string", ErrInvalidConfig, i)
-		}
-		if strings.TrimSpace(s) == "" {
-			return fmt.Errorf("%w: preferred_servers[%d] must not be empty", ErrInvalidConfig, i)
-		}
-	}
-	return nil
+// GameCallsign holds the case-sensitive callsign affix rule for live flight matching.
+type GameCallsign struct {
+	Prefix string `json:"prefix"`
+	Suffix string `json:"suffix"`
 }
 
-func validateGameCallsign(raw json.RawMessage) error {
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &fields); err != nil {
-		return fmt.Errorf("%w: game_callsign must be an object", ErrInvalidConfig)
+// ParseBasic decodes and validates a BASIC block. Affixes are trimmed; preferred servers
+// are normalized to lowercase session names, deduplicated, and sorted.
+func ParseBasic(raw json.RawMessage) (Basic, error) {
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return Basic{}, fmt.Errorf("%w: empty body", ErrInvalidConfig)
 	}
-	for key, value := range fields {
-		switch key {
-		case "prefix", "suffix":
-			if err := requireJSONString(value, "game_callsign."+key); err != nil {
-				return err
-			}
+	var basic Basic
+	if err := json.Unmarshal(raw, &basic); err != nil {
+		return Basic{}, fmt.Errorf("%w: %s", ErrInvalidConfig, describeDecodeError(err))
+	}
+	basic.GameCallsign.Prefix = strings.TrimSpace(basic.GameCallsign.Prefix)
+	basic.GameCallsign.Suffix = strings.TrimSpace(basic.GameCallsign.Suffix)
+
+	seen := map[string]bool{}
+	servers := make([]string, 0, len(basic.PreferredServers))
+	for i, server := range basic.PreferredServers {
+		name := strings.ToLower(strings.TrimSpace(server))
+		if name == "" {
+			return Basic{}, fmt.Errorf("%w: preferred_servers[%d] must not be empty", ErrInvalidConfig, i)
 		}
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		servers = append(servers, name)
 	}
-	return nil
+	sort.Strings(servers)
+	basic.PreferredServers = nil
+	if len(servers) > 0 {
+		basic.PreferredServers = servers
+	}
+	return basic, nil
 }
 
-func requireJSONString(raw json.RawMessage, field string) error {
-	var s string
-	if err := json.Unmarshal(raw, &s); err != nil {
-		return fmt.Errorf("%w: %s must be a string", ErrInvalidConfig, field)
+// ValidateBasic reports whether raw is a valid BASIC block.
+func ValidateBasic(raw json.RawMessage) error {
+	_, err := ParseBasic(raw)
+	return err
+}
+
+func describeDecodeError(err error) string {
+	var typeErr *json.UnmarshalTypeError
+	if !errors.As(err, &typeErr) {
+		return "body must be a JSON object"
 	}
-	return nil
+	field := typeErr.Field
+	if field == "" {
+		field = "body"
+	}
+	switch typeErr.Type.Kind() {
+	case reflect.String:
+		return field + " must be a string"
+	case reflect.Slice:
+		return field + " must be an array"
+	case reflect.Struct:
+		return field + " must be an object"
+	default:
+		return field + " has an invalid type"
+	}
 }

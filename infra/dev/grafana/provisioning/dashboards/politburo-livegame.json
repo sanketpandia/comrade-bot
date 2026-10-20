@@ -185,7 +185,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "description": "Count from the last infinite-flight-va-flight-index run. Only VAs with at least one matched active flight are updated each tick; other series may show a stale value until the VA matches again.",
+      "description": "Count from the last infinite-flight-va-flight-index run. Every active VA is reported each run (0 when it has no matched flights); series disappear only when a VA is deactivated.",
       "fieldConfig": {
         "defaults": {
           "mappings": [],
@@ -223,7 +223,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "description": "Count from the last infinite-flight-va-flight-index run. Only VAs with at least one matched active flight are updated each tick; other series may show a stale value until the VA matches again.",
+      "description": "Count from the last infinite-flight-va-flight-index run. Every active VA is reported each run (0 when it has no matched flights); series disappear only when a VA is deactivated.",
       "fieldConfig": {
         "defaults": {
           "custom": {

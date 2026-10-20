@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"infinite-experiment/politburo/internal/community/virtualairlines"
 	"infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/metrics"
@@ -23,7 +22,7 @@ func TestHandleCapsAcrossServers(t *testing.T) {
 	}
 	poster := &fakePoster{}
 	reg := metrics.NewRegistry()
-	handler := New(&fakeFlights{byServer: byServer}, &fakeSessions{names: []string{"bravo", "alpha", "offline"}}, nil, poster, reg)
+	handler := New(&fakeFlights{byServer: byServer}, &fakeSessions{names: []string{"bravo", "alpha", "offline"}}, poster, reg)
 
 	result := handler.Handle(context.Background(), dispatch.Item{
 		VAID:             "va-1",
@@ -74,7 +73,7 @@ func TestHandleCapsAcrossServers(t *testing.T) {
 
 func TestHandleUnknownVACodeDoesNotPost(t *testing.T) {
 	poster := &fakePoster{}
-	handler := New(&fakeFlights{}, &fakeSessions{names: []string{"expert"}}, &fakeVAs{}, poster, metrics.NewRegistry())
+	handler := New(&fakeFlights{err: flights.ErrUnknownVACode}, &fakeSessions{names: []string{"expert"}}, poster, metrics.NewRegistry())
 	result := handler.Handle(context.Background(), dispatch.Item{
 		VAID:             "va-1",
 		URL:              "https://discord.com/api/webhooks/1/token",
@@ -86,11 +85,25 @@ func TestHandleUnknownVACodeDoesNotPost(t *testing.T) {
 	}
 }
 
+func TestHandlePassesNormalizedVACodeToReader(t *testing.T) {
+	flightsAPI := &fakeFlights{}
+	handler := New(flightsAPI, &fakeSessions{names: []string{"expert"}}, &fakePoster{}, metrics.NewRegistry())
+	handler.Handle(context.Background(), dispatch.Item{
+		VAID:             "va-1",
+		URL:              "https://discord.com/api/webhooks/1/token",
+		PreferredServers: []string{"expert"},
+		Filters:          []byte(`{"vaCode":" tst "}`),
+	})
+	if len(flightsAPI.vaCodes) != 1 || flightsAPI.vaCodes[0] != "TST" {
+		t.Fatalf("vaCodes = %v", flightsAPI.vaCodes)
+	}
+}
+
 func TestHandleSkipsWithoutPreferredServers(t *testing.T) {
 	flightsAPI := &fakeFlights{}
 	poster := &fakePoster{}
 	reg := metrics.NewRegistry()
-	handler := New(flightsAPI, &fakeSessions{}, nil, poster, reg)
+	handler := New(flightsAPI, &fakeSessions{}, poster, reg)
 
 	result := handler.Handle(context.Background(), dispatch.Item{VAID: "va-1", Filters: []byte(`{}`)})
 	if result.Outcome != dispatch.OutcomeSkipped || result.SkipReason != dispatch.SkipNoPreferredServers {
@@ -106,11 +119,17 @@ func TestHandleSkipsWithoutPreferredServers(t *testing.T) {
 
 type fakeFlights struct {
 	byServer map[string][]flights.Flight
+	err      error
 	calls    int
+	vaCodes  []string
 }
 
 func (f *fakeFlights) ListActiveTracks(ctx context.Context, input flights.ListActiveTracksInput) (flights.ListActiveTracksResult, error) {
 	f.calls++
+	f.vaCodes = append(f.vaCodes, input.Filters.VACode)
+	if f.err != nil {
+		return flights.ListActiveTracksResult{}, f.err
+	}
 	all := f.byServer[input.Server]
 	page := all
 	if input.PageLength > 0 && len(page) > input.PageLength {
@@ -156,17 +175,6 @@ func (f *fakePoster) PostEmbeds(ctx context.Context, webhookType, webhookURL str
 	}
 	f.embeds = append(f.embeds, embeds[0])
 	return nil
-}
-
-type fakeVAs struct {
-	id string
-}
-
-func (f *fakeVAs) GetByCode(ctx context.Context, code string) (*virtualairlines.VirtualAirline, error) {
-	if f.id == "" {
-		return nil, nil
-	}
-	return &virtualairlines.VirtualAirline{ID: f.id, Code: code}, nil
 }
 
 func sampleFlights(prefix string, n int) []flights.Flight {
