@@ -16,6 +16,10 @@ the previous implementation is kept separately during migration.
 | Local infra | `start-dev.sh`: Compose backing services + host Politburo + host comrade-bot |
 
 - `architecture/overview.md`: application boundaries, HTTP surfaces, startup.
+- `architecture/virtual-airlines.md`: VA config blocks, live callsign matching,
+  VA flight index, and the `vaCode` flights filter.
+- `architecture/webhooks.md`: VA Discord webhooks (WEBHOOKS config, scheduling,
+  manual trigger, run log, metrics).
 - `conventions.md`: cache responses, timestamps, Redis keys, metrics policy,
   auth/service boundary, and the checklist for new cache-backed features.
 - `development/getting-started.md`: `start-dev.sh`, Air `.env`, health checks.

@@ -1,0 +1,8 @@
+type: object
+required: [webhookType]
+properties:
+  webhookType:
+    type: string
+    minLength: 1
+    description: WEBHOOKS feature key (for example `active_flights`).
+    example: active_flights

@@ -7,6 +7,7 @@ import (
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	"infinite-experiment/politburo/internal/cache"
+	"infinite-experiment/politburo/internal/community/virtualairlines"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/transport/http/api/cachedresponse"
 
@@ -72,20 +73,20 @@ func cachedFiltersFromDomain(filters []domainflights.AvailableFilter) []cachedre
 
 func activeFlightRecordFromDomain(flight domainflights.Flight, flightID openapi_types.UUID) politburoapi.ActiveFlightRecord {
 	record := politburoapi.ActiveFlightRecord{
-		FlightId:       flightID,
-		Callsign:       flight.Callsign,
+		FlightId:           flightID,
+		Callsign:           flight.Callsign,
 		NormalizedCallsign: optionalString(flight.NormalizedCallsign),
-		Latitude:       flight.Latitude,
-		Longitude:      flight.Longitude,
-		Altitude:       flight.Altitude,
-		Speed:          flight.Speed,
-		VerticalSpeed:  flight.VerticalSpeed,
-		Track:          flight.Track,
-		LastReport:     flight.LastReport,
-		PilotState:     flight.PilotState,
-		IsConnected:    flight.IsConnected,
-		SessionId:      flight.SessionID,
-		NormalizedName: flight.NormalizedName,
+		Latitude:           flight.Latitude,
+		Longitude:          flight.Longitude,
+		Altitude:           flight.Altitude,
+		Speed:              flight.Speed,
+		VerticalSpeed:      flight.VerticalSpeed,
+		Track:              flight.Track,
+		LastReport:         flight.LastReport,
+		PilotState:         flight.PilotState,
+		IsConnected:        flight.IsConnected,
+		SessionId:          flight.SessionID,
+		NormalizedName:     flight.NormalizedName,
 		Normalized: politburoapi.ActiveFlightNormalized{
 			Speed:         flight.Normalized.Speed,
 			VerticalSpeed: flight.Normalized.VerticalSpeed,
@@ -132,17 +133,17 @@ func optionalString(value string) *string {
 	return &value
 }
 
-func matchedVirtualAirlinesFromDomain(matches []domainflights.VirtualAirlineMatch) *[]politburoapi.ActiveFlightVirtualAirlineMatch {
-	out := make([]politburoapi.ActiveFlightVirtualAirlineMatch, len(matches))
-	for i, match := range matches {
+func matchedVirtualAirlinesFromDomain(matches []virtualairlines.VirtualAirlineMatch) *[]politburoapi.ActiveFlightVirtualAirlineMatch {
+	out := make([]politburoapi.ActiveFlightVirtualAirlineMatch, 0, len(matches))
+	for _, match := range matches {
 		parsed, err := uuid.Parse(match.VAID)
 		if err != nil {
 			continue
 		}
-		out[i] = politburoapi.ActiveFlightVirtualAirlineMatch{
+		out = append(out, politburoapi.ActiveFlightVirtualAirlineMatch{
 			VaId:   openapi_types.UUID(parsed),
 			VaCode: match.VACode,
-		}
+		})
 	}
 	return &out
 }

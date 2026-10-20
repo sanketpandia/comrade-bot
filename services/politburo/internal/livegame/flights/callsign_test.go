@@ -3,22 +3,15 @@ package flights
 import "testing"
 
 func TestNormalizedCallsignForAffix(t *testing.T) {
-	if got := NormalizedCallsignForAffix("Delta 095AK Heavy"); got != "Delta 095AK" {
-		t.Fatalf("got %q", got)
+	cases := map[string]string{
+		"Delta 095AK Heavy":         "Delta 095AK",
+		"Airline 001VA Flight of 5": "Airline 001VA",
+		"SW39 Heavy Flight of 2":    "SW39",
+		"IE123":                     "IE123",
 	}
-	if got := NormalizedCallsignForAffix("Airline 001VA Flight of 5"); got != "Airline 001VA" {
-		t.Fatalf("got %q", got)
-	}
-}
-
-func TestCallsignAffixMatchesSuffixAfterHeavy(t *testing.T) {
-	if !CallsignAffixMatches("Delta 095AK Heavy", "", "AK") {
-		t.Fatal("expected AK suffix match")
-	}
-}
-
-func TestCallsignAffixMatchesLiteralHeavySuffix(t *testing.T) {
-	if !CallsignAffixMatches("SW39 Heavy", "SW", "Heavy") {
-		t.Fatal("expected prefix+Heavy suffix on full callsign")
+	for in, want := range cases {
+		if got := NormalizedCallsignForAffix(in); got != want {
+			t.Fatalf("NormalizedCallsignForAffix(%q) = %q, want %q", in, got, want)
+		}
 	}
 }

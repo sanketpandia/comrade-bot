@@ -1,4 +1,6 @@
-// Package vaflightindex builds per-VA Redis indexes of active flight IDs after flights sync.
+// Package vaflightindex builds the Redis indexes behind the active-flights vaCode filter:
+// a VA code → VA ID map and a per-VA list of active flight IDs. It runs on its own
+// schedule and reads the snapshots and records written by the flights job.
 package vaflightindex
 
 import (
@@ -6,9 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"sort"
+	"strings"
 
 	"infinite-experiment/politburo/internal/cache"
+	"infinite-experiment/politburo/internal/community/virtualairlines"
 	gameflights "infinite-experiment/politburo/internal/livegame/flights"
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/metrics"
@@ -16,20 +19,39 @@ import (
 
 const jobName = "infinite-flight-va-flight-index"
 
+type activeVALister interface {
+	ListActive(ctx context.Context) ([]virtualairlines.VirtualAirline, error)
+}
+
 type Job struct {
 	cache   cache.Store
+	vas     activeVALister
 	metrics *metrics.Registry
 }
 
-func New(cacheStore cache.Store, metricsRegistry *metrics.Registry) *Job {
-	return &Job{cache: cacheStore, metrics: metricsRegistry}
+func New(cacheStore cache.Store, vas activeVALister, metricsRegistry *metrics.Registry) *Job {
+	return &Job{cache: cacheStore, vas: vas, metrics: metricsRegistry}
 }
 
 func (j *Job) Name() string {
 	return jobName
 }
 
+// Run writes the code map and one flight ID list per active VA (empty when the VA has
+// no matched flights), so readers can treat a missing key as a cache miss.
 func (j *Job) Run(ctx context.Context) error {
+	vas, err := j.vas.ListActive(ctx)
+	if err != nil {
+		return fmt.Errorf("list active virtual airlines: %w", err)
+	}
+	codes := make(map[string]string, len(vas))
+	for _, va := range vas {
+		codes[strings.ToUpper(va.Code)] = va.ID
+	}
+	if err := j.cache.SetJSON(ctx, cache.KeyVACodeIndex, codes, cache.ActiveFlightsTTL); err != nil {
+		return fmt.Errorf("cache VA code index: %w", err)
+	}
+
 	var sessionsSnapshot gamesessions.Snapshot
 	if err := j.cache.GetJSON(ctx, cache.KeyActiveSessions, &sessionsSnapshot); err != nil {
 		slog.Warn("skipping VA flight index; active sessions cache unavailable", "error", err)
@@ -40,13 +62,52 @@ func (j *Job) Run(ctx context.Context) error {
 		return nil
 	}
 
-	buildInput := BuildInput{
+	buildInput, stats, err := j.loadBuildInput(ctx, sessionsSnapshot)
+	if err != nil {
+		return err
+	}
+	index := BuildVAFlightIndex(buildInput)
+
+	if j.metrics != nil {
+		j.metrics.VAActiveFlights.Reset()
+	}
+	matchedVAs := 0
+	for _, va := range vas {
+		ids := index[va.ID]
+		if ids == nil {
+			ids = []string{}
+		} else {
+			matchedVAs++
+		}
+		if err := j.cache.SetJSON(ctx, cache.KeyVAActiveFlights(va.ID), ids, cache.ActiveFlightsTTL); err != nil {
+			return fmt.Errorf("cache VA active flights %s: %w", va.ID, err)
+		}
+		if j.metrics != nil {
+			j.metrics.VAActiveFlights.WithLabelValues(va.ID).Set(float64(len(ids)))
+		}
+	}
+
+	slog.Info("VA active flight index refreshed",
+		"sessions", len(sessionsSnapshot.Result),
+		"flightsConsidered", stats.flightsConsidered,
+		"recordMisses", stats.recordMisses,
+		"activeVAs", len(vas),
+		"matchedVAs", matchedVAs,
+	)
+	return nil
+}
+
+type buildStats struct {
+	flightsConsidered int
+	recordMisses      int
+}
+
+func (j *Job) loadBuildInput(ctx context.Context, sessionsSnapshot gamesessions.Snapshot) (BuildInput, buildStats, error) {
+	input := BuildInput{
 		ActiveFlightIDs: map[string][]string{},
 		Records:         map[string]gameflights.Flight{},
 	}
-	flightsConsidered := 0
-	recordMisses := 0
-
+	var stats buildStats
 	for _, session := range sessionsSnapshot.Result {
 		server := session.NormalizedName
 		if server == "" {
@@ -57,51 +118,27 @@ func (j *Job) Run(ctx context.Context) error {
 			if errors.Is(err, cache.ErrMiss) {
 				continue
 			}
-			return fmt.Errorf("read active flights snapshot %s: %w", server, err)
+			return BuildInput{}, stats, fmt.Errorf("read active flights snapshot %s: %w", server, err)
 		}
-		if snapshot.Tracks == nil {
-			continue
-		}
-		flightIDs := make([]string, 0, len(snapshot.Tracks))
-		for flightID := range snapshot.Tracks {
-			flightIDs = append(flightIDs, flightID)
-		}
-		sort.Strings(flightIDs)
-		buildInput.ActiveFlightIDs[server] = flightIDs
+		flightIDs := gameflights.SortedTrackFlightIDs(snapshot.Tracks)
+		input.ActiveFlightIDs[server] = flightIDs
 
 		for _, flightID := range flightIDs {
-			flightsConsidered++
-			if _, loaded := buildInput.Records[flightID]; loaded {
+			stats.flightsConsidered++
+			if _, loaded := input.Records[flightID]; loaded {
 				continue
 			}
 			var record gameflights.Flight
 			if err := j.cache.GetJSON(ctx, cache.KeyFlightRecord(flightID), &record); err != nil {
 				if errors.Is(err, cache.ErrMiss) {
-					recordMisses++
+					stats.recordMisses++
 					slog.Debug("skip flight in VA index; record cache miss", "flightId", flightID, "server", server)
 					continue
 				}
-				return fmt.Errorf("read flight record %s: %w", flightID, err)
+				return BuildInput{}, stats, fmt.Errorf("read flight record %s: %w", flightID, err)
 			}
-			buildInput.Records[flightID] = record
+			input.Records[flightID] = record
 		}
 	}
-
-	index := BuildVAFlightIndex(buildInput)
-	for vaID, ids := range index {
-		if err := j.cache.SetJSON(ctx, cache.KeyVAActiveFlights(vaID), ids, cache.ActiveFlightsTTL); err != nil {
-			return fmt.Errorf("cache VA active flights %s: %w", vaID, err)
-		}
-		if j.metrics != nil {
-			j.metrics.VAActiveFlights.WithLabelValues(vaID).Set(float64(len(ids)))
-		}
-	}
-
-	slog.Info("VA active flight index refreshed",
-		"sessions", len(sessionsSnapshot.Result),
-		"flightsConsidered", flightsConsidered,
-		"recordMisses", recordMisses,
-		"vaKeysWritten", len(index),
-	)
-	return nil
+	return input, stats, nil
 }

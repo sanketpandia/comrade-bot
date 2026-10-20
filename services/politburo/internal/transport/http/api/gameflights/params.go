@@ -54,7 +54,7 @@ func filterQueryFromParams(params politburoapi.GetActiveFlightsParams) (domainfl
 	}
 	vaCode := ""
 	if params.VaCode != nil {
-		vaCode = strings.TrimSpace(*params.VaCode)
+		vaCode = strings.ToUpper(strings.TrimSpace(*params.VaCode))
 	}
 	userName, callSign = domainflights.NormalizeFilterStrings(userName, callSign)
 	return domainflights.FilterQuery{
@@ -66,7 +66,5 @@ func filterQueryFromParams(params politburoapi.GetActiveFlightsParams) (domainfl
 }
 
 func isInvalidListRequest(err error) bool {
-	return errors.Is(err, errServerNameRequired) ||
-		errors.Is(err, domainflights.ErrInvalidFilter) ||
-		errors.Is(err, domainflights.ErrUnknownVACode)
+	return errors.Is(err, errServerNameRequired) || errors.Is(err, domainflights.ErrInvalidFilter)
 }

@@ -26,6 +26,9 @@ const (
 	// PrefixGameFlightsVA namespaces per-VA active flight ID lists.
 	PrefixGameFlightsVA = PrefixGameFlights + "va:"
 
+	// KeyVACodeIndex maps uppercase active VA codes to VA IDs for the VA flight filter.
+	KeyVACodeIndex = PrefixGameFlights + "va_codes"
+
 	// PrefixAuth namespaces short-lived authentication cache entries.
 	PrefixAuth = "auth:"
 

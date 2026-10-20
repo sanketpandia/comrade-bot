@@ -79,7 +79,7 @@ Boot: `cmd/politburo/main.go` → `config.Load()` → `app.New()` (composition r
 | `internal/config` | All env vars; `*_FILE` secret variants; defaults (`PORT=8082`, `PG_DB=politburo_next`, `JOBS_ENABLED=false`) |
 | `internal/app` | **Only** place dependencies are constructed and wired (`App` struct) |
 | `internal/transport/http/server.go` | Router, global middleware, generated-interface adapter `apiHandler`, hand-mounted route groups |
-| `internal/transport/http/api/<feature>` | JSON handlers (`gamesessions`, `gameflights`, `health`, `signedlink`, `identity`) |
+| `internal/transport/http/api/<feature>` | JSON handlers (`gamesessions`, `gameflights`, `health`, `signedlink`, `identity`, `va`, `user`) |
 | `internal/transport/http/api/cachedresponse` | `{data:{availableFilters,result,history?,meta,pagination?}}` shape |
 | `internal/transport/http/response` | `WriteJSON`, `WriteError` → `{error:{code,message}}` |
 | `internal/transport/http/middleware` | Access log+metrics, CORS, `AuthenticateAPI`, Discord context, membership enrichment, roles, operator gate, rate limit |
@@ -89,9 +89,12 @@ Boot: `cmd/politburo/main.go` → `config.Load()` → `app.New()` (composition r
 | `internal/access/apikeys` | DB + Redis API key lookup |
 | `internal/livegame/{flights,sessions,liveries}` | Cache-backed IF live game domain |
 | `internal/livegame/infiniteflight` | Hand-written IF Live API client (bearer auth) |
-| `internal/livegame/jobs` | `register.go` job composition; `schedules/intervals.go` cron specs |
-| `internal/livegame/scheduler` | robfig/cron wrapper with job metrics |
+| `internal/jobs/register.go` | Single job composition point; cron specs in `internal/cache/schedules.go` |
+| `internal/livegame/jobs/*` | `sessions`, `flights`, `liveries`, `vaflightindex` (own schedule; reads Redis + active VAs, writes VA code map and per-VA flight lists) |
+| `internal/scheduler` | robfig/cron wrapper with job metrics |
 | `internal/community/*` | Users, VA, membership (+ roster, resolver), registration (+ route proof), user status |
+| `internal/community/virtualairlines` (+ `config`) | All VA-owned logic: repository, init service, live callsign catalog/matching, typed `va_configs` blocks and their loader queries. **Must not import `livegame` or `webhooks`** |
+| `internal/webhooks/**` | VA Discord webhooks: `WEBHOOKS` config, dispatch job + manual trigger (`webhooks.NewJob`), feature handlers, run log. See `docs/politburo/architecture/webhooks.md` |
 | `internal/operations/{operator,reports}` | Platform operator workflows and report storage |
 | `internal/cache` | `RedisStore`, `Store` interface, **all** keys in `keys.go` |
 | `internal/metrics` | Single Prometheus `Registry` (HTTP, cache, jobs) |
@@ -106,6 +109,7 @@ HTTP surfaces:
 | `/metrics` | Prometheus | public on host (blocked by Caddy in prod) |
 | `/api/v1/game/**` | OpenAPI | session cookie **or** `X-API-Key` |
 | `/api/v1/signed-link` | OpenAPI | `X-API-Key` (+ `X-Discord-User-Id`) |
+| `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger` | OpenAPI | session or API key + VA context; config and trigger need `administrator` |
 | `POST /api/v1/users`, `POST /api/v1/servers` | OpenAPI | API key + `RequireDiscordBotContext` + `EnrichDiscordMembership` + registration rate limit |
 | `/api/v1/user/*`, `/memberships/join`, `/reports/occupied-ifc` | **hand-mounted, not in OpenAPI** | API key + `RequireDiscordBotContext` + `EnrichDiscordMembership` + registration rate limit |
 | `/api/v1/admin/verify-god`, `/api/v1/admin/users/ban` | OpenAPI **Admin** | API key + Discord context + `RequirePlatformOperator` (god mode) |
@@ -119,7 +123,8 @@ Conventions that are enforced in code today (see `docs/politburo/conventions.md`
 - Cache-backed endpoints never call upstream/DB on miss — they return 503 and jobs own population.
 - Handlers own cookies/sessions/claims; domain packages take primitive IDs only and must not import `internal/access/session`.
 - Timestamps are `time.Time` until JSON, UTC, RFC 3339.
-- Metrics are performance-only (HTTP, cache, jobs); no business gauges unless asked.
+- Metrics are performance-only (HTTP, cache, jobs); no business gauges unless asked (explicitly requested: `politburo_livegame_*`, `politburo_livegame_va_active_flights{va_id}`, `politburo_webhooks_*`).
+- VA dependency direction: `livegame`/`webhooks`/transport → `community/virtualairlines`, never the reverse. Data loaders are `Repository` queries (plain `database/sql`; there is no ORM), not `Service` methods.
 
 ---
 
@@ -158,7 +163,7 @@ Conventions that are enforced in code today (see `docs/politburo/conventions.md`
 12. `infra/prod/env/politburo.env.example` is legacy: lists `JWT_SECRET`, `GOD_MODE`, `USE_REDIS_CACHE`, `DEBUG` (unused) and omits `SIGNED_LINK_SECRET` (**required outside `APP_ENV=local`**), `UI_BASE_URL`, `PLATFORM_OPERATOR_DISCORD_IDS`, `JOBS_ENABLED`. It also defaults `PG_DB=infinite` while code defaults `politburo_next`.
 13. Migrations are manual. Dev Compose creates DB `infinite`; `politburo_next` must be created and `000_core_schema.sql` applied by hand (see `infra/dev/README.md`). Legacy full schema is in `migrations/archive/`. Never apply `000` to a populated DB.
 14. Promtail pipelines (dev+prod) parse Zap fields (`L`, `T`, `M`, `C`); Politburo now logs slog JSON (`time`, `level`, `msg`). `level` works; timestamp/message extraction does not.
-15. Grafana dashboards in `infra/{dev,prod}/grafana/provisioning/dashboards/` are duplicated per env and mostly legacy: `politburo-background.json` queries metrics that no longer exist (queues, Watermill, webhooks, sync jobs, cache sizes), and HTTP panels use labels `endpoint`/`status_code` while the registry emits `route`/`status`. Current Politburo families: `politburo_http_*{method,route,status}`, `politburo_cache_*{operation,outcome}`, `politburo_jobs_*{job,outcome}`. Dev Loki streams use `service=`; prod Promtail tails `/var/log/containers/*.log` and labels `container_name=`.
+15. Grafana dashboards in `infra/{dev,prod}/grafana/provisioning/dashboards/` are duplicated per env and mostly legacy: `politburo-background.json` queries metrics that no longer exist (queues, Watermill, webhooks, sync jobs, cache sizes), and HTTP panels use labels `endpoint`/`status_code` while the registry emits `route`/`status`. Current Politburo families: `politburo_http_*{method,route,status}`, `politburo_cache_*{operation,outcome}`, `politburo_jobs_*{job,outcome}`, `politburo_livegame_*`, `politburo_webhooks_*` (the `politburo-livegame` and `politburo-webhooks` dashboards are current). Dev Loki streams use `service=`; prod Promtail tails `/var/log/containers/*.log` and labels `container_name=`.
 16. `middleware/ratelimit.go` comments say "unwired" but it **is** mounted on the bot route group (registration limit, fails open).
 17. `infra/prod/docker-compose.prod.yml` keeps project name `labour-bureau` on purpose (volume names). Don't rename.
 18. Air must run with cwd `services/politburo`: `exec "$(cd ../../cicd/tools && go tool -n air)" -c .air.toml`. Running `go tool air` from `cicd/tools` builds the wrong tree.

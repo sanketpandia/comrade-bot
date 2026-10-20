@@ -29,6 +29,28 @@ func (r *Repository) GetByCode(ctx context.Context, code string) (*VirtualAirlin
 	return r.queryOne(ctx, `SELECT `+vaColumns+` FROM public.virtual_airlines WHERE lower(code) = lower($1)`, code)
 }
 
+// ListActive returns all active virtual airlines ordered by code.
+func (r *Repository) ListActive(ctx context.Context) ([]VirtualAirline, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT `+vaColumns+` FROM public.virtual_airlines WHERE is_active = true ORDER BY code`)
+	if err != nil {
+		return nil, fmt.Errorf("list active virtual airlines: %w", err)
+	}
+	defer rows.Close()
+
+	var out []VirtualAirline
+	for rows.Next() {
+		va, err := scanVA(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *va)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate active virtual airlines: %w", err)
+	}
+	return out, nil
+}
+
 type CreateInput struct {
 	Name            string
 	Code            string

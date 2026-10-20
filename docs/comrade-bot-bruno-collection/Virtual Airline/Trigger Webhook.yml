@@ -1,0 +1,24 @@
+info:
+  name: Trigger Webhook
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{politburo-base-url}}/api/v1/va/webhook/trigger"
+  auth: inherit
+  body:
+    type: json
+    data: |-
+      {
+        "webhookType": "active_flights"
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`triggerVAWebhook` — manually run one WEBHOOKS feature for the current VA (same dispatch and run log as the scheduled job)."

@@ -3,26 +3,33 @@ package metrics
 import "github.com/prometheus/client_golang/prometheus"
 
 type Registry struct {
-	Prometheus             *prometheus.Registry
-	Requests               *prometheus.CounterVec
-	RequestDuration        *prometheus.HistogramVec
-	CacheOperations        *prometheus.CounterVec
-	CacheOperationDuration *prometheus.HistogramVec
-	CachePayloadBytes      *prometheus.HistogramVec
-	CacheInserts           prometheus.Counter
-	JobRuns                *prometheus.CounterVec
-	JobDuration            *prometheus.HistogramVec
-	JobRunning             *prometheus.GaugeVec
-	JobLastSuccess         *prometheus.GaugeVec
-	FlightsActive          *prometheus.GaugeVec
-	FlightsByPilotState    *prometheus.GaugeVec
-	LiveryResolveTotal            *prometheus.CounterVec
-	FlightsFilteredTotal          *prometheus.CounterVec
-	FlightsComputeTotal           *prometheus.CounterVec
-	FlightsFPLSyncScheduledTotal  *prometheus.CounterVec
-	FlightsRecordUpdateTotal      *prometheus.CounterVec
-	FlightsRecordCacheMissTotal   *prometheus.CounterVec
-	VAActiveFlights               *prometheus.GaugeVec
+	Prometheus                   *prometheus.Registry
+	Requests                     *prometheus.CounterVec
+	RequestDuration              *prometheus.HistogramVec
+	CacheOperations              *prometheus.CounterVec
+	CacheOperationDuration       *prometheus.HistogramVec
+	CachePayloadBytes            *prometheus.HistogramVec
+	CacheInserts                 prometheus.Counter
+	JobRuns                      *prometheus.CounterVec
+	JobDuration                  *prometheus.HistogramVec
+	JobRunning                   *prometheus.GaugeVec
+	JobLastSuccess               *prometheus.GaugeVec
+	FlightsActive                *prometheus.GaugeVec
+	FlightsByPilotState          *prometheus.GaugeVec
+	LiveryResolveTotal           *prometheus.CounterVec
+	FlightsFilteredTotal         *prometheus.CounterVec
+	FlightsComputeTotal          *prometheus.CounterVec
+	FlightsFPLSyncScheduledTotal *prometheus.CounterVec
+	FlightsRecordUpdateTotal     *prometheus.CounterVec
+	FlightsRecordCacheMissTotal  *prometheus.CounterVec
+	VAActiveFlights              *prometheus.GaugeVec
+	WebhookDispatchTotal         *prometheus.CounterVec
+	WebhookDispatchDuration      *prometheus.HistogramVec
+	WebhookDiscordPosts          *prometheus.CounterVec
+	WebhookActiveFlightsServers  *prometheus.HistogramVec
+	WebhookActiveFlightsMatched  *prometheus.CounterVec
+	WebhookActiveFlightsReported *prometheus.CounterVec
+	WebhookActiveFlightsCapped   *prometheus.CounterVec
 }
 
 func NewRegistry() *Registry {
@@ -143,6 +150,50 @@ func NewRegistry() *Registry {
 		Name:      "va_active_flights",
 		Help:      "Active flights in the latest VA flight index for each virtual airline.",
 	}, []string{"va_id"})
+	webhookDispatchTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "webhooks",
+		Name:      "dispatch_total",
+		Help:      "Webhook feature dispatches that entered the worker pool.",
+	}, []string{"webhook_type", "outcome"})
+	webhookDispatchDuration := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "politburo",
+		Subsystem: "webhooks",
+		Name:      "dispatch_duration_seconds",
+		Help:      "Webhook feature handler duration in seconds.",
+		Buckets:   prometheus.DefBuckets,
+	}, []string{"webhook_type"})
+	webhookDiscordPosts := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "webhooks",
+		Name:      "discord_posts_total",
+		Help:      "Discord webhook HTTP posts by feature and outcome.",
+	}, []string{"webhook_type", "outcome"})
+	webhookActiveFlightsServers := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "politburo",
+		Subsystem: "webhooks",
+		Name:      "active_flights_servers_searched",
+		Help:      "Preferred servers online and searched per active_flights dispatch.",
+		Buckets:   []float64{0, 1, 2, 3, 4, 5, 8, 12},
+	}, []string{"webhook_type"})
+	webhookActiveFlightsMatched := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "webhooks",
+		Name:      "active_flights_matched_total",
+		Help:      "Active flights matched before the webhook report cap.",
+	}, []string{"webhook_type"})
+	webhookActiveFlightsReported := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "webhooks",
+		Name:      "active_flights_reported_total",
+		Help:      "Active flights included in a Discord webhook body.",
+	}, []string{"webhook_type"})
+	webhookActiveFlightsCapped := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "webhooks",
+		Name:      "active_flights_capped_total",
+		Help:      "active_flights dispatches whose match count exceeded the report cap.",
+	}, []string{"webhook_type"})
 	registry.MustRegister(
 		requests, duration,
 		cacheOperations, cacheDuration, cachePayloadBytes, cacheInserts,
@@ -150,6 +201,8 @@ func NewRegistry() *Registry {
 		flightsActive, flightsByPilotState, liveryResolveTotal, flightsFilteredTotal,
 		flightsComputeTotal, flightsFPLSyncScheduledTotal, flightsRecordUpdateTotal, flightsRecordCacheMissTotal,
 		vaActiveFlights,
+		webhookDispatchTotal, webhookDispatchDuration, webhookDiscordPosts,
+		webhookActiveFlightsServers, webhookActiveFlightsMatched, webhookActiveFlightsReported, webhookActiveFlightsCapped,
 	)
 	return &Registry{
 		Prometheus: registry, Requests: requests, RequestDuration: duration,
@@ -157,10 +210,44 @@ func NewRegistry() *Registry {
 		CachePayloadBytes: cachePayloadBytes, CacheInserts: cacheInserts,
 		JobRuns: jobRuns, JobDuration: jobDuration, JobRunning: jobRunning,
 		JobLastSuccess: jobLastSuccess,
-		FlightsActive: flightsActive, FlightsByPilotState: flightsByPilotState,
+		FlightsActive:  flightsActive, FlightsByPilotState: flightsByPilotState,
 		LiveryResolveTotal: liveryResolveTotal, FlightsFilteredTotal: flightsFilteredTotal,
 		FlightsComputeTotal: flightsComputeTotal, FlightsFPLSyncScheduledTotal: flightsFPLSyncScheduledTotal,
 		FlightsRecordUpdateTotal: flightsRecordUpdateTotal, FlightsRecordCacheMissTotal: flightsRecordCacheMissTotal,
-		VAActiveFlights: vaActiveFlights,
+		VAActiveFlights:              vaActiveFlights,
+		WebhookDispatchTotal:         webhookDispatchTotal,
+		WebhookDispatchDuration:      webhookDispatchDuration,
+		WebhookDiscordPosts:          webhookDiscordPosts,
+		WebhookActiveFlightsServers:  webhookActiveFlightsServers,
+		WebhookActiveFlightsMatched:  webhookActiveFlightsMatched,
+		WebhookActiveFlightsReported: webhookActiveFlightsReported,
+		WebhookActiveFlightsCapped:   webhookActiveFlightsCapped,
+	}
+}
+
+func (r *Registry) ObserveWebhookDispatch(webhookType, outcome string, seconds float64) {
+	if r == nil {
+		return
+	}
+	r.WebhookDispatchTotal.WithLabelValues(webhookType, outcome).Inc()
+	r.WebhookDispatchDuration.WithLabelValues(webhookType).Observe(seconds)
+}
+
+func (r *Registry) ObserveWebhookDiscordPost(webhookType, outcome string) {
+	if r == nil {
+		return
+	}
+	r.WebhookDiscordPosts.WithLabelValues(webhookType, outcome).Inc()
+}
+
+func (r *Registry) ObserveActiveFlightsDispatch(webhookType string, servers, matched, reported int, capped bool) {
+	if r == nil {
+		return
+	}
+	r.WebhookActiveFlightsServers.WithLabelValues(webhookType).Observe(float64(servers))
+	r.WebhookActiveFlightsMatched.WithLabelValues(webhookType).Add(float64(matched))
+	r.WebhookActiveFlightsReported.WithLabelValues(webhookType).Add(float64(reported))
+	if capped {
+		r.WebhookActiveFlightsCapped.WithLabelValues(webhookType).Inc()
 	}
 }

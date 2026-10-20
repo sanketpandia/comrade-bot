@@ -38,11 +38,16 @@ func AccessLog(metrics *appmetrics.Registry) func(http.Handler) http.Handler {
 				"status", status,
 				"duration_ms", time.Since(started).Milliseconds(),
 			}
-            if route == "unmatched" || status >= 400 {
+			if route == "unmatched" || status >= 400 {
 				args = append(args, "request_path", r.URL.Path)
 			}
-			if code := capture.errorCode(); code != "" {
-				args = append(args, "error_code", code)
+			if code, message := capture.errorDetails(); code != "" || message != "" {
+				if code != "" {
+					args = append(args, "error_code", code)
+				}
+				if message != "" {
+					args = append(args, "error_message", message)
+				}
 			}
 			slog.Info("http request", args...)
 		})
@@ -69,17 +74,18 @@ func (c *errorBodyCapture) Write(b []byte) (int, error) {
 	return c.WrapResponseWriter.Write(b)
 }
 
-func (c *errorBodyCapture) errorCode() string {
+func (c *errorBodyCapture) errorDetails() (code, message string) {
 	if c.Status() < 400 || len(c.body) == 0 {
-		return ""
+		return "", ""
 	}
 	var envelope struct {
 		Error struct {
-			Code string `json:"code"`
+			Code    string `json:"code"`
+			Message string `json:"message"`
 		} `json:"error"`
 	}
 	if err := json.Unmarshal(c.body, &envelope); err != nil {
-		return ""
+		return "", ""
 	}
-	return envelope.Error.Code
+	return envelope.Error.Code, envelope.Error.Message
 }

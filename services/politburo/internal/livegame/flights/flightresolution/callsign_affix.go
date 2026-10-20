@@ -1,6 +1,9 @@
 package flightresolution
 
-import "infinite-experiment/politburo/internal/livegame/flights"
+import (
+	"infinite-experiment/politburo/internal/community/virtualairlines"
+	"infinite-experiment/politburo/internal/livegame/flights"
+)
 
 func applyCallsignAffixFields(env *resolveEnv) {
 	if !env.hasFlight && env.prior != nil {
@@ -11,10 +14,7 @@ func applyCallsignAffixFields(env *resolveEnv) {
 		return
 	}
 
-	callsign := env.upstream.Callsign
-	normalized := flights.NormalizedCallsignForAffix(callsign)
-	matches := catalogMatches(env, callsign)
-
+	normalized, matches := callsignAffixFields(env)
 	changed := env.flight.NormalizedCallsign != normalized ||
 		!virtualAirlineMatchesEqual(env.flight.MatchedVirtualAirlines, matches)
 	if !changed {
@@ -26,22 +26,14 @@ func applyCallsignAffixFields(env *resolveEnv) {
 	env.recordMutated = true
 }
 
-func catalogMatches(env *resolveEnv, callsign string) []flights.VirtualAirlineMatch {
-	raw := env.ctx.LiveVACatalog.Match(callsign, env.ctx.Session.NormalizedName)
-	if len(raw) == 0 {
-		return nil
-	}
-	out := make([]flights.VirtualAirlineMatch, len(raw))
-	for i, m := range raw {
-		out[i] = flights.VirtualAirlineMatch{VAID: m.VAID, VACode: m.VACode}
-	}
-	return out
+func callsignAffixFields(env *resolveEnv) (string, []virtualairlines.VirtualAirlineMatch) {
+	callsign := env.upstream.Callsign
+	normalized := flights.NormalizedCallsignForAffix(callsign)
+	return normalized, env.ctx.LiveVACatalog.Match(callsign, normalized, env.ctx.Session.NormalizedName)
 }
 
 func callsignAffixFieldsDiffer(env *resolveEnv) bool {
-	callsign := env.upstream.Callsign
-	normalized := flights.NormalizedCallsignForAffix(callsign)
-	matches := catalogMatches(env, callsign)
+	normalized, matches := callsignAffixFields(env)
 	if env.prior == nil {
 		return normalized != "" || len(matches) > 0
 	}
@@ -49,12 +41,12 @@ func callsignAffixFieldsDiffer(env *resolveEnv) bool {
 		!virtualAirlineMatchesEqual(env.prior.MatchedVirtualAirlines, matches)
 }
 
-func virtualAirlineMatchesEqual(a, b []flights.VirtualAirlineMatch) bool {
+func virtualAirlineMatchesEqual(a, b []virtualairlines.VirtualAirlineMatch) bool {
 	if len(a) != len(b) {
 		return false
 	}
 	for i := range a {
-		if a[i].VAID != b[i].VAID || a[i].VACode != b[i].VACode {
+		if a[i] != b[i] {
 			return false
 		}
 	}

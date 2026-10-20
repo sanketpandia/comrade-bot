@@ -1,5 +1,10 @@
 type: object
-description: Documented shape for BASIC va config (stored as opaque payload; validated server-side).
+description: |
+  Documented shape for BASIC va config (stored as opaque payload; validated server-side).
+  `game_callsign.prefix`/`suffix` are trimmed and matched case-sensitively against live callsigns
+  (prefix against the raw callsign; suffix against the raw or normalized callsign).
+  `preferred_servers` are lowercased, trimmed, de-duplicated, and sorted; when empty the VA matches
+  flights on every server.
 additionalProperties: true
 properties:
   game_callsign:

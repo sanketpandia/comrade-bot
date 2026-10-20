@@ -1,0 +1,17 @@
+info:
+  name: VA Config
+  type: folder
+  seq: 2
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    Typed VA configuration (`getVAConfig` / `upsertVAConfig`). Requires VA administrator
+    headers from the Virtual Airline folder (`X-API-Key`, `X-Discord-User-Id`,
+    `X-Discord-Server-Id`).
+
+    Optional collection variable `discord-webhook-url` fills the WEBHOOKS upsert sample.
+    Do not commit a real Discord webhook secret.
+  type: text/markdown

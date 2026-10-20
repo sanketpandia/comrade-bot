@@ -9,12 +9,21 @@ import (
 	"net/http"
 
 	"infinite-experiment/politburo/internal/access/auth"
-	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/community/users"
+	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/transport/http/response"
+	webhookconfig "infinite-experiment/politburo/internal/webhooks/config"
+
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
 const maxConfigBodyBytes = 64 << 10
+
+// configValidators maps each stored config type to the domain that owns its shape.
+var configValidators = map[string]func(json.RawMessage) error{
+	vaconfig.TypeBasic:    vaconfig.ValidateBasic,
+	vaconfig.TypeWebhooks: webhookconfig.Validate,
+}
 
 type configBlocksRepo interface {
 	Get(ctx context.Context, vaID, configType string) (*vaconfig.Block, error)
@@ -61,15 +70,18 @@ func (h *Handler) UpsertVAConfig(w http.ResponseWriter, r *http.Request, configT
 		return
 	}
 
-	if err := vaconfig.Validate(configType, raw); err != nil {
-		if errors.Is(err, vaconfig.ErrUnknownType) {
-			response.WriteError(w, http.StatusBadRequest, "UNKNOWN_CONFIG_TYPE", err.Error())
-			return
-		}
-		if errors.Is(err, vaconfig.ErrInvalidConfig) {
-			response.WriteError(w, http.StatusBadRequest, "INVALID_CONFIG", err.Error())
-			return
-		}
+	validate, known := configValidators[configType]
+	if !known {
+		response.WriteError(w, http.StatusBadRequest, "UNKNOWN_CONFIG_TYPE", "unknown config type")
+		return
+	}
+	if err := validate(raw); err != nil {
+		slog.Warn("reject va config",
+			"request_id", chimiddleware.GetReqID(r.Context()),
+			"va_id", vaID,
+			"type", configType,
+			"error", err,
+		)
 		response.WriteError(w, http.StatusBadRequest, "INVALID_CONFIG", err.Error())
 		return
 	}

@@ -7,7 +7,7 @@ RUN apk add --no-cache make
 WORKDIR /repo
 
 COPY cicd/tools/go.mod cicd/tools/go.sum ./cicd/tools/
-RUN cd cicd/tools && go mod download
+RUN cd cicd/tools && go build -o /dev/null github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 COPY Makefile ./
 COPY cicd/Makefile ./cicd/
 COPY cicd/codegen ./cicd/codegen/

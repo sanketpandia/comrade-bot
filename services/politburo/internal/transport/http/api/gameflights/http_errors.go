@@ -48,11 +48,8 @@ func writeListActiveTracksError(w http.ResponseWriter, server string, query doma
 func writeListActiveTracksRequestError(w http.ResponseWriter, err error) {
 	if isInvalidListRequest(err) {
 		msg := err.Error()
-		switch {
-		case errors.Is(err, domainflights.ErrInvalidFilter):
+		if errors.Is(err, domainflights.ErrInvalidFilter) {
 			msg = "invalid pilotState value"
-		case errors.Is(err, domainflights.ErrUnknownVACode):
-			msg = "unknown virtual airline code"
 		}
 		response.WriteError(w, http.StatusBadRequest, "INVALID_QUERY_FILTER", msg)
 		return

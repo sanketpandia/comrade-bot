@@ -46,7 +46,11 @@ The old full dump and follow-up ALTER migration are under `archive/`. See
 
 ## Adding changes
 
-Add `001_<slug>.sql`, `002_<slug>.sql`, … as transactional deltas. Test on:
+Add `001_<slug>.sql`, `002_<slug>.sql`, … as transactional deltas.
+
+`003_va_webhook_runs.sql` adds append-only `va_webhook_runs` (dispatch outcome and timing for each feature that entered the webhook worker pool). It does not store Discord webhook URLs, raw config, or feature payloads. There is no purge job in this phase; the table grows with each dispatched run.
+
+Test on:
 
 1. A fresh DB from `000_core_schema.sql` plus all new files.
 2. A copy of an environment that already ran previous migrations.

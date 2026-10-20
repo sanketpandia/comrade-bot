@@ -1,7 +1,7 @@
 info:
-  name: Get VA Config
+  name: Get BASIC
   type: http
-  seq: 2
+  seq: 1
 
 http:
   method: GET

@@ -113,19 +113,19 @@ func (r *Reader) knownServer(ctx context.Context, serverID string) (bool, error)
 
 func (r *Reader) buildTracks(ctx context.Context, snapshot Snapshot, query FilterQuery) ([]Track, error) {
 	ids := SortedTrackFlightIDs(snapshot.Tracks)
-	if query.VAID != "" {
-		vaIDs, err := r.loadVAActiveFlightIDs(ctx, query.VAID)
+	if query.VACode != "" {
+		vaFlightIDs, err := r.loadVAActiveFlightIDs(ctx, query.VACode)
 		if err != nil {
 			return nil, err
 		}
-		allowed := make(map[string]bool, len(vaIDs))
-		for _, id := range vaIDs {
+		allowed := make(map[string]bool, len(vaFlightIDs))
+		for _, id := range vaFlightIDs {
 			allowed[id] = true
 		}
 		ids = filterIDsBySet(ids, allowed)
 	}
 	pilotSeen := pilotStateSet(query.PilotStates)
-	hasFilters := query.VAID != "" || len(query.PilotStates) > 0 || query.UserName != "" || query.CallSign != ""
+	hasFilters := query.VACode != "" || len(query.PilotStates) > 0 || query.UserName != "" || query.CallSign != ""
 
 	out := make([]Track, 0, len(ids))
 	for _, id := range ids {
@@ -150,11 +150,25 @@ func (r *Reader) buildTracks(ctx context.Context, snapshot Snapshot, query Filte
 	return out, nil
 }
 
-func (r *Reader) loadVAActiveFlightIDs(ctx context.Context, vaID string) ([]string, error) {
+// loadVAActiveFlightIDs resolves vaCode through the cached code index, then loads that
+// VA's flight ID list. The VA flight index job writes both for every active VA.
+func (r *Reader) loadVAActiveFlightIDs(ctx context.Context, vaCode string) ([]string, error) {
+	var codes map[string]string
+	if err := r.cache.GetJSON(ctx, cache.KeyVACodeIndex, &codes); err != nil {
+		if errors.Is(err, cache.ErrMiss) {
+			return nil, ErrCacheMiss
+		}
+		return nil, ErrCacheRead
+	}
+	vaID, ok := codes[strings.ToUpper(strings.TrimSpace(vaCode))]
+	if !ok {
+		return nil, ErrUnknownVACode
+	}
+
 	var ids []string
 	if err := r.cache.GetJSON(ctx, cache.KeyVAActiveFlights(vaID), &ids); err != nil {
 		if errors.Is(err, cache.ErrMiss) {
-			return nil, nil
+			return nil, ErrCacheMiss
 		}
 		return nil, ErrCacheRead
 	}
