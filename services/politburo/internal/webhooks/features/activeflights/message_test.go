@@ -54,6 +54,7 @@ func TestBuildPostsSummaryAndFlightField(t *testing.T) {
 		Filters:   json.RawMessage(`{"vaCode":"TEST","pilotState":["active"]}`),
 		Flights: []flights.Record{{
 			Raw: flights.Observation{
+				FlightID:    "c34118e7-cbdd-4e22-8751-0cda93e41d75",
 				Callsign:    "IE123",
 				Username:    &username,
 				UserID:      "u1",
@@ -84,7 +85,7 @@ func TestBuildPostsSummaryAndFlightField(t *testing.T) {
 		t.Fatalf("posts = %d", len(posts))
 	}
 	value := posts[1].Fields[0].Value
-	for _, line := range []string{"Pilot: alice", "State: active", "Aircraft: A320 / House", "Altitude: 35000 ft", "Speed: 450 kts", "Route: —"} {
+	for _, line := range []string{"Pilot: alice", "State: active", "Aircraft: A320 / House", "Altitude: 35000 ft", "Speed: 450 kts", "Route: —", "Flight ID: c34118e7-cbdd-4e22-8751-0cda93e41d75"} {
 		if !strings.Contains(value, line) {
 			t.Fatalf("flight value missing %q:\n%s", line, value)
 		}

@@ -298,13 +298,18 @@ func flightFieldValue(flight flights.Record) string {
 	if speed == "" {
 		speed = fmt.Sprintf("%d kts", flights.RoundedSpeed(flight.Raw.Speed))
 	}
+	flightID := strings.TrimSpace(flight.Raw.FlightID)
+	if flightID == "" {
+		flightID = "—"
+	}
 	return fmt.Sprintf(
-		"Pilot: %s\nState: %s\nAircraft: %s\nAltitude: %d ft\nSpeed: %s\nRoute: —",
+		"Pilot: %s\nState: %s\nAircraft: %s\nAltitude: %d ft\nSpeed: %s\nRoute: —\nFlight ID: %s",
 		pilot,
 		formatFlightState(flight),
 		formatAircraft(flight.Derived.AircraftName, flight.Derived.LiveryName),
 		flights.RoundedAltitude(flight.Raw.Altitude),
 		speed,
+		flightID,
 	)
 }
 
