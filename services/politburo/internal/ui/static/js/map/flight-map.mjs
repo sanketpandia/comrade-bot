@@ -195,7 +195,7 @@ function createFlightIcon(flight, color) {
   
   // Create SVG for rotatable triangle (track / bearing indicator)
   const selected = flight._selected === true;
-  const stroke = selected ? '#f8fafc' : '#0f111a';
+  const stroke = selected ? '#ebdbb2' : '#1d2021';
   const strokeWidth = selected ? 3 : 2;
   const svg = `
     <svg width="32" height="28" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
@@ -223,7 +223,7 @@ function createFlightIcon(flight, color) {
 function createCircleIcon(color) {
   const svg = `
     <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="10" fill="${color}" stroke="#0f111a" stroke-width="2"/>
+      <circle cx="12" cy="12" r="10" fill="${color}" stroke="#1d2021" stroke-width="2"/>
     </svg>
   `;
 

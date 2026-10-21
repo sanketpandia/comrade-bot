@@ -48,7 +48,7 @@ html, body { height: 100%; }
   min-height: 2.6rem;
   padding: 0.55rem 1.2rem;
   border: 1px solid transparent;
-  border-radius: 0.7rem;
+  border-radius: var(--radius-md);
   background: var(--accent-primary);
   color: var(--accent-text);
   font: inherit;

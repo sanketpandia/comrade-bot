@@ -1,5 +1,8 @@
 {{define "topnav"}}
 <header class="topbar">
+  <a class="topbar__brand" href="/" aria-label="Comrade Bot home">
+    <img src="/static/brand/logo.png" width="32" height="32" alt="">
+  </a>
   <nav class="topbar__nav" aria-label="Primary">
     <a class="topbar__link" href="/dashboard"{{if eq .Content "dashboard-content"}} aria-current="page"{{end}}>Dashboard</a>
     {{if eq .Role "administrator"}}
