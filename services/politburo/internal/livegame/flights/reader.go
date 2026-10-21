@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
+	"infinite-experiment/politburo/internal/livegame/flights/flightstate"
 )
 
 type Reader struct {
@@ -71,11 +72,26 @@ func (r *Reader) ListActiveTracks(ctx context.Context, input ListActiveTracksInp
 }
 
 // GetActiveFlight returns the enriched per-flight cache record for flightID.
-func (r *Reader) GetActiveFlight(ctx context.Context, flightID string) (Flight, error) {
+func (r *Reader) GetActiveFlight(ctx context.Context, flightID string) (Record, error) {
 	if strings.TrimSpace(flightID) == "" {
-		return Flight{}, ErrInvalidFilter
+		return Record{}, ErrInvalidFilter
 	}
 	return r.loadFlightRecord(ctx, flightID)
+}
+
+// GetFlightHistory returns temporal estimator history for flightID (cache miss yields empty history).
+func (r *Reader) GetFlightHistory(ctx context.Context, flightID string) (flightstate.History, error) {
+	if strings.TrimSpace(flightID) == "" {
+		return flightstate.History{}, ErrInvalidFilter
+	}
+	var history flightstate.History
+	if err := r.cache.GetJSON(ctx, cache.KeyFlightHistory(flightID), &history); err != nil {
+		if errors.Is(err, cache.ErrMiss) {
+			return flightstate.History{}, nil
+		}
+		return flightstate.History{}, ErrCacheRead
+	}
+	return history, nil
 }
 
 func (r *Reader) loadSnapshot(ctx context.Context, server string) (Snapshot, error) {
@@ -145,7 +161,7 @@ func (r *Reader) buildTracks(ctx context.Context, snapshot Snapshot, query Filte
 		if !MatchesFilters(flight, query, pilotSeen) {
 			continue
 		}
-		out = append(out, TrackFromFlight(flight))
+		out = append(out, TrackFromRecord(flight))
 	}
 	return out, nil
 }
@@ -188,13 +204,13 @@ func filterIDsBySet(ids []string, allowed map[string]bool) []string {
 	return out
 }
 
-func (r *Reader) loadFlightRecord(ctx context.Context, flightID string) (Flight, error) {
-	flight := Flight{}
-	if err := r.cache.GetJSON(ctx, cache.KeyFlightRecord(flightID), &flight); err != nil {
+func (r *Reader) loadFlightRecord(ctx context.Context, flightID string) (Record, error) {
+	record := Record{}
+	if err := r.cache.GetJSON(ctx, cache.KeyFlightRecord(flightID), &record); err != nil {
 		if errors.Is(err, cache.ErrMiss) {
-			return Flight{}, ErrCacheMiss
+			return Record{}, ErrCacheMiss
 		}
-		return Flight{}, ErrCacheRead
+		return Record{}, ErrCacheRead
 	}
-	return flight, nil
+	return record, nil
 }

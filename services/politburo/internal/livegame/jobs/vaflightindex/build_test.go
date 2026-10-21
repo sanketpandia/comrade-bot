@@ -7,16 +7,23 @@ import (
 	gameflights "infinite-experiment/politburo/internal/livegame/flights"
 )
 
+func vaRecord(id string, matches []virtualairlines.VirtualAirlineMatch) gameflights.Record {
+	return gameflights.Record{
+		Raw:     gameflights.Observation{FlightID: id},
+		Derived: gameflights.Derived{MatchedVirtualAirlines: matches},
+	}
+}
+
 func TestBuildVAFlightIndexMultiServerAndMultiVA(t *testing.T) {
 	input := BuildInput{
 		ActiveFlightIDs: map[string][]string{
 			"expert": {"f1", "f2"},
 			"casual": {"f3"},
 		},
-		Records: map[string]gameflights.Flight{
-			"f1": {FlightID: "f1", MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1"}}},
-			"f2": {FlightID: "f2", MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1"}, {VAID: "va-2"}}},
-			"f3": {FlightID: "f3", MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-2"}}},
+		Records: map[string]gameflights.Record{
+			"f1": vaRecord("f1", []virtualairlines.VirtualAirlineMatch{{VAID: "va-1"}}),
+			"f2": vaRecord("f2", []virtualairlines.VirtualAirlineMatch{{VAID: "va-1"}, {VAID: "va-2"}}),
+			"f3": vaRecord("f3", []virtualairlines.VirtualAirlineMatch{{VAID: "va-2"}}),
 		},
 	}
 	index := BuildVAFlightIndex(input)
@@ -31,8 +38,8 @@ func TestBuildVAFlightIndexMultiServerAndMultiVA(t *testing.T) {
 func TestBuildVAFlightIndexSkipsMissingRecord(t *testing.T) {
 	input := BuildInput{
 		ActiveFlightIDs: map[string][]string{"expert": {"f1", "f-miss"}},
-		Records: map[string]gameflights.Flight{
-			"f1": {FlightID: "f1", MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1"}}},
+		Records: map[string]gameflights.Record{
+			"f1": vaRecord("f1", []virtualairlines.VirtualAirlineMatch{{VAID: "va-1"}}),
 		},
 	}
 	index := BuildVAFlightIndex(input)
@@ -47,8 +54,8 @@ func TestBuildVAFlightIndexDedupesFlightPerVA(t *testing.T) {
 			"expert": {"f1"},
 			"casual": {"f1"},
 		},
-		Records: map[string]gameflights.Flight{
-			"f1": {FlightID: "f1", MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1"}}},
+		Records: map[string]gameflights.Record{
+			"f1": vaRecord("f1", []virtualairlines.VirtualAirlineMatch{{VAID: "va-1"}}),
 		},
 	}
 	index := BuildVAFlightIndex(input)

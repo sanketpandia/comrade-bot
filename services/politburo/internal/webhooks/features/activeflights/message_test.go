@@ -13,9 +13,11 @@ import (
 
 func TestBuildPostsPagination(t *testing.T) {
 	at := time.Date(2026, 10, 20, 14, 30, 0, 0, time.UTC)
-	loaded := make([]flights.Flight, 26)
+	loaded := make([]flights.Record, 26)
 	for i := range loaded {
-		loaded[i] = flights.Flight{Callsign: fmt.Sprintf("F%02d", i), Altitude: 1000, Speed: 200}
+		loaded[i] = flights.Record{
+			Raw: flights.Observation{Callsign: fmt.Sprintf("F%02d", i), Altitude: 1000, Speed: 200},
+		}
 	}
 
 	posts := BuildPosts(SnapshotInput{
@@ -50,16 +52,20 @@ func TestBuildPostsSummaryAndFlightField(t *testing.T) {
 		Capped:    true,
 		Frequency: "30m",
 		Filters:   json.RawMessage(`{"vaCode":"TEST","pilotState":["active"]}`),
-		Flights: []flights.Flight{{
-			Callsign:     "IE123",
-			Username:     &username,
-			UserID:       "u1",
-			AircraftName: "A320",
-			LiveryName:   "House",
-			Altitude:     35000,
-			Speed:        450,
-			IsConnected:  true,
-			Normalized:   flights.Normalized{Speed: "450 kts", PilotState: "active"},
+		Flights: []flights.Record{{
+			Raw: flights.Observation{
+				Callsign:    "IE123",
+				Username:    &username,
+				UserID:      "u1",
+				Altitude:    35000,
+				Speed:       450,
+				IsConnected: true,
+			},
+			Derived: flights.Derived{
+				AircraftName: "A320",
+				LiveryName:   "House",
+				Normalized:   flights.Normalized{Speed: "450 kts", PilotState: "active"},
+			},
 		}},
 	})
 

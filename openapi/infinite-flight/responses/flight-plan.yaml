@@ -1,0 +1,5 @@
+description: Flight plan was returned.
+content:
+  application/json:
+    schema:
+      $ref: ../schemas/responses/flight-plan.yaml

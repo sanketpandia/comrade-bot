@@ -22,6 +22,10 @@ type Registry struct {
 	FlightsFPLSyncScheduledTotal *prometheus.CounterVec
 	FlightsRecordUpdateTotal     *prometheus.CounterVec
 	FlightsRecordCacheMissTotal  *prometheus.CounterVec
+	FlightsByPhase               *prometheus.GaugeVec
+	FlightStateTransitionsTotal  *prometheus.CounterVec
+	FlightsAPPlusCandidates      *prometheus.GaugeVec
+	FlightsByDataQuality         *prometheus.GaugeVec
 	VAActiveFlights              *prometheus.GaugeVec
 	WebhookDispatchTotal         *prometheus.CounterVec
 	WebhookDispatchDuration      *prometheus.HistogramVec
@@ -144,6 +148,30 @@ func NewRegistry() *Registry {
 		Name:      "flights_record_cache_miss_total",
 		Help:      "Prior enriched flight records missing from cache at compute time.",
 	}, []string{"server"})
+	flightsByPhase := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "politburo",
+		Subsystem: "livegame",
+		Name:      "flights_by_phase",
+		Help:      "Active flights grouped by estimated flight phase.",
+	}, []string{"server", "phase"})
+	flightStateTransitionsTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "livegame",
+		Name:      "flight_state_transitions_total",
+		Help:      "Committed flight phase transitions during refresh.",
+	}, []string{"server", "from", "to"})
+	flightsAPPlusCandidates := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "politburo",
+		Subsystem: "livegame",
+		Name:      "flights_ap_plus_candidates",
+		Help:      "Active flights flagged as AP+ resumption candidates.",
+	}, []string{"server"})
+	flightsByDataQuality := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "politburo",
+		Subsystem: "livegame",
+		Name:      "flights_by_data_quality",
+		Help:      "Active flights grouped by flight-state data quality.",
+	}, []string{"server", "quality"})
 	vaActiveFlights := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "politburo",
 		Subsystem: "livegame",
@@ -200,6 +228,7 @@ func NewRegistry() *Registry {
 		jobRuns, jobDuration, jobRunning, jobLastSuccess,
 		flightsActive, flightsByPilotState, liveryResolveTotal, flightsFilteredTotal,
 		flightsComputeTotal, flightsFPLSyncScheduledTotal, flightsRecordUpdateTotal, flightsRecordCacheMissTotal,
+		flightsByPhase, flightStateTransitionsTotal, flightsAPPlusCandidates, flightsByDataQuality,
 		vaActiveFlights,
 		webhookDispatchTotal, webhookDispatchDuration, webhookDiscordPosts,
 		webhookActiveFlightsServers, webhookActiveFlightsMatched, webhookActiveFlightsReported, webhookActiveFlightsCapped,
@@ -214,6 +243,8 @@ func NewRegistry() *Registry {
 		LiveryResolveTotal: liveryResolveTotal, FlightsFilteredTotal: flightsFilteredTotal,
 		FlightsComputeTotal: flightsComputeTotal, FlightsFPLSyncScheduledTotal: flightsFPLSyncScheduledTotal,
 		FlightsRecordUpdateTotal: flightsRecordUpdateTotal, FlightsRecordCacheMissTotal: flightsRecordCacheMissTotal,
+		FlightsByPhase: flightsByPhase, FlightStateTransitionsTotal: flightStateTransitionsTotal,
+		FlightsAPPlusCandidates: flightsAPPlusCandidates, FlightsByDataQuality: flightsByDataQuality,
 		VAActiveFlights:              vaActiveFlights,
 		WebhookDispatchTotal:         webhookDispatchTotal,
 		WebhookDispatchDuration:      webhookDispatchDuration,

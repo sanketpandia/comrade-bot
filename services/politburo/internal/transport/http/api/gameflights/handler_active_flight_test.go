@@ -19,7 +19,8 @@ var testFlightUUID = uuid.MustParse("c34118e7-cbdd-4e22-8751-0cda93e41d75")
 func TestGetActiveFlightReturnsRecord(t *testing.T) {
 	lastCached := time.Date(2026, 8, 15, 5, 10, 0, 0, time.UTC)
 	flight := sampleFlight("active")
-	flight.LastReport = lastCached
+	flight.Raw.LastReport = lastCached
+	flight.Raw.LastReportValid = true
 	_, records := flightsFixture(lastCached, flight)
 	handler := testHandler(cacheStub{records: records})
 
@@ -49,7 +50,7 @@ func TestGetActiveFlightReturnsNotFoundOnCacheMiss(t *testing.T) {
 
 func TestGetActiveFlightReturnsInternalErrorOnCacheReadFailure(t *testing.T) {
 	handler := testHandler(cacheStub{
-		records: map[string]domainflights.Flight{testFlightUUID.String(): sampleFlight("active")},
+		records: map[string]domainflights.Record{testFlightUUID.String(): sampleFlight("active")},
 		err:     errors.New("redis down"),
 	})
 

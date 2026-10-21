@@ -42,11 +42,11 @@ func decodeTrackIDs(t *testing.T, recorder *httptest.ResponseRecorder) []string 
 func TestGetActiveFlightsFiltersByVACode(t *testing.T) {
 	lastCached := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
 	active := sampleFlight(domainflights.PilotStateNameActive)
-	active.FlightID = "flight-active"
+	active.Raw.FlightID = "flight-active"
 	bg := sampleFlight(domainflights.PilotStateNameInBackground)
-	bg.FlightID = "flight-bg"
+	bg.Raw.FlightID = "flight-bg"
 	other := sampleFlight(domainflights.PilotStateNameActive)
-	other.FlightID = "flight-other"
+	other.Raw.FlightID = "flight-other"
 	snapshot, records := flightsFixture(lastCached, active, bg, other)
 
 	recorder := getActiveFlightsWithVA(t, cacheStub{
@@ -68,9 +68,9 @@ func TestGetActiveFlightsFiltersByVACode(t *testing.T) {
 func TestGetActiveFlightsVACodeWithPilotState(t *testing.T) {
 	lastCached := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
 	active := sampleFlight(domainflights.PilotStateNameActive)
-	active.FlightID = "flight-active"
+	active.Raw.FlightID = "flight-active"
 	bg := sampleFlight(domainflights.PilotStateNameInBackground)
-	bg.FlightID = "flight-bg"
+	bg.Raw.FlightID = "flight-bg"
 	snapshot, records := flightsFixture(lastCached, active, bg)
 
 	recorder := getActiveFlightsWithVA(t, cacheStub{

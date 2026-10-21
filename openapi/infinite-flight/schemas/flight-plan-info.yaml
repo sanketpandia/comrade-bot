@@ -1,0 +1,32 @@
+type: object
+x-go-type-name: FlightPlanInfo
+required:
+  - flightPlanId
+  - flightId
+  - waypoints
+  - lastUpdate
+  - flightPlanItems
+properties:
+  flightPlanId:
+    type: string
+    format: uuid
+    x-go-type: string
+  flightId:
+    type: string
+    format: uuid
+    x-go-type: string
+  waypoints:
+    type: array
+    description: Deprecated waypoint names from Infinite Flight.
+    items:
+      type: string
+  lastUpdate:
+    type: string
+    description: Last report time as `YYYY-MM-DD HH:mm:ssZ`.
+  flightPlanItems:
+    type: array
+    items:
+      $ref: ./flight-plan-item.yaml
+  flightPlanType:
+    type: integer
+    description: "VFR=0, IFR=1."

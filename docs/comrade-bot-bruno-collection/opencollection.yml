@@ -18,7 +18,6 @@ request:
   headers:
     - name: X-API-Key
       value: "{{politburo-api-key}}"
-      description: Politburo API key (active row in api_keys)
     - name: X-Discord-User-Id
       value: "{{discord-user-id}}"
     - name: X-Discord-Server-Id
@@ -30,6 +29,8 @@ request:
       value: sanketpandia
     - name: lastFlight
       value: LFPG-DNAA
+    - name: flight-id
+      value: 0004f907-b075-448d-9803-6c5854d32005
 bundled: false
 extensions:
   bruno:

@@ -17,14 +17,18 @@ func MotionFromUpstream(upstream infiniteflight.Flight) FlightMotion {
 	}
 }
 
-func MotionFromFlight(flight Flight) FlightMotion {
+func MotionFromObservation(obs Observation) FlightMotion {
 	return FlightMotion{
-		Latitude:  flight.Latitude,
-		Longitude: flight.Longitude,
-		Speed:     flight.Speed,
-		Callsign:  flight.Callsign,
-		Track:     flight.Track,
+		Latitude:  RoundedLatitude(obs.Latitude),
+		Longitude: RoundedLongitude(obs.Longitude),
+		Speed:     RoundedSpeed(obs.Speed),
+		Callsign:  obs.Callsign,
+		Track:     RoundedTrack(obs.Track),
 	}
+}
+
+func MotionFromRecord(record Record) FlightMotion {
+	return MotionFromObservation(record.Raw)
 }
 
 func MotionEqual(a, b FlightMotion) bool {

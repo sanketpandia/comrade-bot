@@ -1,0 +1,16 @@
+type: object
+x-go-type-name: Coordinate
+required:
+  - latitude
+  - longitude
+  - altitude
+properties:
+  latitude:
+    type: number
+    format: double
+  longitude:
+    type: number
+    format: double
+  altitude:
+    type: number
+    format: double

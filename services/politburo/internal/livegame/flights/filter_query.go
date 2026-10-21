@@ -50,16 +50,16 @@ func NormalizeFilterStrings(userName, callSign string) (string, string) {
 }
 
 // MatchesFilters reports whether a flight record passes the filter query.
-func MatchesFilters(flight Flight, query FilterQuery, pilotStateSeen map[string]struct{}) bool {
+func MatchesFilters(record Record, query FilterQuery, pilotStateSeen map[string]struct{}) bool {
 	if len(query.PilotStates) > 0 {
-		if _, exists := pilotStateSeen[flight.Normalized.PilotState]; !exists {
+		if _, exists := pilotStateSeen[record.Derived.Normalized.PilotState]; !exists {
 			return false
 		}
 	}
-	if !ContainsFold(Username(flight), query.UserName) {
+	if !ContainsFold(Username(record.Raw), query.UserName) {
 		return false
 	}
-	if !ContainsFold(flight.Callsign, query.CallSign) {
+	if !ContainsFold(record.Raw.Callsign, query.CallSign) {
 		return false
 	}
 	return true

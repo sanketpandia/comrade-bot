@@ -12,7 +12,7 @@ import (
 
 type cacheStub struct {
 	flights   domainflights.Snapshot
-	records   map[string]domainflights.Flight
+	records   map[string]domainflights.Record
 	vaCodes   map[string]string
 	vaIndexes map[string][]string
 	names     []string
@@ -62,7 +62,7 @@ func (s cacheStub) GetJSON(_ context.Context, key string, destination any) error
 		if s.records != nil {
 			for id, flight := range s.records {
 				if key == cache.KeyFlightRecord(id) {
-					*(destination.(*domainflights.Flight)) = flight
+					*(destination.(*domainflights.Record)) = flight
 					return nil
 				}
 			}
@@ -77,29 +77,33 @@ func testHandler(store cache.Store) *Handler {
 	return NewHandler(domainflights.NewReader(store), metrics.NewRegistry())
 }
 
-func flightsFixture(lastCached time.Time, flights ...domainflights.Flight) (domainflights.Snapshot, map[string]domainflights.Flight) {
-	tracks := make(map[string]domainflights.FlightMotion, len(flights))
-	records := make(map[string]domainflights.Flight, len(flights))
-	for i := range flights {
-		if flights[i].FlightID == "" {
-			flights[i].FlightID = "c34118e7-cbdd-4e22-8751-0cda93e41d75"
+func flightsFixture(lastCached time.Time, records ...domainflights.Record) (domainflights.Snapshot, map[string]domainflights.Record) {
+	tracks := make(map[string]domainflights.FlightMotion, len(records))
+	byID := make(map[string]domainflights.Record, len(records))
+	for i := range records {
+		if records[i].Raw.FlightID == "" {
+			records[i].Raw.FlightID = "c34118e7-cbdd-4e22-8751-0cda93e41d75"
 		}
-		id := flights[i].FlightID
-		tracks[id] = domainflights.MotionFromFlight(flights[i])
-		records[id] = flights[i]
+		id := records[i].Raw.FlightID
+		tracks[id] = domainflights.MotionFromRecord(records[i])
+		byID[id] = records[i]
 	}
-	return domainflights.Snapshot{LastCached: lastCached, Tracks: tracks}, records
+	return domainflights.Snapshot{LastCached: lastCached, Tracks: tracks}, byID
 }
 
-func sampleFlight(state string) domainflights.Flight {
-	return domainflights.Flight{
-		FlightID:       "c34118e7-cbdd-4e22-8751-0cda93e41d75",
-		Callsign:       "Swiss 39 Heavy",
-		Latitude:       47.45,
-		Longitude:      8.56,
-		Track:          329.2,
-		NormalizedName: "casual",
-		Normalized:     domainflights.Normalized{PilotState: state, Speed: "526 kts", VerticalSpeed: "0.0 ft/min", IsConnected: "disconnected"},
-		PathSync:       &domainflights.PathSync{FPLSyncRequired: false},
+func sampleFlight(state string) domainflights.Record {
+	return domainflights.Record{
+		Raw: domainflights.Observation{
+			FlightID:       "c34118e7-cbdd-4e22-8751-0cda93e41d75",
+			Callsign:       "Swiss 39 Heavy",
+			Latitude:       47.45,
+			Longitude:      8.56,
+			Track:          329.2,
+			NormalizedName: "casual",
+		},
+		Derived: domainflights.Derived{
+			Normalized: domainflights.Normalized{PilotState: state, Speed: "526 kts", VerticalSpeed: "0.0 ft/min", IsConnected: "disconnected"},
+			PathSync:   domainflights.PathSync{FPLSyncRequired: false},
+		},
 	}
 }

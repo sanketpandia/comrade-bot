@@ -27,9 +27,13 @@ func (s *Service) GetActiveFlight(ctx context.Context, flightID openapi_types.UU
 	if err != nil {
 		return politburoapi.ActiveFlightRecordResponse{}, err
 	}
-	return politburoapi.ActiveFlightRecordResponse{
-		Data: activeFlightRecordFromDomain(flight, flightID),
-	}, nil
+	history, err := s.reader.GetFlightHistory(ctx, flightID.String())
+	if err != nil {
+		return politburoapi.ActiveFlightRecordResponse{}, err
+	}
+	record := activeFlightRecordFromDomain(flight, flightID)
+	enrichActiveFlightStateFeatures(&record, history)
+	return politburoapi.ActiveFlightRecordResponse{Data: record}, nil
 }
 
 func (s *Service) ListActiveTracks(ctx context.Context, input domainflights.ListActiveTracksInput) (cachedresponse.Response[activeFlightTrack], error) {

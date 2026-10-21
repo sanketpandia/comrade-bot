@@ -20,8 +20,11 @@ const (
 	// PrefixGameFlightsActive namespaces per-server active-flight snapshots.
 	PrefixGameFlightsActive = PrefixGameFlights + "active:"
 
-	// PrefixGameFlightsRecord namespaces per-flight enriched flight records.
-	PrefixGameFlightsRecord = PrefixGameFlights + "record:"
+	// PrefixGameFlightsRecord namespaces per-flight enriched flight records (v2 split raw/derived).
+	PrefixGameFlightsRecord = PrefixGameFlights + "record:v2:"
+
+	// PrefixGameFlightsHistory namespaces per-flight temporal estimator history.
+	PrefixGameFlightsHistory = PrefixGameFlights + "history:"
 
 	// PrefixGameFlightsVA namespaces per-VA active flight ID lists.
 	PrefixGameFlightsVA = PrefixGameFlights + "va:"
@@ -60,6 +63,10 @@ func KeyActiveFlights(normalizedName string) string {
 
 func KeyFlightRecord(flightID string) string {
 	return PrefixGameFlightsRecord + flightID
+}
+
+func KeyFlightHistory(flightID string) string {
+	return PrefixGameFlightsHistory + flightID
 }
 
 func KeyVAActiveFlights(vaID string) string {

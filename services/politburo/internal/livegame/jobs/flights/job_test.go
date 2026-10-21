@@ -28,6 +28,10 @@ func (s flightsClientStub) GetSessionFlights(_ context.Context, sessionID string
 	return s.bySession[sessionID], nil
 }
 
+func (s flightsClientStub) GetFlightPlan(context.Context, string, string) (infiniteflight.FlightPlan, error) {
+	return infiniteflight.FlightPlan{}, nil
+}
+
 type cacheWrite struct {
 	key   string
 	value any
@@ -153,9 +157,11 @@ func TestJobRunFastPathOnSecondTick(t *testing.T) {
 		PilotState: gameflights.PilotStateInBackground, LastReport: "2026-08-15 05:09:53Z",
 	}
 	motion := gameflights.MotionFromUpstream(upstream)
-	prior := gameflights.Flight{
-		FlightID: "f1", Callsign: "Swiss", Speed: 100, AircraftName: "A350", LiveryName: "Swiss",
-		PathSync: &gameflights.PathSync{},
+	prior := gameflights.Record{
+		Raw: gameflights.Observation{FlightID: "f1", Callsign: "Swiss", Speed: 100},
+		Derived: gameflights.Derived{
+			AircraftName: "A350", LiveryName: "Swiss",
+		},
 	}
 	now := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
 	store := &cacheStub{data: withSessions([]infiniteflight.Session{{ID: "session-1", NormalizedName: "casual"}})}
