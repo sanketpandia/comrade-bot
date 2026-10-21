@@ -11,6 +11,7 @@ import (
 	"infinite-experiment/politburo/internal/community/virtualairlines"
 	gameflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/livegame/flights/flightresolution"
+	"infinite-experiment/politburo/internal/livegame/flights/flightstate"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 )
 
@@ -24,6 +25,9 @@ func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session
 	stats := sessionRefreshStats{}
 	tracks := make(map[string]gameflights.FlightMotion, len(items))
 	pilotStateCounts := map[string]float64{}
+	phaseCounts := map[string]float64{}
+	qualityCounts := map[string]float64{}
+	apPlusCandidates := 0
 
 	computeBase := flightresolution.ComputeContext{
 		Context:       ctx,
@@ -42,19 +46,28 @@ func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session
 			stats.recordCacheMisses++
 		}
 
+		history := j.loadFlightHistory(ctx, item.FlightID)
+
 		computeCtx := computeBase
 		computeCtx.PriorMotion, computeCtx.HasPriorMotion = existing.Tracks[item.FlightID]
 
-		resolved := flightresolution.ResolveFlight(computeCtx, item, prior)
+		resolved := flightresolution.ResolveFlight(computeCtx, item, prior, history)
 		if err := j.applyResolvedFlight(ctx, session, item.FlightID, resolved, &stats); err != nil {
 			return 0, err
 		}
 
 		tracks[item.FlightID] = gameflights.MotionFromUpstream(item)
 		pilotStateCounts[resolved.Record.Derived.Normalized.PilotState]++
+		if fs := resolved.Record.Derived.FlightState; fs != nil {
+			phaseCounts[string(fs.Phase)]++
+			qualityCounts[string(fs.DataQuality)]++
+			if fs.APPlus.Candidate {
+				apPlusCandidates++
+			}
+		}
 	}
 
-	return j.finalizeSession(ctx, session, items, tracks, pilotStateCounts, refreshedAt, stats)
+	return j.finalizeSession(ctx, session, items, tracks, pilotStateCounts, phaseCounts, qualityCounts, apPlusCandidates, refreshedAt, stats)
 }
 
 func (j *Job) fetchUpstreamFlights(ctx context.Context, session infiniteflight.Session) ([]infiniteflight.Flight, error) {
@@ -90,6 +103,17 @@ func (j *Job) loadPriorFlightRecord(ctx context.Context, flightID string) (*game
 	return &priorFlight, false, nil
 }
 
+func (j *Job) loadFlightHistory(ctx context.Context, flightID string) flightstate.History {
+	var history flightstate.History
+	if err := j.cache.GetJSON(ctx, cache.KeyFlightHistory(flightID), &history); err != nil {
+		if !errors.Is(err, cache.ErrMiss) {
+			slog.Warn("failed to read flight history; treating as empty", "flightId", flightID, "error", err)
+		}
+		return flightstate.History{}
+	}
+	return history
+}
+
 func (j *Job) applyResolvedFlight(ctx context.Context, session infiniteflight.Session, flightID string, resolved flightresolution.ResolvedFlight, stats *sessionRefreshStats) error {
 	server := session.NormalizedName
 	if resolved.Outcome.UpdateFlightRecord {
@@ -103,10 +127,22 @@ func (j *Job) applyResolvedFlight(ctx context.Context, session infiniteflight.Se
 	if resolved.Outcome.FPLSyncScheduled {
 		stats.fplScheduled++
 		j.metrics.FlightsFPLSyncScheduledTotal.WithLabelValues(server).Inc()
+		flightresolution.RunFPLSync(ctx, resolved.Record)
 	}
 
-	if resolved.Outcome.FPLSyncScheduled {
-		flightresolution.RunFPLSync(ctx, resolved.Record)
+	if resolved.Transition != nil {
+		j.metrics.FlightStateTransitionsTotal.WithLabelValues(server, string(resolved.Transition.From), string(resolved.Transition.To)).Inc()
+		confidence := 0.0
+		reasons := []string(nil)
+		if fs := resolved.Record.Derived.FlightState; fs != nil {
+			confidence = fs.Confidence
+			reasons = fs.Reasons
+		}
+		flightresolution.LogPhaseTransition(flightID, *resolved.Transition, confidence, reasons)
+	}
+
+	if err := j.cache.SetJSON(ctx, cache.KeyFlightHistory(flightID), resolved.NextHistory, cache.FlightHistoryTTL); err != nil {
+		return fmt.Errorf("cache flight history %s: %w", flightID, err)
 	}
 
 	if !resolved.Outcome.UpdateFlightRecord {
@@ -129,6 +165,9 @@ func (j *Job) finalizeSession(
 	items []infiniteflight.Flight,
 	tracks map[string]gameflights.FlightMotion,
 	pilotStateCounts map[string]float64,
+	phaseCounts map[string]float64,
+	qualityCounts map[string]float64,
+	apPlusCandidates int,
 	refreshedAt time.Time,
 	stats sessionRefreshStats,
 ) (int, error) {
@@ -142,6 +181,13 @@ func (j *Job) finalizeSession(
 	for _, state := range gameflights.PilotStateNames() {
 		j.metrics.FlightsByPilotState.WithLabelValues(server, state).Set(pilotStateCounts[state])
 	}
+	for phase, count := range phaseCounts {
+		j.metrics.FlightsByPhase.WithLabelValues(server, phase).Set(count)
+	}
+	for quality, count := range qualityCounts {
+		j.metrics.FlightsByDataQuality.WithLabelValues(server, quality).Set(count)
+	}
+	j.metrics.FlightsAPPlusCandidates.WithLabelValues(server).Set(float64(apPlusCandidates))
 	if stats.recordCacheMisses > 0 {
 		j.metrics.FlightsRecordCacheMissTotal.WithLabelValues(server).Add(float64(stats.recordCacheMisses))
 	}

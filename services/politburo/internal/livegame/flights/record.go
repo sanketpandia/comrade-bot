@@ -1,8 +1,6 @@
 package flights
 
 import (
-	"reflect"
-
 	"infinite-experiment/politburo/internal/community/virtualairlines"
 	"infinite-experiment/politburo/internal/livegame/flights/flightstate"
 )
@@ -31,8 +29,8 @@ func (d Derived) Clone() Derived {
 		out.MatchedVirtualAirlines = append([]virtualairlines.VirtualAirlineMatch(nil), d.MatchedVirtualAirlines...)
 	}
 	if d.FlightState != nil {
-		out.FlightState = &flightstate.Summary{}
-		*out.FlightState = *d.FlightState
+		cloned := d.FlightState.Clone()
+		out.FlightState = &cloned
 	}
 	return out
 }
@@ -44,7 +42,7 @@ func (d Derived) Equal(other Derived) bool {
 		d.LiveryName == other.LiveryName &&
 		d.Normalized == other.Normalized &&
 		d.PathSync == other.PathSync &&
-		virtualAirlineMatchesEqual(d.MatchedVirtualAirlines, other.MatchedVirtualAirlines) &&
+		VirtualAirlineMatchesEqual(d.MatchedVirtualAirlines, other.MatchedVirtualAirlines) &&
 		flightStateEqual(d.FlightState, other.FlightState)
 }
 
@@ -55,10 +53,11 @@ func flightStateEqual(a, b *flightstate.Summary) bool {
 	if a == nil || b == nil {
 		return false
 	}
-	return reflect.DeepEqual(a, b)
+	return a.Equal(*b)
 }
 
-func virtualAirlineMatchesEqual(a, b []virtualairlines.VirtualAirlineMatch) bool {
+// VirtualAirlineMatchesEqual reports whether two VA match slices are identical.
+func VirtualAirlineMatchesEqual(a, b []virtualairlines.VirtualAirlineMatch) bool {
 	if len(a) != len(b) {
 		return false
 	}

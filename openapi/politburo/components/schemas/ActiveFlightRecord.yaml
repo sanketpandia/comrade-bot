@@ -84,3 +84,6 @@ properties:
     description: Virtual airlines whose BASIC callsign affix rules matched this flight on the current session.
     items:
       $ref: "./ActiveFlightVirtualAirlineMatch.yaml"
+  flightState:
+    $ref: "./ActiveFlightState.yaml"
+    description: Temporal flight-phase estimate when available.

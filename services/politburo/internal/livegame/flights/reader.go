@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
+	"infinite-experiment/politburo/internal/livegame/flights/flightstate"
 )
 
 type Reader struct {
@@ -76,6 +77,21 @@ func (r *Reader) GetActiveFlight(ctx context.Context, flightID string) (Record, 
 		return Record{}, ErrInvalidFilter
 	}
 	return r.loadFlightRecord(ctx, flightID)
+}
+
+// GetFlightHistory returns temporal estimator history for flightID (cache miss yields empty history).
+func (r *Reader) GetFlightHistory(ctx context.Context, flightID string) (flightstate.History, error) {
+	if strings.TrimSpace(flightID) == "" {
+		return flightstate.History{}, ErrInvalidFilter
+	}
+	var history flightstate.History
+	if err := r.cache.GetJSON(ctx, cache.KeyFlightHistory(flightID), &history); err != nil {
+		if errors.Is(err, cache.ErrMiss) {
+			return flightstate.History{}, nil
+		}
+		return flightstate.History{}, ErrCacheRead
+	}
+	return history, nil
 }
 
 func (r *Reader) loadSnapshot(ctx context.Context, server string) (Snapshot, error) {

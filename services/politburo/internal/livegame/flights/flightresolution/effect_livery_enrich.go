@@ -15,7 +15,7 @@ func liveryEnrichApplies(in EffectInput) bool {
 	if in.Facts.IsNew || in.Facts.LiveryChanged {
 		return true
 	}
-	return in.Prior == nil || in.Prior.Derived.AircraftName == ""
+	return in.Prior.Derived.AircraftName == ""
 }
 
 func applyLiveryEnrich(in EffectInput, out *flights.Derived, _ *Outcome) {

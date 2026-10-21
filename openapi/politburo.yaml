@@ -1214,6 +1214,9 @@ components:
           description: Virtual airlines whose BASIC callsign affix rules matched this flight on the current session.
           items:
             $ref: '#/components/schemas/ActiveFlightVirtualAirlineMatch'
+        flightState:
+          $ref: '#/components/schemas/ActiveFlightState'
+          description: Temporal flight-phase estimate when available.
     ActiveFlightRecordResponse:
       type: object
       required:
@@ -1730,3 +1733,120 @@ components:
           type: number
           format: double
           description: Ground track in degrees clockwise from north (0–360), for map icon rotation.
+    ActiveFlightState:
+      type: object
+      required:
+        - phase
+        - activity
+        - dataQuality
+        - confidence
+        - phaseSince
+        - apPlus
+      properties:
+        phase:
+          type: string
+          enum:
+            - spawned_in
+            - taxiing
+            - takeoff
+            - climbing
+            - cruise
+            - descending
+            - landing
+            - parked
+            - awaiting_ap_plus_resumption
+            - unknown
+        activity:
+          type: string
+          enum:
+            - moving
+            - stationary
+            - unknown
+        dataQuality:
+          type: string
+          enum:
+            - fresh
+            - long_gap
+            - stale
+            - uncertain
+            - invalid
+        confidence:
+          type: number
+          format: double
+          description: Evidence strength (0-1), not a calibrated probability.
+        previousPhase:
+          type: string
+          nullable: true
+        phaseSince:
+          type: string
+          format: date-time
+        reasons:
+          type: array
+          items:
+            type: string
+        apPlus:
+          type: object
+          required:
+            - candidate
+            - score
+            - since
+          properties:
+            candidate:
+              type: boolean
+            score:
+              type: number
+              format: double
+            since:
+              type: string
+              format: date-time
+            reasons:
+              type: array
+              items:
+                type: string
+        features:
+          type: object
+          properties:
+            elapsedSec:
+              type: number
+              format: double
+            distanceNm:
+              type: number
+              format: double
+            altDeltaFt:
+              type: number
+              format: double
+            avgVerticalFpm:
+              type: number
+              format: double
+            speedDeltaKt:
+              type: number
+              format: double
+            trackDeltaDeg:
+              type: number
+              format: double
+            moved:
+              type: boolean
+            altStable:
+              type: boolean
+            progressRatio:
+              type: number
+              format: double
+            gapClass:
+              type: string
+              enum:
+                - normal
+                - long
+                - too_large
+            fresh:
+              type: boolean
+            stationarySamples:
+              type: integer
+            stationaryDurationSec:
+              type: number
+              format: double
+            sustainedClimbCount:
+              type: integer
+            sustainedDescentCount:
+              type: integer
+            lastReportAdvancing:
+              type: boolean

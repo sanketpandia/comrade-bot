@@ -28,7 +28,7 @@ func TestNewObservationPreservesUpstreamValues(t *testing.T) {
 		VirtualOrganization: &org,
 		PilotState:          PilotStateInBackground,
 		IsConnected:         false,
-	}, infiniteflight.Session{ID: "session-1", NormalizedName: "casual"})
+	}, infiniteflight.Session{ID: "session-1", NormalizedName: "casual"}, time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC))
 
 	if obs.Altitude != 35999.953 || obs.Speed != 525.6486 {
 		t.Fatalf("expected unrounded upstream numerics, got alt %v speed %v", obs.Altitude, obs.Speed)
@@ -48,7 +48,7 @@ func TestNewObservationPreservesUpstreamValues(t *testing.T) {
 }
 
 func TestNewObservationInvalidLastReport(t *testing.T) {
-	obs := NewObservation(infiniteflight.Flight{FlightID: "f1", LastReport: "not-a-time"}, infiniteflight.Session{NormalizedName: "expert"})
+	obs := NewObservation(infiniteflight.Flight{FlightID: "f1", LastReport: "not-a-time"}, infiniteflight.Session{NormalizedName: "expert"}, time.Now().UTC())
 	if obs.LastReportValid {
 		t.Fatal("expected invalid last report")
 	}

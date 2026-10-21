@@ -6,6 +6,7 @@ import "time"
 const (
 	SessionsCacheTTL = 24 * time.Hour
 	ActiveFlightsTTL = 3 * 24 * time.Hour
+	FlightHistoryTTL = 30 * time.Minute
 )
 
 // Refresh intervals align with job cadence; used for meta.refreshIntervalMins and freshness checks.

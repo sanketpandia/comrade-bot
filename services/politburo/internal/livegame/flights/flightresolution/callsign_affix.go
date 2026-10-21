@@ -11,14 +11,3 @@ func callsignAffixFields(in EffectInput) (string, []virtualairlines.VirtualAirli
 	return normalized, in.Ctx.LiveVACatalog.Match(callsign, normalized, in.Ctx.Session.NormalizedName)
 }
 
-func virtualAirlineMatchesEqual(a, b []virtualairlines.VirtualAirlineMatch) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}

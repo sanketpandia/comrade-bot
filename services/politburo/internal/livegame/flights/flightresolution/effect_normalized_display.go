@@ -12,8 +12,8 @@ var normalizedDisplayEffect = EffectDecision{
 	Apply:   applyNormalizedDisplay,
 }
 
-func normalizedDisplayApplies(in EffectInput) bool {
-	return in.Facts.IsNew || in.Facts.MotionChanged
+func normalizedDisplayApplies(EffectInput) bool {
+	return true
 }
 
 func applyNormalizedDisplay(in EffectInput, out *flights.Derived, _ *Outcome) {

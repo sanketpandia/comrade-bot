@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/livegame/flights"
+	"infinite-experiment/politburo/internal/livegame/flights/flightstate"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	"infinite-experiment/politburo/internal/metrics"
@@ -31,19 +32,22 @@ func TestResolveFlightSkipsEffectsWhenMotionUnchanged(t *testing.T) {
 		FlightID: "f1", Callsign: "Swiss", Speed: 100, LiveryID: liveryID,
 		PilotState: flights.PilotStateInBackground, LastReport: "2026-08-15 05:09:53Z",
 	}
-	prior := &flights.Record{
-		Raw: flights.Observation{FlightID: "f1", Callsign: "Swiss", Speed: 100, LiveryID: liveryID},
-		Derived: flights.Derived{
-			AircraftName:       "A350",
-			NormalizedCallsign: flights.NormalizedCallsignForAffix("Swiss"),
-		},
-	}
 	motion := flights.MotionFromUpstream(upstream)
-
 	ctx := testComputeContext(infiniteflight.Session{NormalizedName: "casual"}, motion, true, now)
 	ctx.Deps.Lookup = lookup
 
-	out := ResolveFlight(ctx, upstream, prior)
+	warm := ResolveFlight(ctx, upstream, nil, flightstate.History{})
+	prior := &flights.Record{
+		Raw: warm.Record.Raw,
+		Derived: flights.Derived{
+			AircraftName:       "A350",
+			NormalizedCallsign: flights.NormalizedCallsignForAffix("Swiss"),
+			Normalized:         warm.Record.Derived.Normalized,
+			FlightState:        warm.Record.Derived.FlightState,
+		},
+	}
+
+	out := ResolveFlight(ctx, upstream, prior, warm.NextHistory)
 	if out.Outcome.UpdateFlightRecord || out.Outcome.FPLSyncScheduled {
 		t.Fatalf("outcome = %#v", out.Outcome)
 	}
@@ -66,7 +70,7 @@ func TestResolveFlightFPLSchedulesSyncDespiteUnchangedMotion(t *testing.T) {
 	motion := flights.MotionFromUpstream(upstream)
 
 	ctx := testComputeContext(infiniteflight.Session{NormalizedName: "casual"}, motion, true, now)
-	out := ResolveFlight(ctx, upstream, prior)
+	out := ResolveFlight(ctx, upstream, prior, flightstate.History{})
 	if !out.Outcome.UpdateFlightRecord {
 		t.Fatal("expected record update for FPL tick")
 	}
@@ -75,5 +79,25 @@ func TestResolveFlightFPLSchedulesSyncDespiteUnchangedMotion(t *testing.T) {
 	}
 	if !out.Record.Derived.PathSync.FPLSyncRequired {
 		t.Fatalf("pathSync = %#v", out.Record.Derived.PathSync)
+	}
+}
+
+func TestResolveFlightFPLSyncRequiredResetsAfterSync(t *testing.T) {
+	now := time.Date(2026, 8, 15, 6, 0, 0, 0, time.UTC)
+	upstream := infiniteflight.Flight{
+		FlightID: "f1", Speed: 100, PilotState: flights.PilotStateActive, LastReport: "2026-08-15 05:09:53Z",
+	}
+	motion := flights.MotionFromUpstream(upstream)
+	ctx := testComputeContext(infiniteflight.Session{NormalizedName: "casual"}, motion, true, now)
+
+	duePrior := &flights.Record{
+		Raw: flights.Observation{FlightID: "f1", Speed: 100, PilotState: flights.PilotStateActive, ObservedAt: now},
+		Derived: flights.Derived{
+			PathSync: flights.PathSync{FPLSyncRequired: true, LastFPLSyncAt: now},
+		},
+	}
+	out := ResolveFlight(ctx, upstream, duePrior, flightstate.History{})
+	if out.Record.Derived.PathSync.FPLSyncRequired {
+		t.Fatalf("expected FPLSyncRequired reset when not due, got %#v", out.Record.Derived.PathSync)
 	}
 }

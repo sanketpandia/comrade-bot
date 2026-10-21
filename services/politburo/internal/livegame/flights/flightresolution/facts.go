@@ -6,10 +6,11 @@ import (
 
 // Facts are computed once per tick and shared by all effects.
 type Facts struct {
-	IsNew          bool
-	MotionChanged  bool
-	FPLDue         bool
-	LiveryChanged  bool
+	IsNew         bool
+	MotionChanged bool
+	FPLDue        bool
+	LiveryChanged bool
+	HistoryPush   string
 }
 
 func computeFacts(ctx ComputeContext, raw flights.Observation, prior *flights.Record) Facts {
