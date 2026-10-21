@@ -43,6 +43,32 @@ paths:
           $ref: ./responses/session-flights.yaml
         default:
           $ref: "#/components/responses/Error"
+  /sessions/{sessionId}/flights/{flightId}/flightplan:
+    get:
+      operationId: getFlightPlan
+      summary: Get detailed flight plan for an active flight
+      description: The flight must be in an active session and have a filed flight plan.
+      tags: [flights]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            x-go-type: string
+        - name: flightId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            x-go-type: string
+      responses:
+        "200":
+          $ref: ./responses/flight-plan.yaml
+        default:
+          $ref: "#/components/responses/Error"
   /aircraft/liveries:
     get:
       operationId: getAircraftLiveries
@@ -112,6 +138,8 @@ components:
       $ref: ./schemas/responses/sessions.yaml
     SessionFlightsResponse:
       $ref: ./schemas/responses/session-flights.yaml
+    FlightPlanResponse:
+      $ref: ./schemas/responses/flight-plan.yaml
     AircraftLiveriesResponse:
       $ref: ./schemas/responses/aircraft-liveries.yaml
     ErrorResponse:
@@ -120,6 +148,10 @@ components:
       $ref: ./schemas/session.yaml
     FlightEntry:
       $ref: ./schemas/flight-entry.yaml
+    FlightPlanItem:
+      $ref: ./schemas/flight-plan-item.yaml
+    Coordinate:
+      $ref: ./schemas/coordinate.yaml
     LiveryData:
       $ref: ./schemas/livery-data.yaml
     UserLookupRequest:

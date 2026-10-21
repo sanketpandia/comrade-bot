@@ -30,7 +30,7 @@ request:
     - name: lastFlight
       value: LFPG-DNAA
     - name: flight-id
-      value: ""
+      value: 0004f907-b075-448d-9803-6c5854d32005
 bundled: false
 extensions:
   bruno:

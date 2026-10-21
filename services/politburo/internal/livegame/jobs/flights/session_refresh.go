@@ -51,7 +51,7 @@ func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session
 		}
 
 		tracks[item.FlightID] = gameflights.MotionFromUpstream(item)
-		pilotStateCounts[resolved.Flight.Normalized.PilotState]++
+		pilotStateCounts[resolved.Record.Derived.Normalized.PilotState]++
 	}
 
 	return j.finalizeSession(ctx, session, items, tracks, pilotStateCounts, refreshedAt, stats)
@@ -79,8 +79,8 @@ func (j *Job) loadTracksSnapshot(ctx context.Context, normalizedName string) gam
 	return existing
 }
 
-func (j *Job) loadPriorFlightRecord(ctx context.Context, flightID string) (*gameflights.Flight, bool, error) {
-	var priorFlight gameflights.Flight
+func (j *Job) loadPriorFlightRecord(ctx context.Context, flightID string) (*gameflights.Record, bool, error) {
+	var priorFlight gameflights.Record
 	if err := j.cache.GetJSON(ctx, cache.KeyFlightRecord(flightID), &priorFlight); err != nil {
 		if errors.Is(err, cache.ErrMiss) {
 			return nil, true, nil
@@ -105,13 +105,17 @@ func (j *Job) applyResolvedFlight(ctx context.Context, session infiniteflight.Se
 		j.metrics.FlightsFPLSyncScheduledTotal.WithLabelValues(server).Inc()
 	}
 
+	if resolved.Outcome.FPLSyncScheduled {
+		flightresolution.RunFPLSync(ctx, resolved.Record)
+	}
+
 	if !resolved.Outcome.UpdateFlightRecord {
 		j.metrics.FlightsRecordUpdateTotal.WithLabelValues(server, "skipped").Inc()
 		stats.recordSkipped++
 		return nil
 	}
 
-	if err := j.cache.SetJSON(ctx, cache.KeyFlightRecord(flightID), resolved.Flight, cache.ActiveFlightsTTL); err != nil {
+	if err := j.cache.SetJSON(ctx, cache.KeyFlightRecord(flightID), resolved.Record, cache.ActiveFlightsTTL); err != nil {
 		return fmt.Errorf("cache flight record %s: %w", flightID, err)
 	}
 	j.metrics.FlightsRecordUpdateTotal.WithLabelValues(server, "written").Inc()

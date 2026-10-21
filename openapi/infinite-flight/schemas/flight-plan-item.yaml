@@ -1,0 +1,27 @@
+type: object
+x-go-type-name: FlightPlanItem
+required:
+  - name
+  - type
+  - altitude
+  - location
+properties:
+  name:
+    type: string
+  type:
+    type: integer
+    description: "Procedure type when children is set. Sid=0, STAR=1, Approach=2, Track=3, Unknown=5."
+  children:
+    type: array
+    nullable: true
+    x-go-type: "[]FlightPlanItem"
+    items:
+      type: object
+  identifier:
+    type: string
+    nullable: true
+  altitude:
+    type: integer
+    description: Altitude in feet; -1 when not set by the pilot.
+  location:
+    $ref: ./coordinate.yaml

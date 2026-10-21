@@ -27,7 +27,7 @@ type SnapshotInput struct {
 	Capped    bool
 	Frequency string
 	Filters   json.RawMessage
-	Flights   []flights.Flight
+	Flights   []flights.Record
 }
 
 type filterDisplay struct {
@@ -110,7 +110,7 @@ func buildSummaryEmbed(at time.Time, serverLabel string, in SnapshotInput, filte
 	}
 }
 
-func buildFlightPageEmbed(at time.Time, serverLabel string, page []flights.Flight, pageNum, totalPages int) discord.Embed {
+func buildFlightPageEmbed(at time.Time, serverLabel string, page []flights.Record, pageNum, totalPages int) discord.Embed {
 	desc := formatSnapshotLine(at)
 	if totalPages > 1 {
 		desc += fmt.Sprintf("\nPage %d of %d", pageNum, totalPages)
@@ -196,7 +196,7 @@ func formatPilotStateLabel(name string) string {
 	return strings.Join(words, " ")
 }
 
-func computeFleetStats(reported []flights.Flight) fleetStats {
+func computeFleetStats(reported []flights.Record) fleetStats {
 	stats := fleetStats{total: len(reported)}
 	if len(reported) == 0 {
 		return stats
@@ -208,16 +208,16 @@ func computeFleetStats(reported []flights.Flight) fleetStats {
 	pilots := map[string]struct{}{}
 
 	for _, flight := range reported {
-		livery := strings.TrimSpace(flight.LiveryName)
+		livery := strings.TrimSpace(flight.Derived.LiveryName)
 		if livery != "" {
 			liveryCounts[livery]++
 		}
-		altSum += flight.Altitude
+		altSum += flights.RoundedAltitude(flight.Raw.Altitude)
 		altCount++
-		speedSum += flight.Speed
+		speedSum += flights.RoundedSpeed(flight.Raw.Speed)
 		speedCount++
 
-		if flight.IsConnected {
+		if flight.Raw.IsConnected {
 			stats.connected++
 		}
 		if key := pilotKey(flight); key != "" {
@@ -256,21 +256,21 @@ func mostFrequentKey(counts map[string]int) string {
 	return fmt.Sprintf("%s (%d)", bestName, bestCount)
 }
 
-func pilotKey(flight flights.Flight) string {
-	if id := strings.TrimSpace(flight.UserID); id != "" {
+func pilotKey(flight flights.Record) string {
+	if id := strings.TrimSpace(flight.Raw.UserID); id != "" {
 		return "id:" + id
 	}
-	if name := strings.TrimSpace(flights.Username(flight)); name != "" {
+	if name := strings.TrimSpace(flights.Username(flight.Raw)); name != "" {
 		return "name:" + strings.ToLower(name)
 	}
 	return ""
 }
 
-func paginateFlights(reported []flights.Flight) [][]flights.Flight {
+func paginateFlights(reported []flights.Record) [][]flights.Record {
 	if len(reported) == 0 {
 		return nil
 	}
-	var pages [][]flights.Flight
+	var pages [][]flights.Record
 	for i := 0; i < len(reported); i += maxFlightsPerEmbed {
 		end := i + maxFlightsPerEmbed
 		if end > len(reported) {
@@ -281,37 +281,37 @@ func paginateFlights(reported []flights.Flight) [][]flights.Flight {
 	return pages
 }
 
-func flightFieldName(flight flights.Flight) string {
-	callsign := strings.TrimSpace(flight.Callsign)
+func flightFieldName(flight flights.Record) string {
+	callsign := strings.TrimSpace(flight.Raw.Callsign)
 	if callsign == "" {
 		return "—"
 	}
 	return callsign
 }
 
-func flightFieldValue(flight flights.Flight) string {
-	pilot := strings.TrimSpace(flights.Username(flight))
+func flightFieldValue(flight flights.Record) string {
+	pilot := strings.TrimSpace(flights.Username(flight.Raw))
 	if pilot == "" {
 		pilot = "—"
 	}
-	speed := strings.TrimSpace(flight.Normalized.Speed)
+	speed := strings.TrimSpace(flight.Derived.Normalized.Speed)
 	if speed == "" {
-		speed = fmt.Sprintf("%d kts", flight.Speed)
+		speed = fmt.Sprintf("%d kts", flights.RoundedSpeed(flight.Raw.Speed))
 	}
 	return fmt.Sprintf(
 		"Pilot: %s\nState: %s\nAircraft: %s\nAltitude: %d ft\nSpeed: %s\nRoute: —",
 		pilot,
 		formatFlightState(flight),
-		formatAircraft(flight.AircraftName, flight.LiveryName),
-		flight.Altitude,
+		formatAircraft(flight.Derived.AircraftName, flight.Derived.LiveryName),
+		flights.RoundedAltitude(flight.Raw.Altitude),
 		speed,
 	)
 }
 
-func formatFlightState(flight flights.Flight) string {
-	state := strings.TrimSpace(flight.Normalized.PilotState)
+func formatFlightState(flight flights.Record) string {
+	state := strings.TrimSpace(flight.Derived.Normalized.PilotState)
 	if state == "" {
-		state = flights.NameForPilotState(flight.PilotState)
+		state = flights.NameForPilotState(flight.Raw.PilotState)
 	}
 	state = strings.TrimSpace(state)
 	if state == "" {

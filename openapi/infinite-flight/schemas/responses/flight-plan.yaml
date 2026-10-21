@@ -1,0 +1,9 @@
+type: object
+x-go-type-name: FlightPlanResponse
+required: [errorCode, result]
+properties:
+  errorCode:
+    type: integer
+    description: Zero indicates success; non-zero values are upstream API errors.
+  result:
+    $ref: ../flight-plan-info.yaml

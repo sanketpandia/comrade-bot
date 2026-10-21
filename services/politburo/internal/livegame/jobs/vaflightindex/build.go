@@ -11,7 +11,7 @@ type BuildInput struct {
 	// ActiveFlightIDs lists flight IDs currently on each normalized server snapshot.
 	ActiveFlightIDs map[string][]string
 	// Records holds enriched flight cache records keyed by flight ID.
-	Records map[string]gameflights.Flight
+	Records map[string]gameflights.Record
 }
 
 // BuildVAFlightIndex aggregates matched VA IDs into sorted, deduped flight ID lists.
@@ -23,7 +23,7 @@ func BuildVAFlightIndex(input BuildInput) map[string][]string {
 			if !ok {
 				continue
 			}
-			for _, match := range record.MatchedVirtualAirlines {
+			for _, match := range record.Derived.MatchedVirtualAirlines {
 				if match.VAID == "" {
 					continue
 				}

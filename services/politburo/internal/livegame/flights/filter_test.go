@@ -15,11 +15,11 @@ func TestContainsFoldIsCaseInsensitiveSubstring(t *testing.T) {
 }
 
 func TestUsernameReturnsEmptyWhenNil(t *testing.T) {
-	if Username(Flight{}) != "" {
+	if Username(Observation{}) != "" {
 		t.Fatal("nil username should be empty")
 	}
 	name := "Hantder"
-	if Username(Flight{Username: &name}) != "Hantder" {
+	if Username(Observation{Username: &name}) != "Hantder" {
 		t.Fatal("expected stored username")
 	}
 }

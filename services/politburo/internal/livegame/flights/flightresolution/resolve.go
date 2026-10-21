@@ -6,6 +6,7 @@ import (
 
 	"infinite-experiment/politburo/internal/community/virtualairlines"
 	"infinite-experiment/politburo/internal/livegame/flights"
+	"infinite-experiment/politburo/internal/livegame/flights/flightstate"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	"infinite-experiment/politburo/internal/metrics"
@@ -25,6 +26,16 @@ type ComputeContext struct {
 	PriorMotion    flights.FlightMotion
 	HasPriorMotion bool
 	LiveVACatalog  virtualairlines.LiveVACatalog
+	History        flightstate.History
+}
+
+// EffectInput is the read-only input passed to each resolution effect.
+type EffectInput struct {
+	Ctx     ComputeContext
+	Raw     flights.Observation
+	Prior   *flights.Record
+	Facts   Facts
+	History flightstate.History
 }
 
 // Outcome tells the flights job what cache I/O to perform after resolution.
@@ -35,33 +46,47 @@ type Outcome struct {
 
 // ResolvedFlight is the enriched flight record plus job-oriented outcome flags.
 type ResolvedFlight struct {
-	Flight  flights.Flight
+	Record  flights.Record
 	Outcome Outcome
 }
 
 // ResolveFlight runs composable effect decisions for one upstream flight tick.
-func ResolveFlight(ctx ComputeContext, upstream infiniteflight.Flight, prior *flights.Flight) ResolvedFlight {
-	env := newResolveEnv(ctx, upstream, prior)
+func ResolveFlight(ctx ComputeContext, upstream infiniteflight.Flight, prior *flights.Record) ResolvedFlight {
+	raw := flights.NewObservation(upstream, ctx.Session)
+	facts := computeFacts(ctx, raw, prior)
+
+	derived := flights.Derived{}
+	if prior != nil {
+		derived = prior.Derived.Clone()
+	}
+
+	outcome := Outcome{}
+	in := EffectInput{
+		Ctx:     ctx,
+		Raw:     raw,
+		Prior:   prior,
+		Facts:   facts,
+		History: ctx.History,
+	}
+
 	for _, effect := range flightEffects {
-		if effect.Applies(env) {
-			effect.Apply(env)
+		if effect.Applies(in) {
+			effect.Apply(in, &derived, &outcome)
 		}
 	}
 
-	flight := env.flight
-	if prior != nil && !env.recordMutated {
-		flight = *prior
-	}
+	record := flights.Record{Raw: raw, Derived: derived}
+	updateRecord := facts.MotionChanged || facts.IsNew || prior == nil || !derived.Equal(prior.Derived)
 
 	return ResolvedFlight{
-		Flight: flight,
+		Record: record,
 		Outcome: Outcome{
-			UpdateFlightRecord: env.recordMutated,
-			FPLSyncScheduled:   env.outcome.FPLSyncScheduled,
+			UpdateFlightRecord: updateRecord,
+			FPLSyncScheduled:   outcome.FPLSyncScheduled,
 		},
 	}
 }
 
-func RunFPLSync(_ context.Context, _ flights.Flight) {
+func RunFPLSync(_ context.Context, _ flights.Record) {
 	// Placeholder until Infinite Flight flight-plan sync is implemented.
 }

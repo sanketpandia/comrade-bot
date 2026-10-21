@@ -2,11 +2,8 @@ package flights
 
 import "strings"
 
-func Username(flight Flight) string {
-	if flight.Username == nil {
-		return ""
-	}
-	return *flight.Username
+func Username(obs Observation) string {
+	return UsernameFromObservation(obs)
 }
 
 func ContainsFold(value, query string) bool {

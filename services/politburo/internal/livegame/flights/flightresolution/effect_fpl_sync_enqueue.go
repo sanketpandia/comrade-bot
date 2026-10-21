@@ -1,19 +1,13 @@
 package flightresolution
 
+import "infinite-experiment/politburo/internal/livegame/flights"
+
 var fplSyncEnqueueEffect = EffectDecision{
 	Name:    "FPLSyncEnqueue",
-	Applies: fplSyncEnqueueApplies,
+	Applies: func(in EffectInput) bool { return in.Facts.FPLDue },
 	Apply:   applyFPLSyncEnqueue,
 }
 
-func fplSyncEnqueueApplies(env *resolveEnv) bool {
-	return env.fplDue
-}
-
-func applyFPLSyncEnqueue(env *resolveEnv) {
-	if !env.hasFlight {
-		return
-	}
-	env.outcome.FPLSyncScheduled = true
-	RunFPLSync(env.ctx.Context, env.flight)
+func applyFPLSyncEnqueue(_ EffectInput, _ *flights.Derived, outcome *Outcome) {
+	outcome.FPLSyncScheduled = true
 }

@@ -31,10 +31,12 @@ func TestResolveFlightSkipsEffectsWhenMotionUnchanged(t *testing.T) {
 		FlightID: "f1", Callsign: "Swiss", Speed: 100, LiveryID: liveryID,
 		PilotState: flights.PilotStateInBackground, LastReport: "2026-08-15 05:09:53Z",
 	}
-	prior := &flights.Flight{
-		FlightID: "f1", Callsign: "Swiss", Speed: 100, AircraftName: "A350",
-		NormalizedCallsign: flights.NormalizedCallsignForAffix("Swiss"),
-		PathSync:           &flights.PathSync{},
+	prior := &flights.Record{
+		Raw: flights.Observation{FlightID: "f1", Callsign: "Swiss", Speed: 100, LiveryID: liveryID},
+		Derived: flights.Derived{
+			AircraftName:       "A350",
+			NormalizedCallsign: flights.NormalizedCallsignForAffix("Swiss"),
+		},
 	}
 	motion := flights.MotionFromUpstream(upstream)
 
@@ -45,8 +47,8 @@ func TestResolveFlightSkipsEffectsWhenMotionUnchanged(t *testing.T) {
 	if out.Outcome.UpdateFlightRecord || out.Outcome.FPLSyncScheduled {
 		t.Fatalf("outcome = %#v", out.Outcome)
 	}
-	if out.Flight.AircraftName != "A350" {
-		t.Fatalf("flight = %#v", out.Flight)
+	if out.Record.Derived.AircraftName != "A350" {
+		t.Fatalf("record = %#v", out.Record)
 	}
 }
 
@@ -55,9 +57,11 @@ func TestResolveFlightFPLSchedulesSyncDespiteUnchangedMotion(t *testing.T) {
 	upstream := infiniteflight.Flight{
 		FlightID: "f1", Speed: 100, PilotState: flights.PilotStateActive, LastReport: "2026-08-15 05:09:53Z",
 	}
-	prior := &flights.Flight{
-		FlightID: "f1", Speed: 100,
-		PathSync: &flights.PathSync{LastFPLSyncAt: now.Add(-flights.FPLSyncInterval)},
+	prior := &flights.Record{
+		Raw: flights.Observation{FlightID: "f1", Speed: 100, PilotState: flights.PilotStateActive},
+		Derived: flights.Derived{
+			PathSync: flights.PathSync{LastFPLSyncAt: now.Add(-flights.FPLSyncInterval)},
+		},
 	}
 	motion := flights.MotionFromUpstream(upstream)
 
@@ -69,7 +73,7 @@ func TestResolveFlightFPLSchedulesSyncDespiteUnchangedMotion(t *testing.T) {
 	if !out.Outcome.FPLSyncScheduled {
 		t.Fatalf("outcome = %#v", out.Outcome)
 	}
-	if out.Flight.PathSync == nil || !out.Flight.PathSync.FPLSyncRequired {
-		t.Fatalf("pathSync = %#v", out.Flight.PathSync)
+	if !out.Record.Derived.PathSync.FPLSyncRequired {
+		t.Fatalf("pathSync = %#v", out.Record.Derived.PathSync)
 	}
 }

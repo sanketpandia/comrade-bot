@@ -21,13 +21,14 @@ func TrackFromMotion(flightID string, motion FlightMotion) Track {
 	}
 }
 
-func TrackFromFlight(flight Flight) Track {
+func TrackFromRecord(record Record) Track {
+	raw := record.Raw
 	return Track{
-		FlightID:  flight.FlightID,
-		Callsign:  flight.Callsign,
-		Latitude:  flight.Latitude,
-		Longitude: flight.Longitude,
-		Speed:     flight.Speed,
-		Track:     flight.Track,
+		FlightID:  raw.FlightID,
+		Callsign:  raw.Callsign,
+		Latitude:  RoundedLatitude(raw.Latitude),
+		Longitude: RoundedLongitude(raw.Longitude),
+		Speed:     RoundedSpeed(raw.Speed),
+		Track:     RoundedTrack(raw.Track),
 	}
 }

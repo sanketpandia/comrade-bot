@@ -15,7 +15,7 @@ func TestGetActiveFlightsFiltersByPilotState(t *testing.T) {
 	lastCached := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
 	active := sampleFlight(domainflights.PilotStateNameActive)
 	bg := sampleFlight(domainflights.PilotStateNameInBackground)
-	bg.FlightID = "flight-bg"
+	bg.Raw.FlightID = "flight-bg"
 	snapshot, records := flightsFixture(lastCached, active, bg)
 	handler := testHandler(cacheStub{
 		names:   []string{"casual"},
@@ -38,7 +38,7 @@ func TestGetActiveFlightsFiltersByPilotState(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(body.Data.Result) != 1 || body.Data.Result[0].FlightID != active.FlightID {
+	if len(body.Data.Result) != 1 || body.Data.Result[0].FlightID != active.Raw.FlightID {
 		t.Fatalf("result = %#v", body.Data.Result)
 	}
 }

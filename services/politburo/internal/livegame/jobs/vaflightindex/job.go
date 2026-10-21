@@ -105,7 +105,7 @@ type buildStats struct {
 func (j *Job) loadBuildInput(ctx context.Context, sessionsSnapshot gamesessions.Snapshot) (BuildInput, buildStats, error) {
 	input := BuildInput{
 		ActiveFlightIDs: map[string][]string{},
-		Records:         map[string]gameflights.Flight{},
+		Records:         map[string]gameflights.Record{},
 	}
 	var stats buildStats
 	for _, session := range sessionsSnapshot.Result {
@@ -128,7 +128,7 @@ func (j *Job) loadBuildInput(ctx context.Context, sessionsSnapshot gamesessions.
 			if _, loaded := input.Records[flightID]; loaded {
 				continue
 			}
-			var record gameflights.Flight
+			var record gameflights.Record
 			if err := j.cache.GetJSON(ctx, cache.KeyFlightRecord(flightID), &record); err != nil {
 				if errors.Is(err, cache.ErrMiss) {
 					stats.recordMisses++

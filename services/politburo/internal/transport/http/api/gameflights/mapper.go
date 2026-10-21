@@ -71,59 +71,67 @@ func cachedFiltersFromDomain(filters []domainflights.AvailableFilter) []cachedre
 	return out
 }
 
-func activeFlightRecordFromDomain(flight domainflights.Flight, flightID openapi_types.UUID) politburoapi.ActiveFlightRecord {
-	record := politburoapi.ActiveFlightRecord{
+func activeFlightRecordFromDomain(record domainflights.Record, flightID openapi_types.UUID) politburoapi.ActiveFlightRecord {
+	raw := record.Raw
+	derived := record.Derived
+	lastReport := raw.LastReport
+	if !raw.LastReportValid {
+		lastReport = time.Time{}
+	}
+
+	apiRecord := politburoapi.ActiveFlightRecord{
 		FlightId:           flightID,
-		Callsign:           flight.Callsign,
-		NormalizedCallsign: optionalString(flight.NormalizedCallsign),
-		Latitude:           flight.Latitude,
-		Longitude:          flight.Longitude,
-		Altitude:           flight.Altitude,
-		Speed:              flight.Speed,
-		VerticalSpeed:      flight.VerticalSpeed,
-		Track:              flight.Track,
-		LastReport:         flight.LastReport,
-		PilotState:         flight.PilotState,
-		IsConnected:        flight.IsConnected,
-		SessionId:          flight.SessionID,
-		NormalizedName:     flight.NormalizedName,
+		Callsign:           raw.Callsign,
+		NormalizedCallsign: optionalString(derived.NormalizedCallsign),
+		Latitude:           domainflights.RoundedLatitude(raw.Latitude),
+		Longitude:          domainflights.RoundedLongitude(raw.Longitude),
+		Altitude:           domainflights.RoundedAltitude(raw.Altitude),
+		Speed:              domainflights.RoundedSpeed(raw.Speed),
+		VerticalSpeed:      domainflights.RoundedVerticalSpeed(raw.VerticalSpeed),
+		Track:              domainflights.RoundedTrack(raw.Track),
+		LastReport:         lastReport,
+		PilotState:         raw.PilotState,
+		IsConnected:        raw.IsConnected,
+		SessionId:          raw.SessionID,
+		NormalizedName:     raw.NormalizedName,
 		Normalized: politburoapi.ActiveFlightNormalized{
-			Speed:         flight.Normalized.Speed,
-			VerticalSpeed: flight.Normalized.VerticalSpeed,
-			PilotState:    politburoapi.PilotStateName(flight.Normalized.PilotState),
-			IsConnected:   politburoapi.ActiveFlightNormalizedIsConnected(flight.Normalized.IsConnected),
+			Speed:         derived.Normalized.Speed,
+			VerticalSpeed: derived.Normalized.VerticalSpeed,
+			PilotState:    politburoapi.PilotStateName(derived.Normalized.PilotState),
+			IsConnected:   politburoapi.ActiveFlightNormalizedIsConnected(derived.Normalized.IsConnected),
 		},
-		Username:            flight.Username,
-		VirtualOrganization: flight.VirtualOrganization,
+		Username:            raw.Username,
+		VirtualOrganization: raw.VirtualOrganization,
 	}
-	if flight.UserID != "" {
-		record.UserId = &flight.UserID
+	if raw.UserID != "" {
+		apiRecord.UserId = &raw.UserID
 	}
-	if flight.AircraftID != "" {
-		record.AircraftId = &flight.AircraftID
+	if raw.AircraftID != "" {
+		apiRecord.AircraftId = &raw.AircraftID
 	}
-	if flight.LiveryID != "" {
-		record.LiveryId = &flight.LiveryID
+	if raw.LiveryID != "" {
+		apiRecord.LiveryId = &raw.LiveryID
 	}
-	if flight.AircraftName != "" {
-		record.AircraftName = &flight.AircraftName
+	if derived.AircraftName != "" {
+		apiRecord.AircraftName = &derived.AircraftName
 	}
-	if flight.LiveryName != "" {
-		record.LiveryName = &flight.LiveryName
+	if derived.LiveryName != "" {
+		apiRecord.LiveryName = &derived.LiveryName
 	}
-	if flight.PathSync != nil {
-		pathSync := politburoapi.ActiveFlightPathSync{
-			FplSyncRequired: flight.PathSync.FPLSyncRequired,
+	pathSync := derived.PathSync
+	if pathSync.FPLSyncRequired || !pathSync.LastFPLSyncAt.IsZero() {
+		apiPathSync := politburoapi.ActiveFlightPathSync{
+			FplSyncRequired: pathSync.FPLSyncRequired,
 		}
-		if !flight.PathSync.LastFPLSyncAt.IsZero() {
-			pathSync.LastFPLSyncAt = &flight.PathSync.LastFPLSyncAt
+		if !pathSync.LastFPLSyncAt.IsZero() {
+			apiPathSync.LastFPLSyncAt = &pathSync.LastFPLSyncAt
 		}
-		record.PathSync = &pathSync
+		apiRecord.PathSync = &apiPathSync
 	}
-	if len(flight.MatchedVirtualAirlines) > 0 {
-		record.MatchedVirtualAirlines = matchedVirtualAirlinesFromDomain(flight.MatchedVirtualAirlines)
+	if len(derived.MatchedVirtualAirlines) > 0 {
+		apiRecord.MatchedVirtualAirlines = matchedVirtualAirlinesFromDomain(derived.MatchedVirtualAirlines)
 	}
-	return record
+	return apiRecord
 }
 
 func optionalString(value string) *string {

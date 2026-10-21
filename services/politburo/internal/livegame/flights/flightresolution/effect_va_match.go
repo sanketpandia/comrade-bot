@@ -1,18 +1,18 @@
 package flightresolution
 
+import "infinite-experiment/politburo/internal/livegame/flights"
+
 var vaMatchEffect = EffectDecision{
 	Name:    "VAMatch",
-	Applies: vaMatchApplies,
+	Applies: func(in EffectInput) bool { return true },
 	Apply:   applyVAMatch,
 }
 
-func vaMatchApplies(env *resolveEnv) bool {
-	if env.syncedUpstream {
-		return false
+func applyVAMatch(in EffectInput, out *flights.Derived, _ *Outcome) {
+	normalized, matches := callsignAffixFields(in)
+	if out.NormalizedCallsign == normalized && virtualAirlineMatchesEqual(out.MatchedVirtualAirlines, matches) {
+		return
 	}
-	return callsignAffixFieldsDiffer(env)
-}
-
-func applyVAMatch(env *resolveEnv) {
-	applyCallsignAffixFields(env)
+	out.NormalizedCallsign = normalized
+	out.MatchedVirtualAirlines = matches
 }

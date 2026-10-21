@@ -22,7 +22,7 @@ const FeatureKey = webhookconfig.FeatureActiveFlights
 
 type flightLister interface {
 	ListActiveTracks(ctx context.Context, input flights.ListActiveTracksInput) (flights.ListActiveTracksResult, error)
-	GetActiveFlight(ctx context.Context, flightID string) (flights.Flight, error)
+	GetActiveFlight(ctx context.Context, flightID string) (flights.Record, error)
 }
 
 type sessionLister interface {
@@ -34,7 +34,7 @@ type poster interface {
 }
 
 type collectedFlight struct {
-	flight flights.Flight
+	flight flights.Record
 }
 
 // Handler queries live flights for one VA and posts packed Discord messages.
@@ -82,7 +82,7 @@ func (h *Handler) Handle(ctx context.Context, item dispatch.Item) dispatch.Resul
 	h.metrics.ObserveActiveFlightsDispatch(FeatureKey, len(servers), matched, reported, capped)
 
 	at := h.now().UTC()
-	flightList := make([]flights.Flight, len(loaded))
+	flightList := make([]flights.Record, len(loaded))
 	for i, flight := range loaded {
 		flightList[i] = flight.flight
 	}

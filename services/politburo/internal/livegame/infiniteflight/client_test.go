@@ -122,6 +122,83 @@ func TestClientGetSessionFlights(t *testing.T) {
 	}
 }
 
+func TestClientGetFlightPlan(t *testing.T) {
+	sessionID := "ed323139-baa7-4834-b9d6-5fb9f19ff11e"
+	flightID := "0b8cc273-d97d-4223-afac-907d09d8ca8b"
+	httpClient := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path != "/public/v2/sessions/"+sessionID+"/flights/"+flightID+"/flightplan" {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer test-key" {
+			t.Errorf("Authorization = %q", got)
+		}
+		return response(http.StatusOK, `{
+			"errorCode": 0,
+			"result": {
+				"flightPlanId": "4a57de08-a3b1-48ba-a081-adeff0a5b503",
+				"flightId": "`+flightID+`",
+				"waypoints": ["AMAHE", "L12R"],
+				"lastUpdate": "2021-01-06 15:35:04Z",
+				"flightPlanType": 1,
+				"flightPlanItems": [{
+					"name": "AMAHE",
+					"type": 0,
+					"children": null,
+					"identifier": null,
+					"altitude": -1,
+					"location": {"latitude": 26.92723722, "longitude": -77.47139889, "altitude": 0}
+				}, {
+					"name": "L12R",
+					"type": 2,
+					"children": [{
+						"name": "ZESTY",
+						"type": 0,
+						"children": null,
+						"identifier": "ZESTY",
+						"altitude": 4000,
+						"location": {"latitude": 44.97196917, "longitude": -93.429735, "altitude": 0}
+					}],
+					"identifier": "L12R",
+					"altitude": 0,
+					"location": {"latitude": 0, "longitude": 0, "altitude": 0}
+				}]
+			}
+		}`), nil
+	})}
+
+	client, err := newClient("https://example.test/public/v2", "test-key", httpClient)
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	plan, err := client.GetFlightPlan(context.Background(), sessionID, flightID)
+	if err != nil {
+		t.Fatalf("GetFlightPlan() error = %v", err)
+	}
+	if plan.FlightPlanID != "4a57de08-a3b1-48ba-a081-adeff0a5b503" || plan.FlightID != flightID {
+		t.Fatalf("plan ids = %#v", plan)
+	}
+	if len(plan.Items) != 2 || plan.Items[1].Children[0].Name != "ZESTY" || plan.Items[1].Children[0].Altitude != 4000 {
+		t.Fatalf("plan items = %#v", plan.Items)
+	}
+	if plan.FlightPlanType == nil || *plan.FlightPlanType != 1 {
+		t.Fatalf("flightPlanType = %#v", plan.FlightPlanType)
+	}
+}
+
+func TestClientGetFlightPlanRejectsUpstreamErrorCode(t *testing.T) {
+	httpClient := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return response(http.StatusOK, `{"errorCode":6,"result":{}}`), nil
+	})}
+	client, err := newClient("https://example.test/public/v2", "test-key", httpClient)
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	_, err = client.GetFlightPlan(context.Background(), "ed323139-baa7-4834-b9d6-5fb9f19ff11e", "0b8cc273-d97d-4223-afac-907d09d8ca8b")
+	if err == nil || !strings.Contains(err.Error(), "errorCode 6") {
+		t.Fatalf("GetFlightPlan() error = %v", err)
+	}
+}
+
 func TestClientGetSessionFlightsRejectsUpstreamErrorCode(t *testing.T) {
 	httpClient := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
 		return response(http.StatusOK, `{"errorCode":4,"result":[]}`), nil

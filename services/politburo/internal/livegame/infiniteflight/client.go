@@ -53,8 +53,33 @@ type SessionsClient interface {
 	GetSessions(context.Context) ([]Session, error)
 }
 
+type Coordinate struct {
+	Latitude  float64
+	Longitude float64
+	Altitude  float64
+}
+
+type FlightPlanItem struct {
+	Name       string
+	Type       int
+	Children   []FlightPlanItem
+	Identifier *string
+	Altitude   int
+	Location   Coordinate
+}
+
+type FlightPlan struct {
+	FlightPlanID   string
+	FlightID       string
+	Waypoints      []string
+	LastUpdate     string
+	Items          []FlightPlanItem
+	FlightPlanType *int
+}
+
 type FlightsClient interface {
 	GetSessionFlights(context.Context, string) ([]Flight, error)
+	GetFlightPlan(context.Context, string, string) (FlightPlan, error)
 }
 
 type LiveriesClient interface {
@@ -146,6 +171,59 @@ func (c *Client) GetSessionFlights(ctx context.Context, sessionID string) ([]Fli
 		})
 	}
 	return flights, nil
+}
+
+func (c *Client) GetFlightPlan(ctx context.Context, sessionID, flightID string) (FlightPlan, error) {
+	response, err := c.generated.GetFlightPlanWithResponse(ctx, sessionID, flightID)
+	if err != nil {
+		return FlightPlan{}, fmt.Errorf("get Infinite Flight flight plan: %w", err)
+	}
+	if response.JSON200 == nil {
+		if response.JSONDefault != nil {
+			return FlightPlan{}, fmt.Errorf("get Infinite Flight flight plan: HTTP %d, errorCode %d", response.StatusCode(), response.JSONDefault.ErrorCode)
+		}
+		return FlightPlan{}, fmt.Errorf("get Infinite Flight flight plan: unexpected HTTP %d", response.StatusCode())
+	}
+	if response.JSON200.ErrorCode != 0 {
+		return FlightPlan{}, fmt.Errorf("get Infinite Flight flight plan: errorCode %d", response.JSON200.ErrorCode)
+	}
+	return flightPlanFromGenerated(response.JSON200.Result), nil
+}
+
+func flightPlanFromGenerated(plan infiniteflightapi.FlightPlanInfo) FlightPlan {
+	items := make([]FlightPlanItem, 0, len(plan.FlightPlanItems))
+	for _, item := range plan.FlightPlanItems {
+		items = append(items, flightPlanItemFromGenerated(item))
+	}
+	return FlightPlan{
+		FlightPlanID:   plan.FlightPlanId,
+		FlightID:       plan.FlightId,
+		Waypoints:      plan.Waypoints,
+		LastUpdate:     plan.LastUpdate,
+		Items:          items,
+		FlightPlanType: plan.FlightPlanType,
+	}
+}
+
+func flightPlanItemFromGenerated(item infiniteflightapi.FlightPlanItem) FlightPlanItem {
+	out := FlightPlanItem{
+		Name:       item.Name,
+		Type:       item.Type,
+		Identifier: item.Identifier,
+		Altitude:   item.Altitude,
+		Location: Coordinate{
+			Latitude:  item.Location.Latitude,
+			Longitude: item.Location.Longitude,
+			Altitude:  item.Location.Altitude,
+		},
+	}
+	if item.Children != nil {
+		out.Children = make([]FlightPlanItem, 0, len(*item.Children))
+		for _, child := range *item.Children {
+			out.Children = append(out.Children, flightPlanItemFromGenerated(child))
+		}
+	}
+	return out
 }
 
 func (c *Client) GetAircraftLiveries(ctx context.Context) ([]Livery, error) {

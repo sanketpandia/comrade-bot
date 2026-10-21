@@ -16,7 +16,7 @@ import (
 )
 
 func TestHandleCapsAcrossServers(t *testing.T) {
-	byServer := map[string][]flights.Flight{
+	byServer := map[string][]flights.Record{
 		"alpha": sampleFlights("A", 60),
 		"bravo": sampleFlights("B", 50),
 	}
@@ -118,7 +118,7 @@ func TestHandleSkipsWithoutPreferredServers(t *testing.T) {
 }
 
 type fakeFlights struct {
-	byServer map[string][]flights.Flight
+	byServer map[string][]flights.Record
 	err      error
 	calls    int
 	vaCodes  []string
@@ -137,20 +137,20 @@ func (f *fakeFlights) ListActiveTracks(ctx context.Context, input flights.ListAc
 	}
 	tracks := make([]flights.Track, len(page))
 	for i, flight := range page {
-		tracks[i] = flights.TrackFromFlight(flight)
+		tracks[i] = flights.TrackFromRecord(flight)
 	}
 	return flights.ListActiveTracksResult{Tracks: tracks, TotalLength: len(all)}, nil
 }
 
-func (f *fakeFlights) GetActiveFlight(ctx context.Context, flightID string) (flights.Flight, error) {
+func (f *fakeFlights) GetActiveFlight(ctx context.Context, flightID string) (flights.Record, error) {
 	for _, list := range f.byServer {
 		for _, flight := range list {
-			if flight.FlightID == flightID {
+			if flight.Raw.FlightID == flightID {
 				return flight, nil
 			}
 		}
 	}
-	return flights.Flight{}, flights.ErrCacheMiss
+	return flights.Record{}, flights.ErrCacheMiss
 }
 
 type fakeSessions struct {
@@ -177,15 +177,17 @@ func (f *fakePoster) PostEmbeds(ctx context.Context, webhookType, webhookURL str
 	return nil
 }
 
-func sampleFlights(prefix string, n int) []flights.Flight {
-	out := make([]flights.Flight, n)
+func sampleFlights(prefix string, n int) []flights.Record {
+	out := make([]flights.Record, n)
 	for i := 0; i < n; i++ {
-		out[i] = flights.Flight{
-			FlightID:     fmt.Sprintf("%s-%03d", prefix, i),
-			Callsign:     fmt.Sprintf("%s%02d", prefix, i),
-			AircraftName: "A320",
-			Altitude:     1000 + i,
-			Speed:        200,
+		out[i] = flights.Record{
+			Raw: flights.Observation{
+				FlightID: fmt.Sprintf("%s-%03d", prefix, i),
+				Callsign: fmt.Sprintf("%s%02d", prefix, i),
+				Altitude: float64(1000 + i),
+				Speed:    200,
+			},
+			Derived: flights.Derived{AircraftName: "A320"},
 		}
 	}
 	return out
