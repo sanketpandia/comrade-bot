@@ -87,3 +87,8 @@ properties:
   flightState:
     $ref: "./ActiveFlightState.yaml"
     description: Temporal flight-phase estimate when available.
+  users:
+    type: array
+    description: Distinct Infinite Flight user identifiers who have operated this flight during the current cache lifetime.
+    items:
+      type: string

@@ -82,6 +82,36 @@ func TestResolveFlightFPLSchedulesSyncDespiteUnchangedMotion(t *testing.T) {
 	}
 }
 
+func TestResolveFlightUpdatesRecordWhenOnlyUserIDChanges(t *testing.T) {
+	userA := "daa083c0-8bc9-4750-ae37-3cec5695841c"
+	userB := "0d85b360-92b5-4e62-ac64-41bd1c829772"
+	now := time.Date(2026, 8, 15, 6, 0, 0, 0, time.UTC)
+	upstream := infiniteflight.Flight{
+		FlightID: "f1", UserID: userB, Speed: 100, PilotState: flights.PilotStateActive, LastReport: "2026-08-15 05:09:53Z",
+	}
+	motion := flights.MotionFromUpstream(upstream)
+	ctx := testComputeContext(infiniteflight.Session{NormalizedName: "casual"}, motion, true, now)
+
+	prior := &flights.Record{
+		Raw: flights.Observation{
+			FlightID: "f1", UserID: userA, Speed: 100, PilotState: flights.PilotStateActive,
+			LastReport: now, LastReportValid: true,
+		},
+		Derived: flights.Derived{
+			Users:      []string{userA},
+			Normalized: flights.Normalized{Speed: "100 kts", VerticalSpeed: "0.0 ft/min", PilotState: "active", IsConnected: "disconnected"},
+		},
+	}
+
+	out := ResolveFlight(ctx, upstream, prior, flightstate.History{})
+	if !out.Outcome.UpdateFlightRecord {
+		t.Fatal("expected record update when userId changes")
+	}
+	if len(out.Record.Derived.Users) != 2 || out.Record.Derived.Users[1] != userB {
+		t.Fatalf("users = %#v", out.Record.Derived.Users)
+	}
+}
+
 func TestResolveFlightFPLSyncRequiredResetsAfterSync(t *testing.T) {
 	now := time.Date(2026, 8, 15, 6, 0, 0, 0, time.UTC)
 	upstream := infiniteflight.Flight{

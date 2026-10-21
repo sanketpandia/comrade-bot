@@ -133,6 +133,9 @@ func activeFlightRecordFromDomain(record domainflights.Record, flightID openapi_
 	if derived.FlightState != nil {
 		apiRecord.FlightState = activeFlightStateFromDomain(*derived.FlightState)
 	}
+	if len(derived.Users) > 0 {
+		apiRecord.Users = &derived.Users
+	}
 	return apiRecord
 }
 

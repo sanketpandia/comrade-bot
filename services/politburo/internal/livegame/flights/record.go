@@ -20,6 +20,7 @@ type Derived struct {
 	PathSync               PathSync                              `json:"pathSync"`
 	MatchedVirtualAirlines []virtualairlines.VirtualAirlineMatch `json:"matchedVirtualAirlines,omitempty"`
 	FlightState            *flightstate.Summary                  `json:"flightState,omitempty"`
+	Users                  []string                              `json:"users,omitempty"`
 }
 
 // Clone returns a deep copy of derived fields.
@@ -32,6 +33,9 @@ func (d Derived) Clone() Derived {
 		cloned := d.FlightState.Clone()
 		out.FlightState = &cloned
 	}
+	if len(d.Users) > 0 {
+		out.Users = append([]string(nil), d.Users...)
+	}
 	return out
 }
 
@@ -43,7 +47,8 @@ func (d Derived) Equal(other Derived) bool {
 		d.Normalized == other.Normalized &&
 		d.PathSync == other.PathSync &&
 		VirtualAirlineMatchesEqual(d.MatchedVirtualAirlines, other.MatchedVirtualAirlines) &&
-		flightStateEqual(d.FlightState, other.FlightState)
+		flightStateEqual(d.FlightState, other.FlightState) &&
+		UserIDsEqual(d.Users, other.Users)
 }
 
 func flightStateEqual(a, b *flightstate.Summary) bool {
