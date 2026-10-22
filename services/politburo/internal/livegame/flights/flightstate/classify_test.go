@@ -50,6 +50,23 @@ func TestScoreParkedOnGround(t *testing.T) {
 	}
 }
 
+func TestInBackgroundPilotStateAPPlus(t *testing.T) {
+	cfg := DefaultConfig()
+	t0 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	s := sampleAt(t0, 34000, 393, 0)
+	s.IsConnected = false
+	s.PilotState = PilotStateInBackground
+	h := seq(s)
+	prev := State{Phase: PhaseClimbing, PhaseSince: t0, Confidence: 0.7}
+	st := Classify(prev, h, cfg, t0)
+	if !st.APPlus.Candidate {
+		t.Fatal("expected AP+ candidate when pilot is in background")
+	}
+	if st.APPlus.Score < 0.9 {
+		t.Fatalf("expected high AP+ score, got %v", st.APPlus.Score)
+	}
+}
+
 func TestStaleReportNeverAPPlus(t *testing.T) {
 	cfg := DefaultConfig()
 	t0 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
