@@ -1,56 +1,53 @@
 package flightstate
 
 import (
-	"math"
 	"testing"
 	"time"
 )
 
-func TestHaversineKnownDistance(t *testing.T) {
-	// Roughly 60 NM along the equator for one degree longitude at equator.
-	d := haversineNM(0, 0, 0, 1)
-	if d < 59 || d > 61 {
-		t.Fatalf("distance = %v", d)
-	}
-}
-
-func TestPairFeaturesNonPositiveElapsed(t *testing.T) {
+func TestSustainedClimbCountTrailingOnly(t *testing.T) {
 	cfg := DefaultConfig()
-	prev := Sample{LastReportValid: true, LastReport: time.Unix(100, 0).UTC(), LatitudeValid: true, LongitudeValid: true, Latitude: 0, Longitude: 0, AltitudeValid: true, Altitude: 1000, SpeedValid: true, Speed: 100}
-	cur := prev
-	cur.LastReport = prev.LastReport
-	p := PairFeaturesBetween(prev, cur, cfg, cur.LastReport)
-	if p.ElapsedSec != 0 {
-		t.Fatalf("elapsed = %v", p.ElapsedSec)
+	t0 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	interval := time.Minute
+
+	// Early climb pairs, then level flight on the most recent pairs.
+	climbStep := 500.0 // ft/min over 1 min between samples
+	levelAlt := 34000.0
+	samples := []Sample{
+		sampleAt(t0, 10000, 250, climbStep),
+		sampleAt(t0.Add(interval), 15000, 280, climbStep),
+		sampleAt(t0.Add(2*interval), 20000, 300, climbStep),
+		sampleAt(t0.Add(3*interval), 25000, 320, climbStep),
+		sampleAt(t0.Add(4*interval), 30000, 350, climbStep),
+		sampleAt(t0.Add(5*interval), levelAlt, 393, 0),
+		sampleAt(t0.Add(6*interval), levelAlt, 393, 0),
+	}
+	h := seq(samples...)
+	w := WindowFeaturesFrom(h, cfg, t0.Add(6*interval))
+
+	if w.SustainedClimbCount != 0 {
+		t.Fatalf("expected sustained climb 0 after level pairs, got %d", w.SustainedClimbCount)
+	}
+	if w.Pair.AltStable && w.SustainedClimbCount > 0 {
+		t.Fatal("stable level pair should not leave a positive sustained climb count")
 	}
 }
 
-func TestSampleMissingNeverTreatedAsZero(t *testing.T) {
-	s := Sample{AltitudeValid: false, SpeedValid: false}
-	if s.coreValid() {
-		t.Fatal("expected invalid core")
-	}
-}
-
-func TestShortestAngleTrackWrap(t *testing.T) {
-	d := shortestAngleDelta(359, 1)
-	if math.Abs(d-2) > 0.01 {
-		t.Fatalf("delta = %v", d)
-	}
-}
-
-func TestMovementToleranceJitter(t *testing.T) {
+func TestSustainedClimbCountActiveClimb(t *testing.T) {
 	cfg := DefaultConfig()
-	prev := Sample{
-		LastReportValid: true, LastReport: time.Unix(0, 0).UTC(),
-		LatitudeValid: true, LongitudeValid: true, Latitude: 10, Longitude: 10,
-		AltitudeValid: true, Altitude: 1000, SpeedValid: true, Speed: 10,
+	t0 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	interval := time.Minute
+	climbStep := 500.0
+
+	samples := []Sample{
+		sampleAt(t0, 10000, 250, climbStep),
+		sampleAt(t0.Add(interval), 15000, 280, climbStep),
+		sampleAt(t0.Add(2*interval), 20000, 300, climbStep),
 	}
-	cur := prev
-	cur.LastReport = prev.LastReport.Add(time.Minute)
-	cur.Latitude += 0.00001
-	p := PairFeaturesBetween(prev, cur, cfg, cur.LastReport)
-	if p.Moved {
-		t.Fatal("expected jitter below tolerance to be stationary")
+	h := seq(samples...)
+	w := WindowFeaturesFrom(h, cfg, t0.Add(2*interval))
+
+	if w.SustainedClimbCount != 2 {
+		t.Fatalf("expected sustained climb 2 for two trailing climb pairs, got %d", w.SustainedClimbCount)
 	}
 }

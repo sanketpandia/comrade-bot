@@ -110,6 +110,8 @@ func (w *WindowFeatures) aggregateCounts(h History, cfg Config) {
 		return
 	}
 	minAlt, maxAlt := h.Samples[0].Altitude, h.Samples[0].Altitude
+	climbTrailing := true
+	descentTrailing := true
 	for i := len(h.Samples) - 1; i >= 0; i-- {
 		s := h.Samples[i]
 		if s.AltitudeValid {
@@ -129,15 +131,19 @@ func (w *WindowFeatures) aggregateCounts(h History, cfg Config) {
 			w.StationarySamples++
 			w.StationaryDurationSec += pair.ElapsedSec
 		}
-		if pair.AvgVerticalFpm >= cfg.ClimbEnterAvgFpm {
-			w.SustainedClimbCount++
-		} else {
-			w.SustainedClimbCount = 0
+		if climbTrailing {
+			if pair.AvgVerticalFpm >= cfg.ClimbEnterAvgFpm {
+				w.SustainedClimbCount++
+			} else {
+				climbTrailing = false
+			}
 		}
-		if pair.AvgVerticalFpm <= cfg.DescendEnterAvgFpm {
-			w.SustainedDescentCount++
-		} else {
-			w.SustainedDescentCount = 0
+		if descentTrailing {
+			if pair.AvgVerticalFpm <= cfg.DescendEnterAvgFpm {
+				w.SustainedDescentCount++
+			} else {
+				descentTrailing = false
+			}
 		}
 		if groundLikeSample(s, cfg) {
 			w.GroundLikeInWindow = true
