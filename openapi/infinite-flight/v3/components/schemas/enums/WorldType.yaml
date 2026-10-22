@@ -1,0 +1,4 @@
+type: integer
+description: World the organization belongs to (`WorldType`).
+enum: [0, 1, 2, 3, 4]
+x-enum-varnames: [Solo, Casual, Training, Expert, Private]

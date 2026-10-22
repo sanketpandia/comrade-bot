@@ -1,0 +1,8 @@
+name: page
+in: query
+required: false
+description: One-based page number.
+schema:
+  type: integer
+  minimum: 1
+  default: 1

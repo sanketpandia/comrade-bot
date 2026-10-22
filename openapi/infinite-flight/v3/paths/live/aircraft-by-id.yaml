@@ -1,0 +1,33 @@
+get:
+  operationId: getLiveAircraft
+  summary: Get aircraft
+  description: |
+    Returns one **active** aircraft when the signed-in user is a member of the owning organization.
+
+    **Authorization:** `Authorization: Bearer <access_token>` with scope `live:aircraft.read`.
+    The signed-in user must be a member of the aircraft's organization; otherwise the API returns `404`.
+
+    `{aircraftId}` is the persistent organization aircraft ID (`Aircraft.id` from List Organization Aircraft),
+    not the content `aircraftId` field on the aircraft record.
+  tags: [Aircraft]
+  security:
+    - oauth2: [live:aircraft.read]
+  parameters:
+    - $ref: ../../components/parameters/aircraftId.yaml
+  responses:
+    "200":
+      description: Success (`errorCode` is `0`).
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/responses/GetAircraftResponse.yaml
+    "400":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/BadRequest
+    "401":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/Unauthorized
+    "403":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/Forbidden
+    "404":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/NotFound
+    "429":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/TooManyRequests

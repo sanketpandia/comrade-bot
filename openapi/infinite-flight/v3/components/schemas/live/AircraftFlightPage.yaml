@@ -1,0 +1,19 @@
+type: object
+required: [items, page, pageSize, totalCount, totalPages]
+properties:
+  items:
+    type: array
+    items:
+      $ref: ./AircraftFlight.yaml
+  page:
+    type: integer
+    description: One-based page number.
+  pageSize:
+    type: integer
+    description: Maximum number of items on a page.
+  totalCount:
+    type: integer
+    description: Number of items on all pages.
+  totalPages:
+    type: integer
+    description: Number of pages.

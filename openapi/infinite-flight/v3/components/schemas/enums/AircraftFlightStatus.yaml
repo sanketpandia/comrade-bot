@@ -1,0 +1,5 @@
+type: integer
+description: |
+  Flight log status (`AircraftFlightStatus`). Value `2` (Cancelled) is also used when the aircraft crashed.
+enum: [0, 1, 2]
+x-enum-varnames: [Active, Completed, Cancelled]

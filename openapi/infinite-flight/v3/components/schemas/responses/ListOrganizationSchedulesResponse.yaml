@@ -1,0 +1,24 @@
+type: object
+required: [errorCode, result]
+properties:
+  errorCode:
+    type: integer
+    description: |
+      `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+    enum: [0]
+  result:
+    $ref: ../live/SchedulePage.yaml
+example:
+  errorCode: 0
+  result:
+    items:
+      - id: fd0f8a7c-fab2-4fd0-baf7-4b87e8f7cc2f
+        status: 1
+        callsign: PJX421
+        aircraftId: 28fb4508-9eca-4120-abe4-3c4f06f6e71c
+        isTimeless: false
+        sequence: 1
+    page: 1
+    pageSize: 100
+    totalCount: 1
+    totalPages: 1

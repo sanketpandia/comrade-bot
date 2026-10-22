@@ -1,0 +1,75 @@
+type: object
+required:
+  - id
+  - aircraftId
+  - organizationId
+  - callsign
+  - status
+  - flightTimeMinutes
+  - airframeTimeMinutes
+  - crew
+  - pilotFlightTimes
+description: |
+  Flight log entry for an organization aircraft. Not linked to a schedule; match schedules by
+  `originIcao`, `destinationIcao`, and actual times. Schedule `crew` is assigned pilots; flight
+  `crew` and `pilotFlightTimes` are who actually flew.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: |
+      Flight log entry ID. For most flights, the Live flight ID of the flight that started the entry.
+    x-go-type: string
+  aircraftId:
+    type: string
+    format: uuid
+    description: Persistent organization aircraft ID.
+    x-go-type: string
+  organizationId:
+    type: string
+    format: uuid
+    description: Organization ID at the time of the flight.
+    x-go-type: string
+  callsign:
+    type: string
+    description: Aircraft registration at the time of the flight.
+  originIcao:
+    type: string
+    nullable: true
+    description: Departure airport.
+  destinationIcao:
+    type: string
+    nullable: true
+    description: Arrival airport, or the nearest airport at the last update.
+  actualDepartureUtc:
+    type: string
+    format: date-time
+    nullable: true
+    description: Takeoff time, UTC.
+  actualArrivalUtc:
+    type: string
+    format: date-time
+    nullable: true
+    description: Landing time, UTC. Null while the flight is active.
+  status:
+    $ref: ../enums/AircraftFlightStatus.yaml
+  flightTimeMinutes:
+    type: number
+    format: double
+    description: Flight time of this flight, minutes.
+  airframeTimeMinutes:
+    type: number
+    format: double
+    description: Total airframe time of the aircraft at the last update of this flight, minutes.
+  crew:
+    type: array
+    description: Each pilot who flew the aircraft on this flight, in join order.
+    items:
+      $ref: ./AircraftFlightCrewMember.yaml
+  pilotFlightTimes:
+    type: array
+    description: |
+      One entry per period a pilot was in control, in time order. Sum `flightTimeSeconds` per `userId`
+      for total time per pilot (multiple entries if a pilot leaves and returns).
+    items:
+      $ref: ./PilotFlightTime.yaml

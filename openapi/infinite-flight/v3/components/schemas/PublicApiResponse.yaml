@@ -1,0 +1,9 @@
+type: object
+required: [errorCode, result]
+properties:
+  errorCode:
+    type: integer
+    description: |
+      `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+  result:
+    description: Payload on success; shape depends on the operation.

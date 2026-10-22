@@ -1,0 +1,4 @@
+type: integer
+description: Type of operation flown (`OrganizationOperationType`).
+enum: [0, 1, 2, 3, 4, 5, 6]
+x-enum-varnames: [Undefined, Airline, Charter, Freight, Military, FlightSchool, Private]

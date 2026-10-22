@@ -1,0 +1,30 @@
+BadRequest:
+  description: Request validation failed.
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/PublicApiResponse.yaml
+Unauthorized:
+  description: Missing, expired, or invalid bearer token.
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/PublicApiResponse.yaml
+Forbidden:
+  description: Missing scope, disabled client, app still in testing, or the user does not have access.
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/PublicApiResponse.yaml
+NotFound:
+  description: Requested organization, aircraft, schedule, user, or crew assignment was not found for the signed-in user.
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/PublicApiResponse.yaml
+TooManyRequests:
+  description: Rate limit exceeded.
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/PublicApiResponse.yaml

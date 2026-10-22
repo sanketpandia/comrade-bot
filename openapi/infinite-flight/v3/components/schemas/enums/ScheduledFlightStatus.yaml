@@ -1,0 +1,16 @@
+type: integer
+description: |
+  Current schedule status (`ScheduledFlightStatus`). There is no value `5`.
+enum: [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11]
+x-enum-varnames:
+  - Unknown
+  - Scheduled
+  - Boarding
+  - Boarded
+  - TaxiingToRunway
+  - InFlight
+  - Diverted
+  - Delayed
+  - Cancelled
+  - TaxiingToParking
+  - Arrived

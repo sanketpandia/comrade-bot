@@ -1,0 +1,158 @@
+openapi: 3.0.3
+info:
+  title: Infinite Flight Public API v3 (Live preview)
+  version: 3.0.0-preview
+  description: |
+    **Preview — not a stable contract.** PublicApi v3 OAuth and Live organization endpoints may change
+    before general availability (paths, scopes, fields, enums, validation, rate limits, and app review).
+
+    PublicApi v3 adds OAuth2 access for third-party apps. Live endpoints focus on authenticated
+    organization workflows: organizations and roles, members (roles and active lifts), aircraft and
+    flight logs, and schedule read/write where permitted. The existing v2 API-key Live API is unchanged.
+
+    **OAuth clients:** create at https://infiniteflight.com/account/api-keys (v3 OAuth2 clients section;
+    up to 2 clients per user). Testing clients are limited to the owner and up to 5 invited test users
+    until app review. Live endpoints only return organizations the signed-in user belongs to.
+
+    **OAuth2:** authorization code flow with PKCE (required for all client types). Authorization server
+    `https://api.infiniteflight.com/auth/v2` (`/connect/authorize`, `/connect/token`). User sign-in UI
+    is hosted at `auth.infiniteflight.com`. **Issuer:** `https://auth.infiniteflight.com/`. Token requests use
+    `application/x-www-form-urlencoded`. Scopes are space-delimited in the authorize request.
+
+    **Client types** (`OAuthClientType`): confidential — exchange the code from your backend with
+    `client_secret` + PKCE; public — `client_id` + `code_verifier` only. Never put client secrets in
+    browser, mobile, or downloadable clients. Access tokens are audience `public-api-v3`; treat as opaque.
+    Refresh tokens rotate — store the latest from each token response.
+
+    **Data use:** API usage and data rules apply as for Live API v2. Live data is for simulated-flight
+    features only; do not store, accumulate, share, or use it to train AI models.
+
+    Response envelope: `{ "errorCode": 0, "result": { ... } }` — `errorCode: 0` means success.
+tags:
+  - name: OAuth2
+    description: |
+      OAuth2 authorization code + PKCE. Create clients at https://infiniteflight.com/account/api-keys.
+      Sample flows: https://github.com/infiniteflight/infiniteflight-api-playground
+  - name: Organizations
+    description: Live organizations the signed-in user belongs to.
+  - name: Members
+    description: Organization members, roles, and active lifts.
+  - name: Aircraft
+    description: Organization aircraft, position, and flight logs.
+  - name: Schedules
+    description: Fleet and per-aircraft schedules; write operations require owner or admin role.
+servers:
+  - url: https://api.infiniteflight.com/public/v3
+    description: PublicApi v3 (Live endpoints)
+  - url: https://api.infiniteflight.com/auth/v2
+    description: OAuth2 authorization server (`/connect/*`)
+paths:
+  /connect/authorize:
+    $ref: ./paths/oauth/authorize.yaml
+  /connect/token:
+    $ref: ./paths/oauth/token.yaml
+  /live/organizations:
+    $ref: ./paths/live/organizations.yaml
+  /live/organizations/{organizationId}:
+    $ref: ./paths/live/organization-by-id.yaml
+  /live/organizations/{organizationId}/members:
+    $ref: ./paths/live/organization-members.yaml
+  /live/organizations/{organizationId}/aircraft:
+    $ref: ./paths/live/organization-aircraft.yaml
+  /live/organizations/{organizationId}/schedules:
+    $ref: ./paths/live/organization-schedules.yaml
+  /live/aircraft/{aircraftId}:
+    $ref: ./paths/live/aircraft-by-id.yaml
+  /live/aircraft/{aircraftId}/position:
+    $ref: ./paths/live/aircraft-position.yaml
+  /live/aircraft/{aircraftId}/flights:
+    $ref: ./paths/live/aircraft-flights.yaml
+  /live/aircraft/{aircraftId}/schedules:
+    $ref: ./paths/live/aircraft-schedules.yaml
+  /live/schedules/{scheduleId}:
+    $ref: ./paths/live/schedule-by-id.yaml
+  /live/schedules/{scheduleId}/flightplan:
+    $ref: ./paths/live/update-schedule-flightplan.yaml
+  /live/schedules/{scheduleId}/crew/{userId}:
+    $ref: ./paths/live/schedule-crew-by-user-id.yaml
+  /live/aircraft/{aircraftId}/schedules/reorder:
+    $ref: ./paths/live/reorder-schedules.yaml
+components:
+  securitySchemes:
+    oauth2:
+      $ref: ./components/securitySchemes/oauth2.yaml
+  schemas:
+    PublicApiResponse:
+      $ref: ./components/schemas/PublicApiResponse.yaml
+    OAuthClientType:
+      $ref: ./components/schemas/OAuthClientType.yaml
+    OAuthScope:
+      $ref: ./components/schemas/OAuthScope.yaml
+    OAuthTokenRequest:
+      $ref: ./components/schemas/OAuthTokenRequest.yaml
+    OAuthTokenResponse:
+      $ref: ./components/schemas/OAuthTokenResponse.yaml
+    Organization:
+      $ref: ./components/schemas/live/Organization.yaml
+    ListOrganizationsResponse:
+      $ref: ./components/schemas/responses/ListOrganizationsResponse.yaml
+    GetOrganizationResponse:
+      $ref: ./components/schemas/responses/GetOrganizationResponse.yaml
+    OrganizationMember:
+      $ref: ./components/schemas/live/OrganizationMember.yaml
+    ListOrganizationMembersResponse:
+      $ref: ./components/schemas/responses/ListOrganizationMembersResponse.yaml
+    Aircraft:
+      $ref: ./components/schemas/live/Aircraft.yaml
+    ListOrganizationAircraftResponse:
+      $ref: ./components/schemas/responses/ListOrganizationAircraftResponse.yaml
+    GetAircraftResponse:
+      $ref: ./components/schemas/responses/GetAircraftResponse.yaml
+    AircraftPosition:
+      $ref: ./components/schemas/live/AircraftPosition.yaml
+    GetAircraftPositionResponse:
+      $ref: ./components/schemas/responses/GetAircraftPositionResponse.yaml
+    AircraftPersistenceState:
+      $ref: ./components/schemas/enums/AircraftPersistenceState.yaml
+    AircraftFlight:
+      $ref: ./components/schemas/live/AircraftFlight.yaml
+    AircraftFlightCrewMember:
+      $ref: ./components/schemas/live/AircraftFlightCrewMember.yaml
+    PilotFlightTime:
+      $ref: ./components/schemas/live/PilotFlightTime.yaml
+    AircraftFlightPage:
+      $ref: ./components/schemas/live/AircraftFlightPage.yaml
+    ListAircraftFlightsResponse:
+      $ref: ./components/schemas/responses/ListAircraftFlightsResponse.yaml
+    AircraftFlightStatus:
+      $ref: ./components/schemas/enums/AircraftFlightStatus.yaml
+    Schedule:
+      $ref: ./components/schemas/live/Schedule.yaml
+    ScheduleCrewMember:
+      $ref: ./components/schemas/live/ScheduleCrewMember.yaml
+    SchedulePage:
+      $ref: ./components/schemas/live/SchedulePage.yaml
+    ListOrganizationSchedulesResponse:
+      $ref: ./components/schemas/responses/ListOrganizationSchedulesResponse.yaml
+    ListAircraftSchedulesResponse:
+      $ref: ./components/schemas/responses/ListAircraftSchedulesResponse.yaml
+    ScheduledFlightStatus:
+      $ref: ./components/schemas/enums/ScheduledFlightStatus.yaml
+    PersistentFlightType:
+      $ref: ./components/schemas/enums/PersistentFlightType.yaml
+    PersistentFlightCrewMemberRole:
+      $ref: ./components/schemas/enums/PersistentFlightCrewMemberRole.yaml
+    PersistentAircraftRecordStatus:
+      $ref: ./components/schemas/enums/PersistentAircraftRecordStatus.yaml
+    PersistentAircraftVisibility:
+      $ref: ./components/schemas/enums/PersistentAircraftVisibility.yaml
+    PersistentOrganizationType:
+      $ref: ./components/schemas/enums/PersistentOrganizationType.yaml
+    OrganizationOperationType:
+      $ref: ./components/schemas/enums/OrganizationOperationType.yaml
+    WorldType:
+      $ref: ./components/schemas/enums/WorldType.yaml
+    PersistentOrganizationRecordStatus:
+      $ref: ./components/schemas/enums/PersistentOrganizationRecordStatus.yaml
+    PersistentOrganizationMemberRole:
+      $ref: ./components/schemas/enums/PersistentOrganizationMemberRole.yaml

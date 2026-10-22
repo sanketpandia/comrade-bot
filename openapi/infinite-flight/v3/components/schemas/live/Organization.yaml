@@ -1,0 +1,33 @@
+type: object
+required:
+  - id
+  - name
+  - type
+  - operationType
+  - worldType
+  - status
+  - role
+description: Live organization and the signed-in user's role in it.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Organization ID.
+    x-go-type: string
+  name:
+    type: string
+    description: Display name.
+  type:
+    $ref: ../enums/PersistentOrganizationType.yaml
+  operationType:
+    $ref: ../enums/OrganizationOperationType.yaml
+  worldType:
+    $ref: ../enums/WorldType.yaml
+  status:
+    $ref: ../enums/PersistentOrganizationRecordStatus.yaml
+  description:
+    type: string
+    nullable: true
+    description: Organization description.
+  role:
+    $ref: ../enums/PersistentOrganizationMemberRole.yaml

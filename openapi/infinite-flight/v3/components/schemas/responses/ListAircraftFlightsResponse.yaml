@@ -1,0 +1,45 @@
+type: object
+required: [errorCode, result]
+properties:
+  errorCode:
+    type: integer
+    description: |
+      `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+    enum: [0]
+  result:
+    $ref: ../live/AircraftFlightPage.yaml
+example:
+  errorCode: 0
+  result:
+    items:
+      - id: 0b8cc273-d97d-4223-afac-907d09d8ca8b
+        aircraftId: 28fb4508-9eca-4120-abe4-3c4f06f6e71c
+        organizationId: 1337830a-abf9-4315-9488-e8cebd7f485a
+        callsign: N682XL
+        originIcao: KLAX
+        destinationIcao: KJFK
+        actualDepartureUtc: 2026-07-03T18:42:00Z
+        actualArrivalUtc: 2026-07-03T23:51:00Z
+        status: 1
+        flightTimeMinutes: 309
+        airframeTimeMinutes: 18240
+        crew:
+          - userId: 3f8b28bf-bbb1-4024-80ae-2a0ea9b30685
+            username: Chhettri22
+          - userId: a9d2e7c1-3b4f-4c8a-8e21-6f0b5d4c3a29
+            username: LineCaptain
+        pilotFlightTimes:
+          - userId: 3f8b28bf-bbb1-4024-80ae-2a0ea9b30685
+            username: Chhettri22
+            flightTimeSeconds: 10800
+            startSeconds: 0
+            endSeconds: 10800
+          - userId: a9d2e7c1-3b4f-4c8a-8e21-6f0b5d4c3a29
+            username: LineCaptain
+            flightTimeSeconds: 7740
+            startSeconds: 10800
+            endSeconds: 18540
+    page: 1
+    pageSize: 25
+    totalCount: 1
+    totalPages: 1
