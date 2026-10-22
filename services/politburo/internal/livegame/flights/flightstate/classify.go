@@ -61,7 +61,7 @@ func Classify(prev State, h History, cfg Config, now time.Time) State {
 		return commitPhase(next, PhaseUnknown, 0.2, []string{"insufficient_observations"}, now)
 	}
 
-	ap := scoreAPPlus(prev, w, cfg, now)
+	ap := mergeAPPlusPilotState(scoreAPPlus(prev, w, cfg, now), prev, w, now)
 	next.APPlus = ap
 	if ap.Candidate && cfg.APPlusEmitPhase {
 		return commitPhase(next, PhaseAwaitingAPPlus, ap.Score, ap.Reasons, now)
@@ -182,6 +182,39 @@ func commitPhase(st State, phase Phase, confidence float64, reasons []string, no
 		st.Reasons = reasons
 	}
 	return st
+}
+
+const apPlusPilotStateScore = 0.95
+
+func mergeAPPlusPilotState(ap APPlus, prev State, w WindowFeatures, now time.Time) APPlus {
+	if w.Current.PilotState != PilotStateInBackground {
+		return ap
+	}
+	ap.Candidate = true
+	if ap.Score < apPlusPilotStateScore {
+		ap.Score = apPlusPilotStateScore
+	}
+	const reason = "pilot_state_in_background"
+	if !sliceContains(ap.Reasons, reason) {
+		ap.Reasons = append(append([]string(nil), ap.Reasons...), reason)
+	}
+	if ap.Since.IsZero() {
+		if prev.APPlus.Candidate && !prev.APPlus.Since.IsZero() {
+			ap.Since = prev.APPlus.Since
+		} else {
+			ap.Since = now
+		}
+	}
+	return ap
+}
+
+func sliceContains(ss []string, s string) bool {
+	for _, v := range ss {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }
 
 func scoreAPPlus(prev State, w WindowFeatures, cfg Config, now time.Time) APPlus {

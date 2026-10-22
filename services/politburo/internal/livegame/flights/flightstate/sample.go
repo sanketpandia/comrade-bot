@@ -32,6 +32,9 @@ type Sample struct {
 	PilotState  int  `json:"pilotState"`
 }
 
+// PilotStateInBackground is Infinite Flight's pilotState when the app is backgrounded (AP+).
+const PilotStateInBackground = 3
+
 func validLatitude(v float64) bool {
 	return !math.IsNaN(v) && !math.IsInf(v, 0) && v >= -90 && v <= 90
 }
