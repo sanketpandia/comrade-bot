@@ -31,6 +31,10 @@ request:
       value: LFPG-DNAA
     - name: flight-id
       value: 0004f907-b075-448d-9803-6c5854d32005
+    - name: oauth-authorization-code
+      value: ""
+    - name: oauth-state
+      value: ""
 bundled: false
 extensions:
   bruno:
