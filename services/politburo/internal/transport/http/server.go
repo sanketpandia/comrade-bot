@@ -19,6 +19,7 @@ import (
 	"infinite-experiment/politburo/internal/transport/http/api/gamesessions"
 	"infinite-experiment/politburo/internal/transport/http/api/health"
 	"infinite-experiment/politburo/internal/transport/http/api/identity"
+	oauthapi "infinite-experiment/politburo/internal/transport/http/api/oauth"
 	"infinite-experiment/politburo/internal/transport/http/api/signedlink"
 	userapi "infinite-experiment/politburo/internal/transport/http/api/user"
 	vaapi "infinite-experiment/politburo/internal/transport/http/api/va"
@@ -97,14 +98,20 @@ func (s *Server) router() stdhttp.Handler {
 	)
 	vaHandler := vaapi.NewHandler(s.app.VirtualAirlines, s.app.VAConfigs, s.app.Users, s.app.VAWebhookJob)
 	userHandler := userapi.NewHandler(s.app.Users)
-	uiHandler := uihttp.NewHandler(s.app.UI, s.app.Sessions, s.app.Tickets, s.app.Reports, s.app.Operator, s.app.Config.PlatformOperatorDiscordIDs, s.app.SessionsReader)
+	oauthHandler := oauthapi.NewHandler(s.app.IFOAuth, s.app.Config.OAuthRedirectURI(), s.app.Cache)
+	uiHandler := uihttp.NewHandler(
+		s.app.UI, s.app.Sessions, s.app.Tickets, s.app.Reports, s.app.Operator,
+		s.app.Config.PlatformOperatorDiscordIDs, s.app.SessionsReader,
+		s.app.IFOAuth != nil,
+	)
 	handler := apiHandler{
 		health: healthHandler, sessions: sessionsHandler, flights: flightsHandler,
 		signedLink: signedLinkHandler, identity: identityHandler, va: vaHandler, user: userHandler,
+		oauth: oauthHandler,
 		registrationMiddleware: registrationRouteMiddleware(s.app),
 		godMiddleware:          godRouteMiddleware(s.app),
 		vaAdminMiddleware:      vaAdminRouteMiddleware(s.app),
-		currentUserMiddleware:  currentUserRouteMiddleware(s.app),
+		currentUserMiddleware: currentUserRouteMiddleware(s.app),
 	}
 
 	// Public ops + OpenAPI machine API (paths include /health/* and /api/v1/*).
@@ -163,10 +170,11 @@ type apiHandler struct {
 	identity               *identity.Handler
 	va                     *vaapi.Handler
 	user                   *userapi.Handler
+	oauth                  *oauthapi.Handler
 	registrationMiddleware []func(stdhttp.Handler) stdhttp.Handler
 	godMiddleware          []func(stdhttp.Handler) stdhttp.Handler
 	vaAdminMiddleware      []func(stdhttp.Handler) stdhttp.Handler
-	currentUserMiddleware  []func(stdhttp.Handler) stdhttp.Handler
+	currentUserMiddleware []func(stdhttp.Handler) stdhttp.Handler
 }
 
 func (h apiHandler) GetHealthStatus(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -245,6 +253,16 @@ func (h apiHandler) GetCurrentUser(w stdhttp.ResponseWriter, r *stdhttp.Request)
 	h.withMiddleware(h.currentUserMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.user.GetMe(w, r)
 	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) GetInfiniteFlightOAuthAuthorize(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.withMiddleware(h.currentUserMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.oauth.GetAuthorizeURL(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) CompleteInfiniteFlightOAuthCallback(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.CompleteInfiniteFlightOAuthCallbackParams) {
+	h.oauth.CompleteCallback(w, r, params.Code, params.State)
 }
 
 func (h apiHandler) withMiddleware(chain []func(stdhttp.Handler) stdhttp.Handler, handler stdhttp.Handler) stdhttp.Handler {

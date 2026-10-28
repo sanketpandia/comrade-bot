@@ -48,7 +48,7 @@ func newUIHandler(t *testing.T, sessions sessionManager, tickets ticketConsumer)
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	return NewHandler(renderer, sessions, tickets, nil, nil, nil, nil)
+	return NewHandler(renderer, sessions, tickets, nil, nil, nil, nil, false)
 }
 
 func TestLoginConsumesTicketThenSetsCookie(t *testing.T) {
@@ -329,5 +329,28 @@ func TestLogoutDeletesSessionAndCookie(t *testing.T) {
 	}
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d, want 303", recorder.Code)
+	}
+}
+
+func TestDashboardShowsConnectWhenOAuthConfigured(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, true)
+	recorder := httptest.NewRecorder()
+	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	body := recorder.Body.String()
+	if !strings.Contains(body, "Connect Infinite Flight") || !strings.Contains(body, `id="if-oauth-connect"`) {
+		t.Fatalf("missing oauth tile: %s", body)
+	}
+}
+
+func TestDashboardOmitsConnectWhenOAuthDisabled(t *testing.T) {
+	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
+	recorder := httptest.NewRecorder()
+	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	if strings.Contains(recorder.Body.String(), "Connect Infinite Flight") {
+		t.Fatal("oauth tile should be hidden when client is not configured")
 	}
 }

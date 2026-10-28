@@ -23,6 +23,9 @@
     {{else if eq .Content "admin-content"}}{{template "admin-content" .}}
     {{end}}
   </main>
+  {{if eq .Content "dashboard-content"}}
+  <script type="module" src="/static/js/dashboard/oauth.mjs"></script>
+  {{end}}
   {{if eq .Content "admin-content"}}
   <script type="module" src="/static/js/admin/general.mjs"></script>
   {{end}}

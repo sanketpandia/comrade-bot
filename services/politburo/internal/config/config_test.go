@@ -225,3 +225,35 @@ func TestLoadRejectsInvalidUIBaseURL(t *testing.T) {
 		t.Fatalf("Load() error = %v, want invalid UI_BASE_URL", err)
 	}
 }
+
+func TestLoadAcceptsInfiniteFlightOAuthCredentials(t *testing.T) {
+	t.Setenv("INFINITE_FLIGHT_CLIENT_ID", "ifc_test")
+	t.Setenv("INFINITE_FLIGHT_CLIENT_SECRET", "oauth-secret")
+	t.Setenv("INFINITE_FLIGHT_AUTH_BASE_URL", "https://auth.example/v2/")
+	t.Setenv("UI_BASE_URL", "https://viz.example")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.InfiniteFlight.ClientID != "ifc_test" {
+		t.Fatalf("client id = %q", cfg.InfiniteFlight.ClientID)
+	}
+	if cfg.InfiniteFlight.ClientSecret != "oauth-secret" {
+		t.Fatal("client secret was not loaded")
+	}
+	if cfg.InfiniteFlight.AuthBaseURL != "https://auth.example/v2" {
+		t.Fatalf("auth base URL = %q", cfg.InfiniteFlight.AuthBaseURL)
+	}
+	if cfg.OAuthRedirectURI() != "https://viz.example/oauth/callback" {
+		t.Fatalf("redirect URI = %q", cfg.OAuthRedirectURI())
+	}
+}
+
+func TestLoadRequiresInfiniteFlightClientSecretWhenClientIDSet(t *testing.T) {
+	t.Setenv("INFINITE_FLIGHT_CLIENT_ID", "ifc_test")
+	t.Setenv("INFINITE_FLIGHT_CLIENT_SECRET", "")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "INFINITE_FLIGHT_CLIENT_SECRET") {
+		t.Fatalf("Load() error = %v, want missing client secret", err)
+	}
+}

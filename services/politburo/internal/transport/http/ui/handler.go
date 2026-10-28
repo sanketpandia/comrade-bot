@@ -59,13 +59,14 @@ func serverLabel(id string) string {
 }
 
 type Handler struct {
-	renderer  *appui.Renderer
-	sessions  sessionManager
-	tickets   ticketConsumer
-	lister    sessionLister
-	reports   *reports.Repository
-	operator  *operator.Service
-	operators []string
+	renderer       *appui.Renderer
+	sessions       sessionManager
+	tickets        ticketConsumer
+	lister         sessionLister
+	reports        *reports.Repository
+	operator       *operator.Service
+	operators      []string
+	ifOAuthEnabled bool
 }
 
 func NewHandler(
@@ -76,10 +77,12 @@ func NewHandler(
 	operatorService *operator.Service,
 	platformOperators []string,
 	lister sessionLister,
+	ifOAuthEnabled bool,
 ) *Handler {
 	return &Handler{
 		renderer: renderer, sessions: sessions, tickets: tickets, lister: lister,
 		reports: reportRepo, operator: operatorService, operators: platformOperators,
+		ifOAuthEnabled: ifOAuthEnabled,
 	}
 }
 
@@ -140,8 +143,10 @@ func basePageData(r *http.Request, title, content string, extra map[string]any) 
 func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	claims, _ := auth.ClaimsFromContext(r.Context())
 	data := basePageData(r, "Dashboard", "dashboard-content", map[string]any{
-		"Username": claims.DsUserID,
-		"Servers":  liveMapServers(),
+		"Username":       claims.DsUserID,
+		"Servers":        liveMapServers(),
+		"IFOAuthEnabled": h.ifOAuthEnabled,
+		"OAuthStatus":    strings.TrimSpace(r.URL.Query().Get("oauth")),
 	})
 	if err := h.renderer.Render(w, "base", data); err != nil {
 		http.Error(w, "template render failed", http.StatusInternalServerError)
