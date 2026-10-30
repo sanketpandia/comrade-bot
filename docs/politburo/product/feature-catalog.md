@@ -65,6 +65,23 @@ JSON endpoint the bot can share with the portal.
 
 ---
 
+## Live mode (Infinite Flight organizations)
+
+Planned in [live-mode.md](live-mode.md). Uses IF Public API v3 (preview).
+
+| Feature | Surfaces | Status | Notes |
+|---|---|---|---|
+| Connect IF account (OAuth) | Portal | Rewrite (partial) | Read access only, lasts one browser session, no background refresh |
+| Long-lived connections + identity match | Jobs, Portal, Discord | Open | Same IF account as registered IFC; staff connections add schedule write |
+| Link multiple Live orgs to a VA | Portal | Open | Administrator; managing connection per org |
+| Fleet board / aircraft lookup | Discord, Portal | Open | Cached reads only; no warehousing of Live data |
+| Claims (`/claim`, feed, expiry, auto-flown) | Discord, Portal | Open | Ours in Postgres; optional mirror to in-game schedule |
+| Join requests + lift check + members audit | Discord, Portal | Open | No invite API; request closes when pilot appears in org |
+| Idle-aircraft / stale-claim alerts | Jobs, Discord | Open | Default 3 days idle, 6 h claim window |
+| In-game schedule editor | Portal | Open | Needs schedule-write body to stabilise upstream |
+
+---
+
 ## VA records (Airtable mapper)
 
 Decided in [airtable-datasource.md](airtable-datasource.md). Wizard:

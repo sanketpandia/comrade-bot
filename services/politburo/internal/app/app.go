@@ -30,6 +30,7 @@ import (
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/logging"
 	"infinite-experiment/politburo/internal/metrics"
+	"infinite-experiment/politburo/internal/operations/contact"
 	"infinite-experiment/politburo/internal/operations/operator"
 	"infinite-experiment/politburo/internal/operations/reports"
 	"infinite-experiment/politburo/internal/scheduler"
@@ -56,6 +57,7 @@ type App struct {
 	VAInit          *virtualairlines.Service
 	Status          *status.Builder
 	Reports         *reports.Repository
+	Contact         *contact.Repository
 	Operator        *operator.Service
 	Resolver        *resolver.Resolver
 	VALookup        *lookup.VALookup
@@ -153,6 +155,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		VAInit:          vaInit,
 		Status:          status.NewBuilder(userRepo, membershipRepo, vaRepo),
 		Reports:         reportRepo,
+		Contact:         contact.NewRepository(db),
 		Operator:        operator.NewService(db, userRepo, membershipRepo, reportRepo, vaRepo),
 		Resolver:        resolver.NewResolver(userRepo, vaRepo, membershipRepo),
 		VALookup:        lookup.NewVALookup(vaRepo),

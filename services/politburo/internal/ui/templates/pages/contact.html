@@ -1,0 +1,21 @@
+{{define "contact-content"}}
+<h1 class="public-title">Contact</h1>
+<p class="public-copy public-copy--left">Send a message to the Infinite Experiment operator. Use your Infinite Flight Community <strong>username</strong> (IFC ID), not your Discord display name.</p>
+{{if .Sent}}
+<p class="public-form__success" role="status">Thanks — your message was received.</p>
+{{end}}
+{{if .FormError}}
+<p class="public-form__error" role="alert">{{.FormError}}</p>
+{{end}}
+<form class="public-form" method="post" action="/contact">
+  <label class="public-form__label" for="if_community_id">IF Community username</label>
+  <input class="public-form__input" type="text" id="if_community_id" name="if_community_id" maxlength="30" autocomplete="username" value="{{.IFCommunityID}}" required>
+
+  <label class="public-form__label" for="message">Message</label>
+  <textarea class="public-form__textarea" id="message" name="message" rows="8" maxlength="5000" required>{{.Message}}</textarea>
+
+  <div class="public-form__actions">
+    <button type="submit" class="public-button">Send message</button>
+  </div>
+</form>
+{{end}}

@@ -14,6 +14,8 @@ It is not an architecture spec and not a production-migration guide.
 | [identity-membership.md](identity-membership.md) | Users, VA roles, single administrator, IFC reports |
 | [airtable-datasource.md](airtable-datasource.md) | Airtable wizard, field maps, links, per-module sync |
 | [feature-catalog.md](feature-catalog.md) | Feature board: live, inherited, leftover, and open for planning |
+| [live-mode.md](live-mode.md) | Live organizations: IF connections, linked orgs, fleet board, claims, joins, upkeep |
+| [active-flights-map.md](active-flights-map.md) | Plan: public live map, HTMX chrome, three-tab detail panel |
 
 Related docs:
 
