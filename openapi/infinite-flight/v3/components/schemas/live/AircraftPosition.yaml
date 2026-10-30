@@ -1,0 +1,62 @@
+type: object
+required:
+  - id
+  - state
+  - isOnGround
+  - latitude
+  - longitude
+  - altitude
+  - heading
+  - speed
+  - verticalSpeed
+  - updatedAt
+description: Last persisted Live aircraft position and state (may be stale when not actively reporting).
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Persistent organization aircraft ID (same as `{aircraftId}` in the request path).
+    x-go-type: string
+  state:
+    $ref: ../enums/AircraftPersistenceState.yaml
+  isOnGround:
+    type: boolean
+    description: Last persisted state was on the ground.
+  latitude:
+    type: number
+    format: double
+    description: Last persisted decimal latitude.
+  longitude:
+    type: number
+    format: double
+    description: Last persisted decimal longitude.
+  altitude:
+    type: number
+    format: double
+    description: Last persisted altitude, feet.
+  heading:
+    type: number
+    format: double
+    description: Last persisted true heading, degrees, normalized to `0`–`360`.
+  speed:
+    type: number
+    format: double
+    description: Last persisted ground speed, knots.
+  verticalSpeed:
+    type: number
+    format: double
+    description: Last persisted vertical speed, feet per minute.
+  lastPilotId:
+    type: string
+    format: uuid
+    nullable: true
+    description: User ID that last updated the persistent aircraft state.
+    x-go-type: string
+  lastPilotUsername:
+    type: string
+    nullable: true
+    description: Username for `lastPilotId`, if available.
+  updatedAt:
+    type: string
+    format: date-time
+    description: UTC time of the last update of the persistent aircraft state.

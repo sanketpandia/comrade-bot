@@ -1,0 +1,40 @@
+get:
+  operationId: listLiveAircraftFlights
+  summary: List aircraft flights
+  description: |
+    Returns the aircraft flight log, **newest first** (same log as in the Infinite Flight app).
+
+    **Authorization:** `Authorization: Bearer <access_token>` with scope `live:aircraft.read`.
+    The signed-in user must be a member of the owning organization; otherwise the API returns `404`.
+
+    Each flight includes `crew` (pilots who flew, in join order) and `pilotFlightTimes` (control periods
+    in time order). Sum `flightTimeSeconds` per `userId` for total time per pilot when a pilot has
+    multiple periods.
+
+    Flight log entries are **not** linked to schedules. Match flights to schedules by comparing
+    `originIcao`, `destinationIcao`, and actual times. Schedule crew is assigned; flight `crew` and
+    `pilotFlightTimes` reflect who actually flew.
+  tags: [Aircraft]
+  security:
+    - oauth2: [live:aircraft.read]
+  parameters:
+    - $ref: ../../components/parameters/aircraftId.yaml
+    - $ref: ../../components/parameters/page.yaml
+    - $ref: ../../components/parameters/pageSizeAircraftFlights.yaml
+  responses:
+    "200":
+      description: Success (`errorCode` is `0`).
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/responses/ListAircraftFlightsResponse.yaml
+    "400":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/BadRequest
+    "401":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/Unauthorized
+    "403":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/Forbidden
+    "404":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/NotFound
+    "429":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/TooManyRequests

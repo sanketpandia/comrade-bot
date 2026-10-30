@@ -1,0 +1,20 @@
+type: object
+required: [access_token, token_type, expires_in]
+properties:
+  access_token:
+    type: string
+    description: |
+      Bearer access token for PublicApi v3 (`Authorization: Bearer`). Issued for audience `public-api-v3`.
+      Treat as an opaque credential; do not rely on JWT claim contents for product behavior.
+  token_type:
+    type: string
+    enum: [Bearer]
+  expires_in:
+    type: integer
+    description: Access token lifetime in seconds (example value `1800`).
+    example: 1800
+  refresh_token:
+    type: string
+    description: |
+      Present when `offline_access` was granted. Refresh tokens rotate; store the newest refresh token
+      from each token response and discard the previous one.

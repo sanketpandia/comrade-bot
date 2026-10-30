@@ -36,12 +36,32 @@ func APIKeyAuth(lookup APIKeyLookup) func(http.Handler) http.Handler {
 func AuthenticateAPI(lookup APIKeyLookup, sessions SessionLookup) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if lookup == nil || !strings.HasPrefix(r.URL.Path, "/api/v1") {
+			path := r.URL.Path
+			if lookup == nil {
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			if sessions != nil && isSessionAPIPath(r.URL.Path) {
+			if sessions != nil && isSessionOnlyPath(path) {
+				claims, ok, err := sessions.Lookup(r)
+				if err != nil {
+					response.WriteError(w, http.StatusInternalServerError, "AUTH_LOOKUP_FAILED", "authentication lookup failed")
+					return
+				}
+				if ok {
+					next.ServeHTTP(w, r.WithContext(auth.SetClaims(r.Context(), claims)))
+					return
+				}
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if !strings.HasPrefix(path, "/api/v1") {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if sessions != nil && isSessionAPIPath(path) {
 				claims, ok, err := sessions.Lookup(r)
 				if err != nil {
 					response.WriteError(w, http.StatusInternalServerError, "AUTH_LOOKUP_FAILED", "authentication lookup failed")
@@ -87,7 +107,15 @@ func isVAAdminAPIPath(path string) bool {
 }
 
 func isSessionAPIPath(path string) bool {
-	return isGameAPIPath(path) || strings.HasPrefix(path, "/api/v1/operator/") || isVAAdminAPIPath(path) || path == "/api/v1/user/me"
+	return isGameAPIPath(path) ||
+		strings.HasPrefix(path, "/api/v1/operator/") ||
+		isVAAdminAPIPath(path) ||
+		path == "/api/v1/user/me" ||
+		path == "/api/v1/oauth/infinite-flight"
+}
+
+func isSessionOnlyPath(path string) bool {
+	return path == "/oauth/callback"
 }
 
 // RequireDiscordBotContext requires Discord user and server headers after API

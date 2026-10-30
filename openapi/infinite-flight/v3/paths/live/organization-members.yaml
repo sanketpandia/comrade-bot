@@ -1,0 +1,36 @@
+get:
+  operationId: listLiveOrganizationMembers
+  summary: List organization members
+  description: |
+    Returns all members of the organization, including roles and active lifts.
+
+    **Authorization:** `Authorization: Bearer <access_token>` with scope `live:members.read`.
+    The signed-in user must be a member of the organization; otherwise the API returns `404`.
+
+    **Sort order:** owners first, then admins, then members. Within each role group, members are sorted
+    by username.
+
+    `activeLifts` counts lifts the member applied to this organization that are active now. Expired,
+    refunded, and reassigned lifts are not counted. Users who left the organization are not included.
+  tags: [Members]
+  security:
+    - oauth2: [live:members.read]
+  parameters:
+    - $ref: ../../components/parameters/organizationId.yaml
+  responses:
+    "200":
+      description: Success (`errorCode` is `0`).
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/responses/ListOrganizationMembersResponse.yaml
+    "400":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/BadRequest
+    "401":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/Unauthorized
+    "403":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/Forbidden
+    "404":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/NotFound
+    "429":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/TooManyRequests

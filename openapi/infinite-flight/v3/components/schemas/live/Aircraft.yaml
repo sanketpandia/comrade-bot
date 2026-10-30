@@ -1,0 +1,53 @@
+type: object
+required:
+  - id
+  - aircraftId
+  - organizationId
+  - registration
+  - status
+  - visibility
+  - fleetRank
+  - isFleetActiveSlot
+  - createdAt
+description: |
+  Organization-owned Live aircraft. `id` is the persistent organization aircraft ID used in
+  `/live/aircraft/{aircraftId}` and schedule endpoints. `aircraftId` is the Infinite Flight aircraft or
+  livery content identifier and is not the same as the persistent aircraft ID.
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Persistent organization aircraft ID (`{aircraftId}` in Live aircraft routes).
+    x-go-type: string
+  aircraftId:
+    type: string
+    format: uuid
+    description: Infinite Flight aircraft or livery content identifier.
+    x-go-type: string
+  organizationId:
+    type: string
+    format: uuid
+    x-go-type: string
+  registration:
+    type: string
+    description: Registration or display registration.
+  status:
+    $ref: ../enums/PersistentAircraftRecordStatus.yaml
+  visibility:
+    $ref: ../enums/PersistentAircraftVisibility.yaml
+  fleetPriority:
+    type: integer
+    nullable: true
+    description: User-controlled fleet ordering preference. Lower values are preferred active slots.
+  fleetRank:
+    type: integer
+    description: One-based rank in the organization's fleet order.
+  isFleetActiveSlot:
+    type: boolean
+    description: |
+      Inside the organization's active fleet slots. When `false`, the Live portal may show the aircraft as
+      storage even when `visibility` is Visible (`1`).
+  createdAt:
+    type: string
+    format: date-time
+    description: UTC creation time.

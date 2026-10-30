@@ -1,0 +1,11 @@
+type: string
+enum: [confidential, public]
+description: |
+  Both client types must use PKCE (`code_challenge` / `code_verifier`, method `S256`).
+x-enum-descriptions:
+  confidential: |
+    Server-side web apps and services that can keep a client secret private. Exchange the authorization
+    code from your backend and authenticate the client with its secret.
+  public: |
+    Browser-only apps, native apps, mobile apps, CLIs, or any app where a secret cannot be kept private.
+    Exchange the authorization code with `client_id` and `code_verifier`; no client secret is issued or accepted.

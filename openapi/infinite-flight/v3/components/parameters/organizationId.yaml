@@ -1,0 +1,8 @@
+name: organizationId
+in: path
+required: true
+description: Organization ID from List Organizations (`Organization.id`).
+schema:
+  type: string
+  format: uuid
+  x-go-type: string

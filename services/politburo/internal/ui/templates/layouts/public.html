@@ -23,6 +23,9 @@
       {{if eq .Content "home-content"}}{{template "home-content" .}}
       {{else if eq .Content "unauthorized-content"}}{{template "unauthorized-content" .}}
       {{else if eq .Content "not-found-content"}}{{template "not-found-content" .}}
+      {{else if eq .Content "terms-conditions-content"}}{{template "terms-conditions-content" .}}
+      {{else if eq .Content "privacy-policy-content"}}{{template "privacy-policy-content" .}}
+      {{else if eq .Content "contact-content"}}{{template "contact-content" .}}
       {{end}}
     </main>
     {{template "public-footer" .}}

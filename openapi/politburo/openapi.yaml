@@ -8,7 +8,7 @@ info:
     **Authentication**
     - `X-API-Key` — UUID API key for `/api/v1/*` machine clients (Discord bot, integrations).
     - `X-Discord-User-Id` and `X-Discord-Server-Id` — Discord context on bot-originated requests.
-    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger`, and related routes).
+    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/oauth/infinite-flight`, `/oauth/callback`, `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger`, and related routes).
 
     **Documentation** — https://sanketpandia.github.io/comrade-bot/api/reference/
 tags:
@@ -42,6 +42,10 @@ paths:
     $ref: "./paths/game/flight-active-by-id.yaml"
   /api/v1/signed-link:
     $ref: "./paths/auth/signed-link.yaml"
+  /api/v1/oauth/infinite-flight:
+    $ref: "./paths/oauth/infinite-flight.yaml"
+  /oauth/callback:
+    $ref: "./paths/oauth/callback.yaml"
   /api/v1/user/me:
     $ref: "./paths/user/me.yaml"
   /api/v1/users:
@@ -167,3 +171,7 @@ components:
       $ref: "./components/schemas/CurrentUser.yaml"
     CurrentUserResponse:
       $ref: "./components/schemas/CurrentUserResponse.yaml"
+    InfiniteFlightOAuthAuthorizeData:
+      $ref: "./components/schemas/InfiniteFlightOAuthAuthorizeData.yaml"
+    InfiniteFlightOAuthAuthorizeResponse:
+      $ref: "./components/schemas/InfiniteFlightOAuthAuthorizeResponse.yaml"

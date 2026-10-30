@@ -1,0 +1,10 @@
+name: aircraftId
+in: path
+required: true
+description: |
+  Persistent organization aircraft ID (`Aircraft.id` from List Organization Aircraft), not the content
+  `aircraftId` field.
+schema:
+  type: string
+  format: uuid
+  x-go-type: string

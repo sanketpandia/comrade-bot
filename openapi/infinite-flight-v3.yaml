@@ -1,0 +1,1939 @@
+openapi: 3.0.3
+info:
+  title: Infinite Flight Public API v3 (Live preview)
+  version: 3.0.0-preview
+  description: |
+    **Preview — not a stable contract.** PublicApi v3 OAuth and Live organization endpoints may change
+    before general availability (paths, scopes, fields, enums, validation, rate limits, and app review).
+
+    PublicApi v3 adds OAuth2 access for third-party apps. Live endpoints focus on authenticated
+    organization workflows: organizations and roles, members (roles and active lifts), aircraft and
+    flight logs, and schedule read/write where permitted. The existing v2 API-key Live API is unchanged.
+
+    **OAuth clients:** create at https://infiniteflight.com/account/api-keys (v3 OAuth2 clients section;
+    up to 2 clients per user). Testing clients are limited to the owner and up to 5 invited test users
+    until app review. Live endpoints only return organizations the signed-in user belongs to.
+
+    **OAuth2:** authorization code flow with PKCE (required for all client types). Authorization server
+    `https://api.infiniteflight.com/auth/v2` (`/connect/authorize`, `/connect/token`). User sign-in UI
+    is hosted at `auth.infiniteflight.com`. **Issuer:** `https://auth.infiniteflight.com/`. Token requests use
+    `application/x-www-form-urlencoded`. Scopes are space-delimited in the authorize request.
+
+    **Client types** (`OAuthClientType`): confidential — exchange the code from your backend with
+    `client_secret` + PKCE; public — `client_id` + `code_verifier` only. Never put client secrets in
+    browser, mobile, or downloadable clients. Access tokens are audience `public-api-v3`; treat as opaque.
+    Refresh tokens rotate — store the latest from each token response.
+
+    **Data use:** API usage and data rules apply as for Live API v2. Live data is for simulated-flight
+    features only; do not store, accumulate, share, or use it to train AI models.
+
+    Response envelope: `{ "errorCode": 0, "result": { ... } }` — `errorCode: 0` means success.
+servers:
+  - url: https://api.infiniteflight.com/public/v3
+    description: PublicApi v3 (Live endpoints)
+  - url: https://api.infiniteflight.com/auth/v2
+    description: OAuth2 authorization server (`/connect/*`)
+tags:
+  - name: OAuth2
+    description: |
+      OAuth2 authorization code + PKCE. Create clients at https://infiniteflight.com/account/api-keys.
+      Sample flows: https://github.com/infiniteflight/infiniteflight-api-playground
+  - name: Organizations
+    description: Live organizations the signed-in user belongs to.
+  - name: Members
+    description: Organization members, roles, and active lifts.
+  - name: Aircraft
+    description: Organization aircraft, position, and flight logs.
+  - name: Schedules
+    description: Fleet and per-aircraft schedules; write operations require owner or admin role.
+paths:
+  /connect/authorize:
+    get:
+      operationId: oauthAuthorize
+      summary: OAuth2 authorization endpoint
+      description: |
+        Authorization code flow with **PKCE** (`code_challenge_method=S256`). Redirect the user to this endpoint.
+        The user signs in at `auth.infiniteflight.com` and approves requested scopes. On approval, the server
+        redirects to the registered `redirect_uri` with `code` and the original `state`.
+
+        By default, consent may be skipped when the same user already authorized the same client and scopes.
+        Add `prompt=consent` to always show the consent screen (useful for iOS Universal Links that need a
+        user-initiated final redirect).
+      tags:
+        - OAuth2
+      security: []
+      servers:
+        - url: https://api.infiniteflight.com/auth/v2
+          description: OAuth2 authorization server
+      parameters:
+        - name: response_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - code
+        - name: client_id
+          in: query
+          required: true
+          description: OAuth client id (for example `ifc_your_client_id`).
+          schema:
+            type: string
+        - name: redirect_uri
+          in: query
+          required: true
+          description: Must match a redirect URI registered for the client.
+          schema:
+            type: string
+            format: uri
+        - name: scope
+          in: query
+          required: true
+          description: Space-delimited scopes (see `OAuthScope`).
+          schema:
+            type: string
+            example: openid profile live:organizations.read live:aircraft.read
+        - name: state
+          in: query
+          required: true
+          description: Opaque value returned unchanged on redirect for CSRF protection.
+          schema:
+            type: string
+        - name: code_challenge
+          in: query
+          required: true
+          description: PKCE challenge derived from `code_verifier`.
+          schema:
+            type: string
+        - name: code_challenge_method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - S256
+        - name: prompt
+          in: query
+          required: false
+          description: Set to `consent` to force the consent screen even when prior consent exists.
+          schema:
+            type: string
+            enum:
+              - consent
+      responses:
+        '302':
+          description: Redirect to `redirect_uri` with `code` and `state` query parameters on success.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+        '400':
+          description: Invalid or rejected authorization request.
+  /connect/token:
+    post:
+      operationId: oauthToken
+      summary: OAuth2 token endpoint
+      description: |
+        Exchange an authorization code or refresh token for tokens. Request body is
+        `application/x-www-form-urlencoded` (OAuth2 standard).
+
+        **Confidential client** (`authorization_code`): include `client_secret`. **Public client**: send
+        `client_id` and `code_verifier` only — no `client_secret`.
+
+        **Refresh** (`refresh_token`): confidential clients include `client_secret`; public clients send
+        `client_id` and `refresh_token` only. Refresh tokens rotate; persist the new `refresh_token` from each response.
+      tags:
+        - OAuth2
+      security: []
+      servers:
+        - url: https://api.infiniteflight.com/auth/v2
+          description: OAuth2 authorization server
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OAuthTokenRequest'
+      responses:
+        '200':
+          description: Token response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthTokenResponse'
+        '400':
+          description: Invalid grant, client authentication failure, or malformed request.
+  /live/organizations:
+    get:
+      operationId: listLiveOrganizations
+      summary: List organizations
+      description: |
+        Returns **active** Live organizations the signed-in user belongs to, including their role in each.
+
+        **Authorization:** `Authorization: Bearer <access_token>` with scope `live:organizations.read`.
+        No additional user requirement — only organizations the signed-in user is a member of are returned.
+        Users who are not members of any Live organization receive an empty `result` array.
+      tags:
+        - Organizations
+      security:
+        - oauth2:
+            - live:organizations.read
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListOrganizationsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /live/organizations/{organizationId}:
+    get:
+      operationId: getLiveOrganization
+      summary: Get organization
+      description: |
+        Returns one **active** organization when the signed-in user is a member.
+
+        **Authorization:** `Authorization: Bearer <access_token>` with scope `live:organizations.read`.
+        The signed-in user must be a member of the organization; otherwise the API returns `404`.
+
+        `result.role` is the signed-in user's role in that organization.
+      tags:
+        - Organizations
+      security:
+        - oauth2:
+            - live:organizations.read
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetOrganizationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /live/organizations/{organizationId}/members:
+    get:
+      operationId: listLiveOrganizationMembers
+      summary: List organization members
+      description: |
+        Returns all members of the organization, including roles and active lifts.
+
+        **Authorization:** `Authorization: Bearer <access_token>` with scope `live:members.read`.
+        The signed-in user must be a member of the organization; otherwise the API returns `404`.
+
+        **Sort order:** owners first, then admins, then members. Within each role group, members are sorted
+        by username.
+
+        `activeLifts` counts lifts the member applied to this organization that are active now. Expired,
+        refunded, and reassigned lifts are not counted. Users who left the organization are not included.
+      tags:
+        - Members
+      security:
+        - oauth2:
+            - live:members.read
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListOrganizationMembersResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /live/organizations/{organizationId}/aircraft:
+    get:
+      operationId: listLiveOrganizationAircraft
+      summary: List organization aircraft
+      description: |
+        Returns **active** aircraft for the organization.
+
+        **Authorization:** `Authorization: Bearer <access_token>` with scope `live:aircraft.read`.
+        The signed-in user must be a member of the organization; otherwise the API returns `404`.
+
+        Use each item's `id` as `{aircraftId}` in `/live/aircraft/{aircraftId}` and schedule routes.
+        `aircraftId` is the Infinite Flight content identifier, not the persistent organization aircraft ID.
+
+        `visibility` is visible vs hangared, separate from fleet storage. Aircraft outside active fleet slots
+        have `isFleetActiveSlot: false` and may appear as storage in the Live portal even when visibility is Visible.
+      tags:
+        - Aircraft
+      security:
+        - oauth2:
+            - live:aircraft.read
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListOrganizationAircraftResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /live/organizations/{organizationId}/schedules:
+    get:
+      operationId: listLiveOrganizationSchedules
+      summary: List organization schedules
+      description: |
+        Returns **open** schedules for the organization's fleet in one request. Open schedules are all
+        schedules that are not Cancelled and not Arrived. Results are sorted by aircraft, then by `sequence`.
+
+        **Authorization:** `Authorization: Bearer <access_token>` with scope `live:schedules.read`.
+        The signed-in user must be a member of the organization; otherwise the API returns `404`.
+
+        `result` is a page of `Schedule` objects (`result.items`). List responses may show a subset of
+        fields in documentation samples; each item includes all `Schedule` fields.
+      tags:
+        - Schedules
+      security:
+        - oauth2:
+            - live:schedules.read
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - $ref: '#/components/parameters/queryAircraftIds'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListOrganizationSchedulesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /live/aircraft/{aircraftId}:
+    get:
+      operationId: getLiveAircraft
+      summary: Get aircraft
+      description: |
+        Returns one **active** aircraft when the signed-in user is a member of the owning organization.
+
+        **Authorization:** `Authorization: Bearer <access_token>` with scope `live:aircraft.read`.
+        The signed-in user must be a member of the aircraft's organization; otherwise the API returns `404`.
+
+        `{aircraftId}` is the persistent organization aircraft ID (`Aircraft.id` from List Organization Aircraft),
+        not the content `aircraftId` field on the aircraft record.
+      tags:
+        - Aircraft
+      security:
+        - oauth2:
+            - live:aircraft.read
+      parameters:
+        - $ref: '#/components/parameters/aircraftId'
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAircraftResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /live/aircraft/{aircraftId}/position:
+    get:
+      operationId: getLiveAircraftPosition
+      summary: Get aircraft position
+      description: |
+        Returns the aircraft's last persisted Live position and state when the signed-in user belongs to the
+        owning organization.
+
+        **Authorization:** `Authorization: Bearer <access_token>` with scope `live:aircraft.read`.
+        The signed-in user must be a member of the aircraft's organization; otherwise the API returns `404`.
+
+        This is stored Live aircraft state and can be **stale** when the aircraft is not actively reporting.
+        To check whether the aircraft is currently active in multiplayer, compare this `result.id` with v2
+        `FlightEntry.flightId` from `GET /public/v2/sessions/{sessionId}/flights`.
+      tags:
+        - Aircraft
+      security:
+        - oauth2:
+            - live:aircraft.read
+      parameters:
+        - $ref: '#/components/parameters/aircraftId'
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAircraftPositionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /live/aircraft/{aircraftId}/flights:
+    get:
+      operationId: listLiveAircraftFlights
+      summary: List aircraft flights
+      description: |
+        Returns the aircraft flight log, **newest first** (same log as in the Infinite Flight app).
+
+        **Authorization:** `Authorization: Bearer <access_token>` with scope `live:aircraft.read`.
+        The signed-in user must be a member of the owning organization; otherwise the API returns `404`.
+
+        Each flight includes `crew` (pilots who flew, in join order) and `pilotFlightTimes` (control periods
+        in time order). Sum `flightTimeSeconds` per `userId` for total time per pilot when a pilot has
+        multiple periods.
+
+        Flight log entries are **not** linked to schedules. Match flights to schedules by comparing
+        `originIcao`, `destinationIcao`, and actual times. Schedule crew is assigned; flight `crew` and
+        `pilotFlightTimes` reflect who actually flew.
+      tags:
+        - Aircraft
+      security:
+        - oauth2:
+            - live:aircraft.read
+      parameters:
+        - $ref: '#/components/parameters/aircraftId'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSizeAircraftFlights'
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListAircraftFlightsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /live/aircraft/{aircraftId}/schedules:
+    post:
+      operationId: createLiveSchedule
+      summary: Create schedule
+      description: |
+        Creates a schedule on a Live aircraft.
+        Requires organization owner or admin role in addition to the `live:schedules.write` scope.
+      tags:
+        - Schedules
+      security:
+        - oauth2:
+            - live:schedules.write
+      parameters:
+        - $ref: '#/components/parameters/aircraftId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Request body — detailed fields pending Data Types documentation.
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      operationId: listLiveAircraftSchedules
+      summary: List aircraft schedules
+      description: |
+        Returns schedules for the aircraft, ordered by `sequence`.
+
+        **Authorization:** `Authorization: Bearer <access_token>` with scope `live:schedules.read`.
+        The signed-in user must be a member of the aircraft's organization; otherwise the API returns `404`.
+      tags:
+        - Schedules
+      security:
+        - oauth2:
+            - live:schedules.read
+      parameters:
+        - $ref: '#/components/parameters/aircraftId'
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListAircraftSchedulesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /live/schedules/{scheduleId}:
+    put:
+      operationId: updateLiveSchedule
+      summary: Update schedule
+      description: |
+        Updates a Live schedule.
+        Requires organization owner or admin role in addition to the `live:schedules.write` scope.
+      tags:
+        - Schedules
+      security:
+        - oauth2:
+            - live:schedules.write
+      parameters:
+        - $ref: '#/components/parameters/scheduleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Request body — detailed fields pending Data Types documentation.
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      operationId: deleteLiveSchedule
+      summary: Delete schedule
+      description: |
+        Deletes a Live schedule.
+        Requires organization owner or admin role in addition to the `live:schedules.write` scope.
+      tags:
+        - Schedules
+      security:
+        - oauth2:
+            - live:schedules.write
+      parameters:
+        - $ref: '#/components/parameters/scheduleId'
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /live/schedules/{scheduleId}/flightplan:
+    put:
+      operationId: updateLiveScheduleFlightPlan
+      summary: Update schedule flight plan
+      description: |
+        Updates the flight plan attached to a Live schedule.
+        Requires organization owner or admin role in addition to the `live:schedules.write` scope.
+      tags:
+        - Schedules
+      security:
+        - oauth2:
+            - live:schedules.write
+      parameters:
+        - $ref: '#/components/parameters/scheduleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Request body — detailed fields pending Data Types documentation.
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /live/schedules/{scheduleId}/crew/{userId}:
+    put:
+      operationId: assignLiveScheduleCrew
+      summary: Assign or update schedule crew
+      description: |
+        Assigns or updates a crew member on a Live schedule.
+        Requires organization owner or admin role in addition to the `live:schedules.write` scope.
+      tags:
+        - Schedules
+      security:
+        - oauth2:
+            - live:schedules.write
+      parameters:
+        - $ref: '#/components/parameters/scheduleId'
+        - $ref: '#/components/parameters/userId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Request body — detailed fields pending Data Types documentation.
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      operationId: removeLiveScheduleCrew
+      summary: Remove schedule crew
+      description: |
+        Removes a crew assignment from a Live schedule.
+        Requires organization owner or admin role in addition to the `live:schedules.write` scope.
+      tags:
+        - Schedules
+      security:
+        - oauth2:
+            - live:schedules.write
+      parameters:
+        - $ref: '#/components/parameters/scheduleId'
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /live/aircraft/{aircraftId}/schedules/reorder:
+    put:
+      operationId: reorderLiveAircraftSchedules
+      summary: Reorder schedules
+      description: |
+        Reorders schedules for a Live aircraft.
+        Requires organization owner or admin role in addition to the `live:schedules.write` scope.
+      tags:
+        - Schedules
+      security:
+        - oauth2:
+            - live:schedules.write
+      parameters:
+        - $ref: '#/components/parameters/aircraftId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Request body — detailed fields pending Data Types documentation.
+      responses:
+        '200':
+          description: Success (`errorCode` is `0`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      description: |
+        Authorization code flow with PKCE (`code_challenge_method=S256`). Create a client at
+        https://infiniteflight.com/account/api-keys (`confidential` or `public`). Both client types must use PKCE.
+
+        - **Confidential** — exchange the authorization code from your backend with `client_secret`.
+        - **Public** — exchange with `client_id` and `code_verifier` only; no client secret is issued or accepted.
+
+        Request `offline_access` for a refresh token; refresh tokens rotate — always store the latest.
+        Use access tokens as `Authorization: Bearer` on PublicApi v3 (audience `public-api-v3`). Treat access
+        tokens as opaque; do not rely on JWT claims for product behavior.
+
+        Do not embed client secrets in browser, mobile, or downloadable clients. Store tokens securely and
+        revoke when a user disconnects your app. Testing clients are limited to the owner and invited test users
+        until Infinite Flight review.
+
+        Sample implementations: https://github.com/infiniteflight/infiniteflight-api-playground
+      flows:
+        authorizationCode:
+          authorizationUrl: https://api.infiniteflight.com/auth/v2/connect/authorize
+          tokenUrl: https://api.infiniteflight.com/auth/v2/connect/token
+          refreshUrl: https://api.infiniteflight.com/auth/v2/connect/token
+          scopes:
+            openid: Sign the user in.
+            profile: Read the user's basic sign-in profile.
+            offline_access: Request a refresh token.
+            live:organizations.read: Read Live organizations the user belongs to.
+            live:members.read: Read the members of Live organizations the user belongs to, with their roles and active lifts.
+            live:aircraft.read: Read Live aircraft in organizations the user belongs to.
+            live:schedules.read: Read Live schedules in organizations the user belongs to.
+            live:schedules.write: Create, update, reorder, and delete Live schedules and manage their crew where allowed.
+  schemas:
+    PublicApiResponse:
+      type: object
+      required:
+        - errorCode
+        - result
+      properties:
+        errorCode:
+          type: integer
+          description: |
+            `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+        result:
+          description: Payload on success; shape depends on the operation.
+    OAuthClientType:
+      type: string
+      enum:
+        - confidential
+        - public
+      description: |
+        Both client types must use PKCE (`code_challenge` / `code_verifier`, method `S256`).
+      x-enum-descriptions:
+        confidential: |
+          Server-side web apps and services that can keep a client secret private. Exchange the authorization
+          code from your backend and authenticate the client with its secret.
+        public: |
+          Browser-only apps, native apps, mobile apps, CLIs, or any app where a secret cannot be kept private.
+          Exchange the authorization code with `client_id` and `code_verifier`; no client secret is issued or accepted.
+    OAuthScope:
+      type: string
+      enum:
+        - openid
+        - profile
+        - offline_access
+        - live:organizations.read
+        - live:members.read
+        - live:aircraft.read
+        - live:schedules.read
+        - live:schedules.write
+      description: |
+        Request only needed scopes. In the authorization request, scopes are space-delimited in the `scope` query parameter.
+      x-enum-descriptions:
+        openid: Sign the user in.
+        profile: Read the user's basic sign-in profile.
+        offline_access: Request a refresh token.
+        live:organizations.read: Read Live organizations the user belongs to.
+        live:members.read: Read members of Live organizations the user belongs to, with roles and active lifts.
+        live:aircraft.read: Read Live aircraft in organizations the user belongs to.
+        live:schedules.read: Read Live schedules in organizations the user belongs to.
+        live:schedules.write: Create, update, reorder, and delete Live schedules and manage crew where allowed.
+    OAuthTokenRequest:
+      type: object
+      required:
+        - grant_type
+        - client_id
+      properties:
+        grant_type:
+          type: string
+          enum:
+            - authorization_code
+            - refresh_token
+        client_id:
+          type: string
+          description: OAuth client id (for example `ifc_your_client_id`).
+        client_secret:
+          type: string
+          description: |
+            Required for **confidential** clients on token exchange and refresh. Do not send for **public** clients;
+            no client secret is issued or accepted for public clients.
+        code:
+          type: string
+          description: Authorization code from the redirect (`grant_type=authorization_code`).
+        redirect_uri:
+          type: string
+          format: uri
+          description: Must match the registered redirect URI used in the authorization request (`grant_type=authorization_code`).
+        code_verifier:
+          type: string
+          description: PKCE code verifier (`grant_type=authorization_code`). Required for all client types.
+        refresh_token:
+          type: string
+          description: Stored refresh token (`grant_type=refresh_token`).
+    OAuthTokenResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - expires_in
+      properties:
+        access_token:
+          type: string
+          description: |
+            Bearer access token for PublicApi v3 (`Authorization: Bearer`). Issued for audience `public-api-v3`.
+            Treat as an opaque credential; do not rely on JWT claim contents for product behavior.
+        token_type:
+          type: string
+          enum:
+            - Bearer
+        expires_in:
+          type: integer
+          description: Access token lifetime in seconds (example value `1800`).
+          example: 1800
+        refresh_token:
+          type: string
+          description: |
+            Present when `offline_access` was granted. Refresh tokens rotate; store the newest refresh token
+            from each token response and discard the previous one.
+    Organization:
+      type: object
+      required:
+        - id
+        - name
+        - type
+        - operationType
+        - worldType
+        - status
+        - role
+      description: Live organization and the signed-in user's role in it.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Organization ID.
+          x-go-type: string
+        name:
+          type: string
+          description: Display name.
+        type:
+          $ref: '#/components/schemas/PersistentOrganizationType'
+        operationType:
+          $ref: '#/components/schemas/OrganizationOperationType'
+        worldType:
+          $ref: '#/components/schemas/WorldType'
+        status:
+          $ref: '#/components/schemas/PersistentOrganizationRecordStatus'
+        description:
+          type: string
+          nullable: true
+          description: Organization description.
+        role:
+          $ref: '#/components/schemas/PersistentOrganizationMemberRole'
+    ListOrganizationsResponse:
+      type: object
+      required:
+        - errorCode
+        - result
+      properties:
+        errorCode:
+          type: integer
+          description: |
+            `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+          enum:
+            - 0
+        result:
+          type: array
+          description: Active organizations the signed-in user belongs to.
+          items:
+            $ref: '#/components/schemas/Organization'
+      example:
+        errorCode: 0
+        result:
+          - id: 1337830a-abf9-4315-9488-e8cebd7f485a
+            name: PacificJet
+            type: 3
+            operationType: 1
+            worldType: 3
+            status: 0
+            description: Long-haul scheduled operations.
+            role: 2
+    GetOrganizationResponse:
+      type: object
+      required:
+        - errorCode
+        - result
+      properties:
+        errorCode:
+          type: integer
+          description: |
+            `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+          enum:
+            - 0
+        result:
+          $ref: '#/components/schemas/Organization'
+      example:
+        errorCode: 0
+        result:
+          id: 1337830a-abf9-4315-9488-e8cebd7f485a
+          name: PacificJet
+          type: 3
+          operationType: 1
+          worldType: 3
+          status: 0
+          description: Long-haul scheduled operations.
+          role: 2
+    OrganizationMember:
+      type: object
+      required:
+        - userId
+        - role
+        - joinedAt
+        - activeLifts
+      description: Member of a Live organization.
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: Infinite Flight user ID.
+          x-go-type: string
+        username:
+          type: string
+          nullable: true
+          description: Current public username, if available.
+        role:
+          $ref: '#/components/schemas/PersistentOrganizationMemberRole'
+        joinedAt:
+          type: string
+          format: date-time
+          description: UTC time when the member joined the organization.
+        activeLifts:
+          type: integer
+          description: |
+            Lifts the member applied to this organization that are active now. Expired, refunded, and
+            reassigned lifts are not counted.
+    ListOrganizationMembersResponse:
+      type: object
+      required:
+        - errorCode
+        - result
+      properties:
+        errorCode:
+          type: integer
+          description: |
+            `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+          enum:
+            - 0
+        result:
+          type: array
+          description: |
+            All members of the organization. Owners first, then admins, then members; each group sorted by username.
+          items:
+            $ref: '#/components/schemas/OrganizationMember'
+      example:
+        errorCode: 0
+        result:
+          - userId: 5b0c3f4e-8f3a-4f0e-9c55-2f1a6c7d9e10
+            username: PacificJetCEO
+            role: 2
+            joinedAt: '2026-07-03T12:00:00Z'
+            activeLifts: 3
+          - userId: a9d2e7c1-3b4f-4c8a-8e21-6f0b5d4c3a29
+            username: LineCaptain
+            role: 0
+            joinedAt: '2026-08-14T09:30:00Z'
+            activeLifts: 0
+    Aircraft:
+      type: object
+      required:
+        - id
+        - aircraftId
+        - organizationId
+        - registration
+        - status
+        - visibility
+        - fleetRank
+        - isFleetActiveSlot
+        - createdAt
+      description: |
+        Organization-owned Live aircraft. `id` is the persistent organization aircraft ID used in
+        `/live/aircraft/{aircraftId}` and schedule endpoints. `aircraftId` is the Infinite Flight aircraft or
+        livery content identifier and is not the same as the persistent aircraft ID.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Persistent organization aircraft ID (`{aircraftId}` in Live aircraft routes).
+          x-go-type: string
+        aircraftId:
+          type: string
+          format: uuid
+          description: Infinite Flight aircraft or livery content identifier.
+          x-go-type: string
+        organizationId:
+          type: string
+          format: uuid
+          x-go-type: string
+        registration:
+          type: string
+          description: Registration or display registration.
+        status:
+          $ref: '#/components/schemas/PersistentAircraftRecordStatus'
+        visibility:
+          $ref: '#/components/schemas/PersistentAircraftVisibility'
+        fleetPriority:
+          type: integer
+          nullable: true
+          description: User-controlled fleet ordering preference. Lower values are preferred active slots.
+        fleetRank:
+          type: integer
+          description: One-based rank in the organization's fleet order.
+        isFleetActiveSlot:
+          type: boolean
+          description: |
+            Inside the organization's active fleet slots. When `false`, the Live portal may show the aircraft as
+            storage even when `visibility` is Visible (`1`).
+        createdAt:
+          type: string
+          format: date-time
+          description: UTC creation time.
+    ListOrganizationAircraftResponse:
+      type: object
+      required:
+        - errorCode
+        - result
+      properties:
+        errorCode:
+          type: integer
+          description: |
+            `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+          enum:
+            - 0
+        result:
+          type: array
+          description: Active aircraft for the organization.
+          items:
+            $ref: '#/components/schemas/Aircraft'
+      example:
+        errorCode: 0
+        result:
+          - id: 28fb4508-9eca-4120-abe4-3c4f06f6e71c
+            aircraftId: 3f78766a-30c8-4d65-95ae-ebc2fb758aac
+            organizationId: 1337830a-abf9-4315-9488-e8cebd7f485a
+            registration: N682XL
+            status: 0
+            visibility: 1
+            fleetPriority: 1000
+            fleetRank: 1
+            isFleetActiveSlot: true
+            createdAt: '2026-07-03T12:00:00Z'
+    GetAircraftResponse:
+      type: object
+      required:
+        - errorCode
+        - result
+      properties:
+        errorCode:
+          type: integer
+          description: |
+            `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+          enum:
+            - 0
+        result:
+          $ref: '#/components/schemas/Aircraft'
+      example:
+        errorCode: 0
+        result:
+          id: 28fb4508-9eca-4120-abe4-3c4f06f6e71c
+          aircraftId: 3f78766a-30c8-4d65-95ae-ebc2fb758aac
+          organizationId: 1337830a-abf9-4315-9488-e8cebd7f485a
+          registration: N682XL
+          status: 0
+          visibility: 1
+          fleetPriority: 1000
+          fleetRank: 1
+          isFleetActiveSlot: true
+          createdAt: '2026-07-03T12:00:00Z'
+    AircraftPosition:
+      type: object
+      required:
+        - id
+        - state
+        - isOnGround
+        - latitude
+        - longitude
+        - altitude
+        - heading
+        - speed
+        - verticalSpeed
+        - updatedAt
+      description: Last persisted Live aircraft position and state (may be stale when not actively reporting).
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Persistent organization aircraft ID (same as `{aircraftId}` in the request path).
+          x-go-type: string
+        state:
+          $ref: '#/components/schemas/AircraftPersistenceState'
+        isOnGround:
+          type: boolean
+          description: Last persisted state was on the ground.
+        latitude:
+          type: number
+          format: double
+          description: Last persisted decimal latitude.
+        longitude:
+          type: number
+          format: double
+          description: Last persisted decimal longitude.
+        altitude:
+          type: number
+          format: double
+          description: Last persisted altitude, feet.
+        heading:
+          type: number
+          format: double
+          description: Last persisted true heading, degrees, normalized to `0`–`360`.
+        speed:
+          type: number
+          format: double
+          description: Last persisted ground speed, knots.
+        verticalSpeed:
+          type: number
+          format: double
+          description: Last persisted vertical speed, feet per minute.
+        lastPilotId:
+          type: string
+          format: uuid
+          nullable: true
+          description: User ID that last updated the persistent aircraft state.
+          x-go-type: string
+        lastPilotUsername:
+          type: string
+          nullable: true
+          description: Username for `lastPilotId`, if available.
+        updatedAt:
+          type: string
+          format: date-time
+          description: UTC time of the last update of the persistent aircraft state.
+    GetAircraftPositionResponse:
+      type: object
+      required:
+        - errorCode
+        - result
+      properties:
+        errorCode:
+          type: integer
+          description: |
+            `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+          enum:
+            - 0
+        result:
+          $ref: '#/components/schemas/AircraftPosition'
+      example:
+        errorCode: 0
+        result:
+          id: 28fb4508-9eca-4120-abe4-3c4f06f6e71c
+          state: 2
+          isOnGround: false
+          latitude: 27.3172
+          longitude: 48.6787
+          altitude: 34750
+          heading: 83.4
+          speed: 451.2
+          verticalSpeed: 0
+          lastPilotId: 3f8b28bf-bbb1-4024-80ae-2a0ea9b30685
+          lastPilotUsername: Chhettri22
+          updatedAt: '2026-07-03T12:05:00Z'
+    AircraftPersistenceState:
+      type: integer
+      description: Last persisted aircraft state (`AircraftPersistenceState`).
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+      x-enum-varnames:
+        - Unknown
+        - OnGround
+        - InFlight
+        - Cancelled
+        - Stopped
+        - Maintenance
+    AircraftFlight:
+      type: object
+      required:
+        - id
+        - aircraftId
+        - organizationId
+        - callsign
+        - status
+        - flightTimeMinutes
+        - airframeTimeMinutes
+        - crew
+        - pilotFlightTimes
+      description: |
+        Flight log entry for an organization aircraft. Not linked to a schedule; match schedules by
+        `originIcao`, `destinationIcao`, and actual times. Schedule `crew` is assigned pilots; flight
+        `crew` and `pilotFlightTimes` are who actually flew.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: |
+            Flight log entry ID. For most flights, the Live flight ID of the flight that started the entry.
+          x-go-type: string
+        aircraftId:
+          type: string
+          format: uuid
+          description: Persistent organization aircraft ID.
+          x-go-type: string
+        organizationId:
+          type: string
+          format: uuid
+          description: Organization ID at the time of the flight.
+          x-go-type: string
+        callsign:
+          type: string
+          description: Aircraft registration at the time of the flight.
+        originIcao:
+          type: string
+          nullable: true
+          description: Departure airport.
+        destinationIcao:
+          type: string
+          nullable: true
+          description: Arrival airport, or the nearest airport at the last update.
+        actualDepartureUtc:
+          type: string
+          format: date-time
+          nullable: true
+          description: Takeoff time, UTC.
+        actualArrivalUtc:
+          type: string
+          format: date-time
+          nullable: true
+          description: Landing time, UTC. Null while the flight is active.
+        status:
+          $ref: '#/components/schemas/AircraftFlightStatus'
+        flightTimeMinutes:
+          type: number
+          format: double
+          description: Flight time of this flight, minutes.
+        airframeTimeMinutes:
+          type: number
+          format: double
+          description: Total airframe time of the aircraft at the last update of this flight, minutes.
+        crew:
+          type: array
+          description: Each pilot who flew the aircraft on this flight, in join order.
+          items:
+            $ref: '#/components/schemas/AircraftFlightCrewMember'
+        pilotFlightTimes:
+          type: array
+          description: |
+            One entry per period a pilot was in control, in time order. Sum `flightTimeSeconds` per `userId`
+            for total time per pilot (multiple entries if a pilot leaves and returns).
+          items:
+            $ref: '#/components/schemas/PilotFlightTime'
+    AircraftFlightCrewMember:
+      type: object
+      required:
+        - userId
+      properties:
+        userId:
+          type: string
+          format: uuid
+          x-go-type: string
+        username:
+          type: string
+          nullable: true
+          description: Current public username, if available.
+    PilotFlightTime:
+      type: object
+      required:
+        - userId
+        - flightTimeSeconds
+        - startSeconds
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: Infinite Flight user ID of the pilot.
+          x-go-type: string
+        username:
+          type: string
+          nullable: true
+          description: Current public username, if available.
+        flightTimeSeconds:
+          type: number
+          format: double
+          description: Seconds the pilot flew in this period.
+        startSeconds:
+          type: number
+          format: double
+          description: Aircraft flight time since engine start, seconds, when this period started.
+        endSeconds:
+          type: number
+          format: double
+          nullable: true
+          description: |
+            Aircraft flight time since engine start, seconds, at the last update of this period. Null until the
+            first update.
+    AircraftFlightPage:
+      type: object
+      required:
+        - items
+        - page
+        - pageSize
+        - totalCount
+        - totalPages
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AircraftFlight'
+        page:
+          type: integer
+          description: One-based page number.
+        pageSize:
+          type: integer
+          description: Maximum number of items on a page.
+        totalCount:
+          type: integer
+          description: Number of items on all pages.
+        totalPages:
+          type: integer
+          description: Number of pages.
+    ListAircraftFlightsResponse:
+      type: object
+      required:
+        - errorCode
+        - result
+      properties:
+        errorCode:
+          type: integer
+          description: |
+            `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+          enum:
+            - 0
+        result:
+          $ref: '#/components/schemas/AircraftFlightPage'
+      example:
+        errorCode: 0
+        result:
+          items:
+            - id: 0b8cc273-d97d-4223-afac-907d09d8ca8b
+              aircraftId: 28fb4508-9eca-4120-abe4-3c4f06f6e71c
+              organizationId: 1337830a-abf9-4315-9488-e8cebd7f485a
+              callsign: N682XL
+              originIcao: KLAX
+              destinationIcao: KJFK
+              actualDepartureUtc: '2026-07-03T18:42:00Z'
+              actualArrivalUtc: '2026-07-03T23:51:00Z'
+              status: 1
+              flightTimeMinutes: 309
+              airframeTimeMinutes: 18240
+              crew:
+                - userId: 3f8b28bf-bbb1-4024-80ae-2a0ea9b30685
+                  username: Chhettri22
+                - userId: a9d2e7c1-3b4f-4c8a-8e21-6f0b5d4c3a29
+                  username: LineCaptain
+              pilotFlightTimes:
+                - userId: 3f8b28bf-bbb1-4024-80ae-2a0ea9b30685
+                  username: Chhettri22
+                  flightTimeSeconds: 10800
+                  startSeconds: 0
+                  endSeconds: 10800
+                - userId: a9d2e7c1-3b4f-4c8a-8e21-6f0b5d4c3a29
+                  username: LineCaptain
+                  flightTimeSeconds: 7740
+                  startSeconds: 10800
+                  endSeconds: 18540
+          page: 1
+          pageSize: 25
+          totalCount: 1
+          totalPages: 1
+    AircraftFlightStatus:
+      type: integer
+      description: |
+        Flight log status (`AircraftFlightStatus`). Value `2` (Cancelled) is also used when the aircraft crashed.
+      enum:
+        - 0
+        - 1
+        - 2
+      x-enum-varnames:
+        - Active
+        - Completed
+        - Cancelled
+    Schedule:
+      type: object
+      required:
+        - id
+        - status
+        - callsign
+        - organizationId
+        - aircraftId
+        - flightType
+        - originIcao
+        - destinationIcao
+        - isTimeless
+        - scheduledDepartureUtc
+        - scheduledArrivalUtc
+        - crew
+        - sequence
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: |
+            Schedule ID. Use as `{scheduleId}` for update, flight plan update, crew management, delete, and reorder.
+          x-go-type: string
+        status:
+          $ref: '#/components/schemas/ScheduledFlightStatus'
+        callsign:
+          type: string
+        organizationId:
+          type: string
+          format: uuid
+          x-go-type: string
+        aircraftId:
+          type: string
+          format: uuid
+          description: Persistent organization aircraft ID (`Aircraft.id`).
+          x-go-type: string
+        flightType:
+          $ref: '#/components/schemas/PersistentFlightType'
+        originIcao:
+          type: string
+          description: Origin airport ICAO or airport code.
+        destinationIcao:
+          type: string
+          description: Destination airport ICAO or airport code.
+        isTimeless:
+          type: boolean
+          description: When `true`, the schedule has no times and pilots can fly it when they want.
+        scheduledDepartureUtc:
+          type: string
+          format: date-time
+          description: Planned departure, UTC. `0001-01-01T00:00:00Z` when `isTimeless` is `true`.
+        scheduledArrivalUtc:
+          type: string
+          format: date-time
+          description: Planned arrival, UTC. `0001-01-01T00:00:00Z` when `isTimeless` is `true`.
+        actualDepartureUtc:
+          type: string
+          format: date-time
+          nullable: true
+          description: Actual departure, UTC, if known.
+        actualArrivalUtc:
+          type: string
+          format: date-time
+          nullable: true
+          description: Actual arrival, UTC, if known.
+        briefing:
+          type: string
+          nullable: true
+        debriefing:
+          type: string
+          nullable: true
+        flightPlan:
+          type: string
+          nullable: true
+          description: Flight plan text.
+        crew:
+          type: array
+          description: Assigned crew. Empty when no crew is assigned.
+          items:
+            $ref: '#/components/schemas/ScheduleCrewMember'
+        sequence:
+          type: integer
+          description: Sort order in the aircraft's schedule list.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ScheduleCrewMember:
+      type: object
+      required:
+        - userId
+        - role
+      properties:
+        userId:
+          type: string
+          format: uuid
+          x-go-type: string
+        username:
+          type: string
+          nullable: true
+          description: Current public username, if available.
+        role:
+          $ref: '#/components/schemas/PersistentFlightCrewMemberRole'
+    SchedulePage:
+      type: object
+      description: Paged list; items are in `items`.
+      required:
+        - items
+        - page
+        - pageSize
+        - totalCount
+        - totalPages
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Schedule'
+        page:
+          type: integer
+          description: One-based page number.
+        pageSize:
+          type: integer
+          description: Maximum number of items on a page.
+        totalCount:
+          type: integer
+          description: Number of items on all pages.
+        totalPages:
+          type: integer
+          description: Number of pages.
+    ListOrganizationSchedulesResponse:
+      type: object
+      required:
+        - errorCode
+        - result
+      properties:
+        errorCode:
+          type: integer
+          description: |
+            `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+          enum:
+            - 0
+        result:
+          $ref: '#/components/schemas/SchedulePage'
+      example:
+        errorCode: 0
+        result:
+          items:
+            - id: fd0f8a7c-fab2-4fd0-baf7-4b87e8f7cc2f
+              status: 1
+              callsign: PJX421
+              aircraftId: 28fb4508-9eca-4120-abe4-3c4f06f6e71c
+              isTimeless: false
+              sequence: 1
+          page: 1
+          pageSize: 100
+          totalCount: 1
+          totalPages: 1
+    ListAircraftSchedulesResponse:
+      type: object
+      required:
+        - errorCode
+        - result
+      properties:
+        errorCode:
+          type: integer
+          description: |
+            `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+          enum:
+            - 0
+        result:
+          type: array
+          description: Schedules for the aircraft, ordered by `sequence`.
+          items:
+            $ref: '#/components/schemas/Schedule'
+      example:
+        errorCode: 0
+        result:
+          - id: fd0f8a7c-fab2-4fd0-baf7-4b87e8f7cc2f
+            status: 1
+            callsign: PJX421
+            organizationId: 1337830a-abf9-4315-9488-e8cebd7f485a
+            aircraftId: 28fb4508-9eca-4120-abe4-3c4f06f6e71c
+            flightType: 1
+            originIcao: KLAX
+            destinationIcao: KJFK
+            isTimeless: false
+            scheduledDepartureUtc: '2026-07-03T18:30:00Z'
+            scheduledArrivalUtc: '2026-07-03T23:45:00Z'
+            actualDepartureUtc: null
+            actualArrivalUtc: null
+            briefing: Scheduled transcontinental service.
+            debriefing: null
+            flightPlan: KLAX DCT KJFK
+            crew:
+              - userId: 3f8b28bf-bbb1-4024-80ae-2a0ea9b30685
+                username: Chhettri22
+                role: 0
+            sequence: 1
+            createdAt: '2026-07-03T12:00:00Z'
+            updatedAt: '2026-07-03T12:00:00Z'
+    ScheduledFlightStatus:
+      type: integer
+      description: |
+        Current schedule status (`ScheduledFlightStatus`). There is no value `5`.
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+        - 6
+        - 7
+        - 8
+        - 9
+        - 10
+        - 11
+      x-enum-varnames:
+        - Unknown
+        - Scheduled
+        - Boarding
+        - Boarded
+        - TaxiingToRunway
+        - InFlight
+        - Diverted
+        - Delayed
+        - Cancelled
+        - TaxiingToParking
+        - Arrived
+    PersistentFlightType:
+      type: integer
+      description: Flight category (`PersistentFlightType`).
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+        - 7
+        - 8
+        - 9
+        - 10
+        - 11
+        - 12
+      x-enum-varnames:
+        - None
+        - Commercial
+        - Charter
+        - Cargo
+        - Training
+        - TestFlight
+        - MedicalEmergency
+        - Military
+        - VIPExecutive
+        - HumanitarianRelief
+        - GeneralAviation
+        - Airshow
+        - Other
+    PersistentFlightCrewMemberRole:
+      type: integer
+      description: Crew role on a schedule (`PersistentFlightCrewMemberRole`).
+      enum:
+        - 0
+        - 1
+      x-enum-varnames:
+        - Captain
+        - FirstOfficer
+    PersistentAircraftRecordStatus:
+      type: integer
+      description: Aircraft record status (`PersistentAircraftRecordStatus`).
+      enum:
+        - 0
+        - 1
+      x-enum-varnames:
+        - Active
+        - Deleted
+    PersistentAircraftVisibility:
+      type: integer
+      description: Whether the aircraft is visible or hangared (`PersistentAircraftVisibility`).
+      enum:
+        - 0
+        - 1
+        - 2
+      x-enum-varnames:
+        - Unknown
+        - Visible
+        - Hangared
+    PersistentOrganizationType:
+      type: integer
+      description: Join type (`PersistentOrganizationType`).
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+      x-enum-varnames:
+        - AutoJoin
+        - ManualJoin
+        - ApplyToJoin
+        - InviteOnly
+        - SingleMember
+    OrganizationOperationType:
+      type: integer
+      description: Type of operation flown (`OrganizationOperationType`).
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+      x-enum-varnames:
+        - Undefined
+        - Airline
+        - Charter
+        - Freight
+        - Military
+        - FlightSchool
+        - Private
+    WorldType:
+      type: integer
+      description: World the organization belongs to (`WorldType`).
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+      x-enum-varnames:
+        - Solo
+        - Casual
+        - Training
+        - Expert
+        - Private
+    PersistentOrganizationRecordStatus:
+      type: integer
+      description: Organization record status (`PersistentOrganizationRecordStatus`).
+      enum:
+        - 0
+        - 1
+        - 2
+      x-enum-varnames:
+        - Active
+        - Suspended
+        - Deleted
+    PersistentOrganizationMemberRole:
+      type: integer
+      description: Role in the organization (`PersistentOrganizationMemberRole`).
+      enum:
+        - 0
+        - 1
+        - 2
+      x-enum-varnames:
+        - Member
+        - Admin
+        - Owner
+  responses:
+    BadRequest:
+      description: Request validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PublicApiResponse'
+    Unauthorized:
+      description: Missing, expired, or invalid bearer token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PublicApiResponse'
+    Forbidden:
+      description: Missing scope, disabled client, app still in testing, or the user does not have access.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PublicApiResponse'
+    TooManyRequests:
+      description: Rate limit exceeded.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PublicApiResponse'
+    NotFound:
+      description: Requested organization, aircraft, schedule, user, or crew assignment was not found for the signed-in user.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PublicApiResponse'
+  parameters:
+    organizationId:
+      name: organizationId
+      in: path
+      required: true
+      description: Organization ID from List Organizations (`Organization.id`).
+      schema:
+        type: string
+        format: uuid
+        x-go-type: string
+    queryAircraftIds:
+      name: aircraftId
+      in: query
+      required: false
+      description: |
+        Persistent organization aircraft ID (`Aircraft.id`). Repeat for multiple aircraft
+        (`?aircraftId=<id_1>&aircraftId=<id_2>`). Maximum 100 values. Omit to include all aircraft.
+      style: form
+      explode: true
+      schema:
+        type: array
+        maxItems: 100
+        items:
+          type: string
+          format: uuid
+          x-go-type: string
+    page:
+      name: page
+      in: query
+      required: false
+      description: One-based page number.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    pageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: Page size.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 100
+    aircraftId:
+      name: aircraftId
+      in: path
+      required: true
+      description: |
+        Persistent organization aircraft ID (`Aircraft.id` from List Organization Aircraft), not the content
+        `aircraftId` field.
+      schema:
+        type: string
+        format: uuid
+        x-go-type: string
+    pageSizeAircraftFlights:
+      name: pageSize
+      in: query
+      required: false
+      description: Page size (`1`–`100`).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+    scheduleId:
+      name: scheduleId
+      in: path
+      required: true
+      description: Schedule ID (`Schedule.id`).
+      schema:
+        type: string
+        format: uuid
+        x-go-type: string
+    userId:
+      name: userId
+      in: path
+      required: true
+      description: Infinite Flight user identifier.
+      schema:
+        type: string

@@ -1,0 +1,4 @@
+type: integer
+description: Aircraft record status (`PersistentAircraftRecordStatus`).
+enum: [0, 1]
+x-enum-varnames: [Active, Deleted]

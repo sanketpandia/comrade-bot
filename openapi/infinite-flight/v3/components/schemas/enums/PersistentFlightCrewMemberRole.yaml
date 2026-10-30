@@ -1,0 +1,4 @@
+type: integer
+description: Crew role on a schedule (`PersistentFlightCrewMemberRole`).
+enum: [0, 1]
+x-enum-varnames: [Captain, FirstOfficer]

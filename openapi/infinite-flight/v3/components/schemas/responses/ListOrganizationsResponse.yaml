@@ -1,0 +1,24 @@
+type: object
+required: [errorCode, result]
+properties:
+  errorCode:
+    type: integer
+    description: |
+      `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+    enum: [0]
+  result:
+    type: array
+    description: Active organizations the signed-in user belongs to.
+    items:
+      $ref: ../live/Organization.yaml
+example:
+  errorCode: 0
+  result:
+    - id: 1337830a-abf9-4315-9488-e8cebd7f485a
+      name: PacificJet
+      type: 3
+      operationType: 1
+      worldType: 3
+      status: 0
+      description: Long-haul scheduled operations.
+      role: 2

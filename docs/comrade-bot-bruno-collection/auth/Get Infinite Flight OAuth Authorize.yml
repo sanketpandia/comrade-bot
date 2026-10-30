@@ -1,0 +1,24 @@
+info:
+  name: Get Infinite Flight OAuth Authorize
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{politburo-base-url}}/api/v1/oauth/infinite-flight"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  `getInfiniteFlightOAuthAuthorize` — start Infinite Flight OAuth for the signed-in dashboard user.
+  Returns `{ "data": { "url": "..." } }` with the `/connect/authorize` link (PKCE + state stored in Redis).
+
+  Auth: browser `session_id` cookie after signed-link login (same session-backed `/api/v1` flow as game reads).
+
+  Flow: open `data.url` in a browser, approve consent, then Infinite Flight redirects to `GET /oauth/callback`.

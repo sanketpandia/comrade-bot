@@ -1,0 +1,4 @@
+type: integer
+description: Organization record status (`PersistentOrganizationRecordStatus`).
+enum: [0, 1, 2]
+x-enum-varnames: [Active, Suspended, Deleted]

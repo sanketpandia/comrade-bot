@@ -9,6 +9,7 @@ import (
 
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/access/session"
+	"infinite-experiment/politburo/internal/operations/contact"
 	appui "infinite-experiment/politburo/internal/ui"
 )
 
@@ -48,7 +49,7 @@ func newUIHandler(t *testing.T, sessions sessionManager, tickets ticketConsumer)
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	return NewHandler(renderer, sessions, tickets, nil, nil, nil, nil)
+	return NewHandler(renderer, sessions, tickets, nil, nil, nil, nil, nil, nil, false)
 }
 
 func TestLoginConsumesTicketThenSetsCookie(t *testing.T) {
@@ -116,6 +117,146 @@ func TestHomeRendersPublicLinks(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %q in %s", want, body)
 		}
+	}
+}
+
+func TestLegalPagesRenderPublicShell(t *testing.T) {
+	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
+	tests := []struct {
+		name    string
+		path    string
+		handler http.HandlerFunc
+		title   string
+		marker  string
+	}{
+		{
+			name:    "terms",
+			path:    "/terms-conditions",
+			handler: handler.TermsConditions,
+			title:   "Terms of Service",
+			marker:  "TERMS OF SERVICE",
+		},
+		{
+			name:    "privacy",
+			path:    "/privacy-policy",
+			handler: handler.PrivacyPolicy,
+			title:   "Privacy Policy",
+			marker:  "PRIVACY POLICY",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			recorder := httptest.NewRecorder()
+			tc.handler(recorder, req)
+			if recorder.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", recorder.Code)
+			}
+			body := recorder.Body.String()
+			if !strings.Contains(body, "<title>"+tc.title+"</title>") {
+				t.Fatalf("missing title %q", tc.title)
+			}
+			if !strings.Contains(body, tc.marker) {
+				t.Fatalf("missing marker %q", tc.marker)
+			}
+			if !strings.Contains(body, `class="public-footer"`) {
+				t.Fatalf("missing public footer")
+			}
+		})
+	}
+}
+
+type contactSubmitterStub struct {
+	calls int
+	ifc   string
+	msg   string
+	err   error
+}
+
+func (s *contactSubmitterStub) Create(_ context.Context, ifCommunityID, message string) (*contact.Submission, error) {
+	s.calls++
+	s.ifc = ifCommunityID
+	s.msg = message
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &contact.Submission{ID: "sub-1", IFCommunityID: ifCommunityID, Message: message}, nil
+}
+
+func newContactUIHandler(t *testing.T, submitter contactSubmitter) *Handler {
+	t.Helper()
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	return NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, submitter, nil, nil, nil, nil, false)
+}
+
+func TestContactRendersForm(t *testing.T) {
+	handler := newContactUIHandler(t, &contactSubmitterStub{})
+	recorder := httptest.NewRecorder()
+	handler.Contact(recorder, httptest.NewRequest(http.MethodGet, "/contact", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		"<title>Contact</title>",
+		`name="if_community_id"`,
+		`name="message"`,
+		`action="/contact"`,
+		`class="public-footer"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q in body", want)
+		}
+	}
+}
+
+func TestContactSentQueryShowsSuccess(t *testing.T) {
+	handler := newContactUIHandler(t, &contactSubmitterStub{})
+	recorder := httptest.NewRecorder()
+	handler.Contact(recorder, httptest.NewRequest(http.MethodGet, "/contact?sent=1", nil))
+	body := recorder.Body.String()
+	if !strings.Contains(body, "Thanks — your message was received.") {
+		t.Fatalf("missing success copy: %s", body)
+	}
+}
+
+func TestSubmitContactValidRedirects(t *testing.T) {
+	submitter := &contactSubmitterStub{}
+	handler := newContactUIHandler(t, submitter)
+	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("if_community_id=PilotOne&message=Hello+there"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	handler.SubmitContact(recorder, req)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303", recorder.Code)
+	}
+	if loc := recorder.Header().Get("Location"); loc != "/contact?sent=1" {
+		t.Fatalf("location = %q", loc)
+	}
+	if submitter.calls != 1 || submitter.ifc != "PilotOne" || submitter.msg != "Hello there" {
+		t.Fatalf("create = %+v", submitter)
+	}
+}
+
+func TestSubmitContactEmptyFieldsShowsError(t *testing.T) {
+	submitter := &contactSubmitterStub{}
+	handler := newContactUIHandler(t, submitter)
+	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("if_community_id=&message="))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	handler.SubmitContact(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	if !strings.Contains(body, "Enter your Infinite Flight Community username.") {
+		t.Fatalf("missing validation copy: %s", body)
+	}
+	if submitter.calls != 0 {
+		t.Fatalf("create calls = %d, want 0", submitter.calls)
 	}
 }
 
@@ -329,5 +470,28 @@ func TestLogoutDeletesSessionAndCookie(t *testing.T) {
 	}
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d, want 303", recorder.Code)
+	}
+}
+
+func TestDashboardShowsConnectWhenOAuthConfigured(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, true)
+	recorder := httptest.NewRecorder()
+	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	body := recorder.Body.String()
+	if !strings.Contains(body, "Connect Infinite Flight") || !strings.Contains(body, `id="if-oauth-connect"`) {
+		t.Fatalf("missing oauth tile: %s", body)
+	}
+}
+
+func TestDashboardOmitsConnectWhenOAuthDisabled(t *testing.T) {
+	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
+	recorder := httptest.NewRecorder()
+	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	if strings.Contains(recorder.Body.String(), "Connect Infinite Flight") {
+		t.Fatal("oauth tile should be hidden when client is not configured")
 	}
 }

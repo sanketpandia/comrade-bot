@@ -3,17 +3,20 @@ package ui
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/access/session"
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
+	"infinite-experiment/politburo/internal/operations/contact"
 	"infinite-experiment/politburo/internal/operations/operator"
 	"infinite-experiment/politburo/internal/operations/reports"
 	"infinite-experiment/politburo/internal/transport/http/response"
@@ -28,6 +31,20 @@ type sessionManager interface {
 	Create(ctx context.Context, input session.CreateInput) (session.Session, error)
 	Delete(ctx context.Context, sessionID string) error
 }
+
+type contactSubmitter interface {
+	Create(ctx context.Context, ifCommunityID, message string) (*contact.Submission, error)
+}
+
+type contactRateLimiter interface {
+	Incr(ctx context.Context, key string, ttl time.Duration) (int64, error)
+}
+
+const (
+	contactMaxIFCLen     = 30
+	contactMaxMessageLen = 5000
+	contactMaxBodyBytes  = 8192
+)
 
 type sessionLister interface {
 	ListActive(ctx context.Context) (gamesessions.ListActiveResult, error)
@@ -59,13 +76,16 @@ func serverLabel(id string) string {
 }
 
 type Handler struct {
-	renderer  *appui.Renderer
-	sessions  sessionManager
-	tickets   ticketConsumer
-	lister    sessionLister
-	reports   *reports.Repository
-	operator  *operator.Service
-	operators []string
+	renderer       *appui.Renderer
+	sessions       sessionManager
+	tickets        ticketConsumer
+	lister         sessionLister
+	reports        *reports.Repository
+	contact        contactSubmitter
+	contactLimiter contactRateLimiter
+	operator       *operator.Service
+	operators      []string
+	ifOAuthEnabled bool
 }
 
 func NewHandler(
@@ -73,20 +93,29 @@ func NewHandler(
 	sessions sessionManager,
 	tickets ticketConsumer,
 	reportRepo *reports.Repository,
+	contactRepo contactSubmitter,
+	contactLimiter contactRateLimiter,
 	operatorService *operator.Service,
 	platformOperators []string,
 	lister sessionLister,
+	ifOAuthEnabled bool,
 ) *Handler {
 	return &Handler{
 		renderer: renderer, sessions: sessions, tickets: tickets, lister: lister,
-		reports: reportRepo, operator: operatorService, operators: platformOperators,
+		reports: reportRepo, contact: contactRepo, contactLimiter: contactLimiter,
+		operator: operatorService, operators: platformOperators,
+		ifOAuthEnabled: ifOAuthEnabled,
 	}
 }
 
 type publicPage struct {
-	Title   string
-	Content string
-	Role    string
+	Title         string
+	Content       string
+	Role          string
+	Sent          bool
+	FormError     string
+	IFCommunityID string
+	Message       string
 }
 
 // Home is the public landing page.
@@ -95,6 +124,126 @@ func (h *Handler) Home(w http.ResponseWriter, _ *http.Request) {
 		Title:   "Comrade Bot",
 		Content: "home-content",
 	})
+}
+
+// TermsConditions serves the public terms of service page.
+func (h *Handler) TermsConditions(w http.ResponseWriter, _ *http.Request) {
+	h.renderPublic(w, http.StatusOK, publicPage{
+		Title:   "Terms of Service",
+		Content: "terms-conditions-content",
+	})
+}
+
+// PrivacyPolicy serves the public privacy policy page.
+func (h *Handler) PrivacyPolicy(w http.ResponseWriter, _ *http.Request) {
+	h.renderPublic(w, http.StatusOK, publicPage{
+		Title:   "Privacy Policy",
+		Content: "privacy-policy-content",
+	})
+}
+
+// Contact shows the public contact form.
+func (h *Handler) Contact(w http.ResponseWriter, r *http.Request) {
+	h.renderPublic(w, http.StatusOK, publicPage{
+		Title:   "Contact",
+		Content: "contact-content",
+		Sent:    strings.TrimSpace(r.URL.Query().Get("sent")) == "1",
+	})
+}
+
+// SubmitContact accepts a contact form POST and stores the submission.
+func (h *Handler) SubmitContact(w http.ResponseWriter, r *http.Request) {
+	if h.contact == nil {
+		http.Error(w, "contact unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if limited, msg := h.contactRateLimited(r); limited {
+		h.renderContactForm(w, publicPage{
+			FormError: msg,
+		})
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, contactMaxBodyBytes)
+	if err := r.ParseForm(); err != nil {
+		h.renderContactForm(w, publicPage{
+			FormError: "Message is too long or the form could not be read.",
+		})
+		return
+	}
+
+	ifc := strings.TrimSpace(r.FormValue("if_community_id"))
+	message := strings.TrimSpace(r.FormValue("message"))
+	if errMsg := validateContactForm(ifc, message); errMsg != "" {
+		h.renderContactForm(w, publicPage{
+			FormError:     errMsg,
+			IFCommunityID: ifc,
+			Message:       message,
+		})
+		return
+	}
+
+	if _, err := h.contact.Create(r.Context(), ifc, message); err != nil {
+		slog.Error("create contact submission", "error", err)
+		h.renderContactForm(w, publicPage{
+			FormError:     "Could not save your message. Try again later.",
+			IFCommunityID: ifc,
+			Message:       message,
+		})
+		return
+	}
+	http.Redirect(w, r, "/contact?sent=1", http.StatusSeeOther)
+}
+
+func (h *Handler) renderContactForm(w http.ResponseWriter, page publicPage) {
+	page.Title = "Contact"
+	page.Content = "contact-content"
+	h.renderPublic(w, http.StatusOK, page)
+}
+
+func validateContactForm(ifCommunityID, message string) string {
+	if ifCommunityID == "" {
+		return "Enter your Infinite Flight Community username."
+	}
+	if len(ifCommunityID) > contactMaxIFCLen {
+		return fmt.Sprintf("IF Community username must be at most %d characters.", contactMaxIFCLen)
+	}
+	if message == "" {
+		return "Enter a message."
+	}
+	if len(message) > contactMaxMessageLen {
+		return fmt.Sprintf("Message must be at most %d characters.", contactMaxMessageLen)
+	}
+	return ""
+}
+
+func (h *Handler) contactRateLimited(r *http.Request) (bool, string) {
+	if h.contactLimiter == nil {
+		return false, ""
+	}
+	const limit = 10
+	now := time.Now()
+	minuteBucket := now.Unix() / 60
+	key := fmt.Sprintf("ratelimit:submit:%s:%d", contactCallerID(r), minuteBucket)
+	count, err := h.contactLimiter.Incr(r.Context(), key, 2*time.Minute)
+	if err != nil {
+		return false, ""
+	}
+	if int(count) > limit {
+		retryAfter := (minuteBucket+1)*60 - now.Unix()
+		if retryAfter < 1 {
+			retryAfter = 1
+		}
+		return true, fmt.Sprintf("Too many submissions. Wait %d seconds and try again.", retryAfter)
+	}
+	return false, ""
+}
+
+func contactCallerID(r *http.Request) string {
+	if forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); forwarded != "" {
+		return forwarded
+	}
+	return r.RemoteAddr
 }
 
 // NotFound renders the public 404 page. Machine paths stay JSON.
@@ -140,8 +289,10 @@ func basePageData(r *http.Request, title, content string, extra map[string]any) 
 func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	claims, _ := auth.ClaimsFromContext(r.Context())
 	data := basePageData(r, "Dashboard", "dashboard-content", map[string]any{
-		"Username": claims.DsUserID,
-		"Servers":  liveMapServers(),
+		"Username":       claims.DsUserID,
+		"Servers":        liveMapServers(),
+		"IFOAuthEnabled": h.ifOAuthEnabled,
+		"OAuthStatus":    strings.TrimSpace(r.URL.Query().Get("oauth")),
 	})
 	if err := h.renderer.Render(w, "base", data); err != nil {
 		http.Error(w, "template render failed", http.StatusInternalServerError)

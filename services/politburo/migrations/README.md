@@ -50,6 +50,8 @@ Add `001_<slug>.sql`, `002_<slug>.sql`, … as transactional deltas.
 
 `003_va_webhook_runs.sql` adds append-only `va_webhook_runs` (dispatch outcome and timing for each feature that entered the webhook worker pool). It does not store Discord webhook URLs, raw config, or feature payloads. There is no purge job in this phase; the table grows with each dispatched run.
 
+`004_contact_submissions.sql` adds append-only `contact_submissions` (public `/contact` form: IFC username + message).
+
 Test on:
 
 1. A fresh DB from `000_core_schema.sql` plus all new files.

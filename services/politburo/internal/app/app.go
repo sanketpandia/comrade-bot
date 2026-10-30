@@ -30,6 +30,7 @@ import (
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/logging"
 	"infinite-experiment/politburo/internal/metrics"
+	"infinite-experiment/politburo/internal/operations/contact"
 	"infinite-experiment/politburo/internal/operations/operator"
 	"infinite-experiment/politburo/internal/operations/reports"
 	"infinite-experiment/politburo/internal/scheduler"
@@ -56,6 +57,7 @@ type App struct {
 	VAInit          *virtualairlines.Service
 	Status          *status.Builder
 	Reports         *reports.Repository
+	Contact         *contact.Repository
 	Operator        *operator.Service
 	Resolver        *resolver.Resolver
 	VALookup        *lookup.VALookup
@@ -66,6 +68,7 @@ type App struct {
 	FlightsReader   *gameflights.Reader
 	SessionsReader  *gamesessions.Reader
 	VAWebhookJob    *webhookjobs.Job
+	IFOAuth         *infiniteflight.OAuthClient
 	closeOnce       sync.Once
 }
 
@@ -126,6 +129,21 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		ifUsers = infiniteFlightClient
 	}
 
+	var ifOAuth *infiniteflight.OAuthClient
+	if cfg.InfiniteFlight.ClientID != "" {
+		ifOAuth, err = infiniteflight.NewOAuthClient(
+			cfg.InfiniteFlight.AuthBaseURL,
+			cfg.InfiniteFlight.ClientID,
+			cfg.InfiniteFlight.ClientSecret,
+			cfg.InfiniteFlight.RequestTimeout,
+		)
+		if err != nil {
+			_ = cacheStore.Close()
+			_ = db.Close()
+			return nil, err
+		}
+	}
+
 	application := &App{
 		Config: cfg, StartedAt: time.Now().UTC(), DB: db, Cache: cacheStore,
 		APIKeys: apikeys.NewLookup(apikeys.NewRepository(db), cacheStore),
@@ -137,6 +155,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		VAInit:          vaInit,
 		Status:          status.NewBuilder(userRepo, membershipRepo, vaRepo),
 		Reports:         reportRepo,
+		Contact:         contact.NewRepository(db),
 		Operator:        operator.NewService(db, userRepo, membershipRepo, reportRepo, vaRepo),
 		Resolver:        resolver.NewResolver(userRepo, vaRepo, membershipRepo),
 		VALookup:        lookup.NewVALookup(vaRepo),
@@ -147,6 +166,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		FlightsReader:   gameflights.NewReader(cacheStore),
 		SessionsReader:  gamesessions.NewReader(cacheStore),
 		VAWebhookJob:    vaWebhookDispatch,
+		IFOAuth:         ifOAuth,
 	}
 	slog.Info("application initialized", "environment", cfg.Environment, "jobs_enabled", cfg.Jobs.Enabled)
 	return application, nil

@@ -185,6 +185,24 @@ body:has(.topbar) {
   outline-offset: 3px;
 }
 
+.tile__link--button {
+  cursor: pointer;
+  font: inherit;
+}
+
+.tile__status {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+.tile__status--ok {
+  color: var(--status-active);
+}
+
+.tile__status--error {
+  color: var(--status-error);
+}
+
 .admin-layout {
   display: grid;
   grid-template-columns: minmax(9rem, 11rem) minmax(0, 1fr);

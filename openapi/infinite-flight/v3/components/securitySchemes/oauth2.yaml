@@ -1,0 +1,31 @@
+type: oauth2
+description: |
+  Authorization code flow with PKCE (`code_challenge_method=S256`). Create a client at
+  https://infiniteflight.com/account/api-keys (`confidential` or `public`). Both client types must use PKCE.
+
+  - **Confidential** — exchange the authorization code from your backend with `client_secret`.
+  - **Public** — exchange with `client_id` and `code_verifier` only; no client secret is issued or accepted.
+
+  Request `offline_access` for a refresh token; refresh tokens rotate — always store the latest.
+  Use access tokens as `Authorization: Bearer` on PublicApi v3 (audience `public-api-v3`). Treat access
+  tokens as opaque; do not rely on JWT claims for product behavior.
+
+  Do not embed client secrets in browser, mobile, or downloadable clients. Store tokens securely and
+  revoke when a user disconnects your app. Testing clients are limited to the owner and invited test users
+  until Infinite Flight review.
+
+  Sample implementations: https://github.com/infiniteflight/infiniteflight-api-playground
+flows:
+  authorizationCode:
+    authorizationUrl: https://api.infiniteflight.com/auth/v2/connect/authorize
+    tokenUrl: https://api.infiniteflight.com/auth/v2/connect/token
+    refreshUrl: https://api.infiniteflight.com/auth/v2/connect/token
+    scopes:
+      openid: Sign the user in.
+      profile: Read the user's basic sign-in profile.
+      offline_access: Request a refresh token.
+      live:organizations.read: Read Live organizations the user belongs to.
+      live:members.read: Read the members of Live organizations the user belongs to, with their roles and active lifts.
+      live:aircraft.read: Read Live aircraft in organizations the user belongs to.
+      live:schedules.read: Read Live schedules in organizations the user belongs to.
+      live:schedules.write: Create, update, reorder, and delete Live schedules and manage their crew where allowed.

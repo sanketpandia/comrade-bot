@@ -14,17 +14,19 @@ import (
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	"infinite-experiment/politburo/internal/app"
 
-	openapi_types "github.com/oapi-codegen/runtime/types"
 	"infinite-experiment/politburo/internal/transport/http/api/gameflights"
 	"infinite-experiment/politburo/internal/transport/http/api/gamesessions"
 	"infinite-experiment/politburo/internal/transport/http/api/health"
 	"infinite-experiment/politburo/internal/transport/http/api/identity"
+	oauthapi "infinite-experiment/politburo/internal/transport/http/api/oauth"
 	"infinite-experiment/politburo/internal/transport/http/api/signedlink"
 	userapi "infinite-experiment/politburo/internal/transport/http/api/user"
 	vaapi "infinite-experiment/politburo/internal/transport/http/api/va"
 	appmiddleware "infinite-experiment/politburo/internal/transport/http/middleware"
 	"infinite-experiment/politburo/internal/transport/http/response"
 	uihttp "infinite-experiment/politburo/internal/transport/http/ui"
+
+	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -97,10 +99,16 @@ func (s *Server) router() stdhttp.Handler {
 	)
 	vaHandler := vaapi.NewHandler(s.app.VirtualAirlines, s.app.VAConfigs, s.app.Users, s.app.VAWebhookJob)
 	userHandler := userapi.NewHandler(s.app.Users)
-	uiHandler := uihttp.NewHandler(s.app.UI, s.app.Sessions, s.app.Tickets, s.app.Reports, s.app.Operator, s.app.Config.PlatformOperatorDiscordIDs, s.app.SessionsReader)
+	oauthHandler := oauthapi.NewHandler(s.app.IFOAuth, s.app.Config.OAuthRedirectURI(), s.app.Cache)
+	uiHandler := uihttp.NewHandler(
+		s.app.UI, s.app.Sessions, s.app.Tickets, s.app.Reports, s.app.Contact, s.app.Cache,
+		s.app.Operator, s.app.Config.PlatformOperatorDiscordIDs, s.app.SessionsReader,
+		s.app.IFOAuth != nil,
+	)
 	handler := apiHandler{
 		health: healthHandler, sessions: sessionsHandler, flights: flightsHandler,
 		signedLink: signedLinkHandler, identity: identityHandler, va: vaHandler, user: userHandler,
+		oauth:                  oauthHandler,
 		registrationMiddleware: registrationRouteMiddleware(s.app),
 		godMiddleware:          godRouteMiddleware(s.app),
 		vaAdminMiddleware:      vaAdminRouteMiddleware(s.app),
@@ -148,6 +156,10 @@ func (s *Server) router() stdhttp.Handler {
 		ui.Post("/operator/reports/{reportID}/resolve", uiHandler.ResolveOperatorReport)
 	})
 	router.Get("/", uiHandler.Home)
+	router.Get("/terms-conditions", uiHandler.TermsConditions)
+	router.Get("/privacy", uiHandler.PrivacyPolicy)
+	router.Get("/contact", uiHandler.Contact)
+	router.Post("/contact", uiHandler.SubmitContact)
 	router.Handle("/static/brand/*", uihttp.Brand())
 	router.Handle("/static/*", uihttp.Static())
 	router.NotFound(uiHandler.NotFound)
@@ -163,6 +175,7 @@ type apiHandler struct {
 	identity               *identity.Handler
 	va                     *vaapi.Handler
 	user                   *userapi.Handler
+	oauth                  *oauthapi.Handler
 	registrationMiddleware []func(stdhttp.Handler) stdhttp.Handler
 	godMiddleware          []func(stdhttp.Handler) stdhttp.Handler
 	vaAdminMiddleware      []func(stdhttp.Handler) stdhttp.Handler
@@ -245,6 +258,16 @@ func (h apiHandler) GetCurrentUser(w stdhttp.ResponseWriter, r *stdhttp.Request)
 	h.withMiddleware(h.currentUserMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.user.GetMe(w, r)
 	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) GetInfiniteFlightOAuthAuthorize(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.withMiddleware(h.currentUserMiddleware, stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.oauth.GetAuthorizeURL(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) CompleteInfiniteFlightOAuthCallback(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.CompleteInfiniteFlightOAuthCallbackParams) {
+	h.oauth.CompleteCallback(w, r, params.Code, params.State)
 }
 
 func (h apiHandler) withMiddleware(chain []func(stdhttp.Handler) stdhttp.Handler, handler stdhttp.Handler) stdhttp.Handler {

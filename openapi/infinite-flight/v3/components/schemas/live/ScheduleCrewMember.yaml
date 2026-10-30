@@ -1,0 +1,13 @@
+type: object
+required: [userId, role]
+properties:
+  userId:
+    type: string
+    format: uuid
+    x-go-type: string
+  username:
+    type: string
+    nullable: true
+    description: Current public username, if available.
+  role:
+    $ref: ../enums/PersistentFlightCrewMemberRole.yaml

@@ -181,6 +181,51 @@ func TestAuthenticateAPIRequiresAPIKeyForSignedLink(t *testing.T) {
 	}
 }
 
+func TestAuthenticateAPIAcceptsSessionCookieOnOAuthCallback(t *testing.T) {
+	keys := apiKeyLookupFunc(func(*http.Request, string) (auth.Claims, bool, error) {
+		t.Fatal("API key lookup should not run on OAuth callback")
+		return auth.Claims{}, false, nil
+	})
+	sessions := sessionLookupFunc(func(*http.Request) (auth.Claims, bool, error) {
+		return auth.Claims{PbUserID: "user-1"}, true, nil
+	})
+	handler := AuthenticateAPI(keys, sessions)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, ok := auth.ClaimsFromContext(r.Context())
+		if !ok || claims.PbUserID != "user-1" {
+			t.Fatalf("claims = %#v ok=%v", claims, ok)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/oauth/callback?code=x&state=y", nil))
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", recorder.Code)
+	}
+}
+
+func TestAuthenticateAPIOAuthCallbackPassesThroughWithoutSession(t *testing.T) {
+	keys := apiKeyLookupFunc(func(*http.Request, string) (auth.Claims, bool, error) {
+		t.Fatal("API key lookup should not run on OAuth callback")
+		return auth.Claims{}, false, nil
+	})
+	sessions := sessionLookupFunc(func(*http.Request) (auth.Claims, bool, error) {
+		return auth.Claims{}, false, nil
+	})
+	handler := AuthenticateAPI(keys, sessions)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := auth.ClaimsFromContext(r.Context()); ok {
+			t.Fatal("expected no claims without session cookie")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/oauth/callback?code=x&state=y", nil))
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", recorder.Code)
+	}
+}
+
 func TestAuthenticateAPIAcceptsSessionCookieOnUserMePath(t *testing.T) {
 	keys := apiKeyLookupFunc(func(*http.Request, string) (auth.Claims, bool, error) {
 		t.Fatal("API key lookup should not run when session is valid")
