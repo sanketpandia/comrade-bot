@@ -1,6 +1,12 @@
 type: object
+required: [type]
 properties:
+  type:
+    type: string
+    enum: [DASHBOARD, LIVE_MAP, CUSTOM]
+    description: Where to send the browser after login.
+    example: DASHBOARD
   redirectTo:
     type: string
-    description: Relative path to send the browser after login. Defaults to /dashboard.
-    example: /dashboard
+    description: Relative path after login. Required when type is CUSTOM; ignored for DASHBOARD and LIVE_MAP.
+    example: /dashboard/logbook?user_id=abc

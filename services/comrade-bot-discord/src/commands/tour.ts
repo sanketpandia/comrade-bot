@@ -129,7 +129,7 @@ export async function execute(interaction: DiscordInteraction) {
             // Generate signed link for dashboard
             let dashboardLink: string | null = null;
             try {
-                const signedLinkResponse = await ApiService.generateSignedLink(metaInfo, "/dashboard");
+                const signedLinkResponse = await ApiService.generateSignedLink(metaInfo, { type: "DASHBOARD" });
                 if (signedLinkResponse?.result?.url) {
                     dashboardLink = signedLinkResponse.result.url;
                 }

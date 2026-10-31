@@ -32,7 +32,10 @@ export async function execute(interaction: DiscordInteraction) {
 
         // Generate signed link with logbook URL and user_id query parameter
         const redirectTo = `/dashboard/logbook?user_id=${encodeURIComponent(ifcId)}`;
-        const signedLinkResponse = await ApiService.generateSignedLink(metaInfo, redirectTo, 15);
+        const signedLinkResponse = await ApiService.generateSignedLink(metaInfo, {
+            type: "CUSTOM",
+            redirectTo,
+        });
 
         if (!signedLinkResponse || !signedLinkResponse.result?.url) {
             // Fallback to regular logbook handler if signed link generation fails

@@ -20,7 +20,7 @@ http:
     type: json
     data: |-
       {
-        "redirectTo": "/dashboard"
+        "type": "DASHBOARD"
       }
   auth: inherit
 
@@ -32,4 +32,4 @@ settings:
 
 docs: |-
   `generateSignedLink` — mint a one-time URL (10 minutes) that sets a browser session cookie
-  and redirects to `redirectTo` (default `/dashboard`).
+  and redirects per `type` (DASHBOARD, LIVE_MAP, or CUSTOM with `redirectTo`).

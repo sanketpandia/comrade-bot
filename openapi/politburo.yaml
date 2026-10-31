@@ -205,8 +205,9 @@ paths:
       description: |
         Discord bots with a valid API key and X-Discord-User-Id receive a
         10-minute URL. Visiting it creates a session cookie and redirects
-        to redirectTo (default /dashboard). X-Discord-Server-Id is stored
-        on the session when present; it is not resolved to a VA.
+        to the path for the requested type (DASHBOARD, LIVE_MAP, or CUSTOM
+        with redirectTo). X-Discord-Server-Id is stored on the session when
+        present; membership is enforced when the guild is a configured VA.
       security:
         - ApiKeyAuth: []
       parameters:
@@ -223,7 +224,7 @@ paths:
           schema:
             type: string
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
@@ -1074,11 +1075,21 @@ components:
               type: string
     GenerateSignedLinkRequest:
       type: object
+      required:
+        - type
       properties:
+        type:
+          type: string
+          enum:
+            - DASHBOARD
+            - LIVE_MAP
+            - CUSTOM
+          description: Where to send the browser after login.
+          example: DASHBOARD
         redirectTo:
           type: string
-          description: Relative path to send the browser after login. Defaults to /dashboard.
-          example: /dashboard
+          description: Relative path after login. Required when type is CUSTOM; ignored for DASHBOARD and LIVE_MAP.
+          example: /dashboard/logbook?user_id=abc
     GenerateSignedLinkData:
       type: object
       required:
