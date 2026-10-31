@@ -103,6 +103,7 @@ func (s *Server) router() stdhttp.Handler {
 	uiHandler := uihttp.NewHandler(
 		s.app.UI, s.app.Sessions, s.app.Tickets, s.app.Reports, s.app.Contact, s.app.Cache,
 		s.app.Operator, s.app.Config.PlatformOperatorDiscordIDs, s.app.SessionsReader,
+		s.app.FlightsReader,
 		s.app.IFOAuth != nil,
 	)
 	handler := apiHandler{
@@ -150,11 +151,13 @@ func (s *Server) router() stdhttp.Handler {
 		ui.Get("/admin/", uiHandler.AdminRedirect)
 		ui.Get("/admin/general", uiHandler.Admin)
 		ui.Get("/admin/general/", uiHandler.Admin)
-		ui.Get("/maps/flights/active", uiHandler.ActiveFlightsMap)
-		ui.Get("/maps/flights/active/servers", uiHandler.MapServerOptions)
 		ui.Get("/operator/reports", uiHandler.OperatorReports)
 		ui.Post("/operator/reports/{reportID}/resolve", uiHandler.ResolveOperatorReport)
 	})
+	router.Get("/maps/flights/active", uiHandler.ActiveFlightsMap)
+	router.Get("/maps/flights/active/servers", uiHandler.MapServerOptions)
+	router.Get("/maps/flights/active/flights", uiHandler.MapActiveFlightsPartial)
+	router.Get("/maps/flights/active/flights/{flightID}", uiHandler.MapFlightDetailPartial)
 	router.Get("/", uiHandler.Home)
 	router.Get("/terms-conditions", uiHandler.TermsConditions)
 	router.Get("/privacy", uiHandler.PrivacyPolicy)

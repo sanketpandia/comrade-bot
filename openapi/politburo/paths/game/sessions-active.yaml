@@ -2,9 +2,6 @@ get:
   operationId: getActiveSessions
   summary: Read the latest active Infinite Flight sessions from cache
   tags: [Game]
-  security:
-    - ApiKeyAuth: []
-    - CookieAuth: []
   responses:
     "200":
       description: The latest cached active sessions
@@ -12,12 +9,6 @@ get:
         application/json:
           schema:
             $ref: "../../components/schemas/ActiveSessionsResponse.yaml"
-    "401":
-      description: Missing or inactive API key or session cookie
-      content:
-        application/json:
-          schema:
-            $ref: "../../components/schemas/ErrorResponse.yaml"
     "500":
       description: The cache entry could not be read
       content:

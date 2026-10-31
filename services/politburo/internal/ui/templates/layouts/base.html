@@ -15,8 +15,10 @@
         crossorigin="">
   {{end}}
 </head>
-<body{{if eq .Content "maps-active-flights-content"}} class="maps-page"{{end}}>
+<body{{if eq .Content "maps-active-flights-content"}} class="maps-page{{with .Maps}} {{.Chrome.BodyExtraClass}}{{end}}"{{end}}>
+  {{if or (ne .Content "maps-active-flights-content") (and .Maps .Maps.Chrome.ShowHeader)}}
   {{template "topnav" .}}
+  {{end}}
   <main class="{{if eq .Content "maps-active-flights-content"}}map-main{{else if eq .Content "admin-content"}}app-main app-main--wide{{else}}app-main{{end}}">
     {{if eq .Content "dashboard-content"}}{{template "dashboard-content" .}}
     {{else if eq .Content "maps-active-flights-content"}}{{template "maps-active-flights-content" .}}

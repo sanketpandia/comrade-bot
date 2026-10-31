@@ -45,13 +45,14 @@ These are cache hits. A miss returns 503 and does not call Infinite Flight.
 | `GET /maps/flights/active/servers` | `UISessionAuth` | Public |
 | `GET /api/v1/game/flights/active/{server}` | API key or session cookie | Public |
 | `GET /api/v1/game/flight/active/{flightId}` | API key or session cookie | Public |
+| `GET /api/v1/game/sessions/active` | API key or session cookie | Public |
 
 Move the two UI routes out of the session group in
 `services/politburo/internal/transport/http/server.go`. In
-`AuthenticateAPI`, skip auth for the two flight GETs only. Leave
-`/api/v1/game/sessions/active` and every other `/api/v1` path as they are.
+`AuthenticateAPI`, skip auth for those three game GETs only. Leave every other
+`/api/v1` path as it is.
 
-Update the OpenAPI sources for those two operations: drop `security` and the
+Update the OpenAPI sources for those three operations: drop `security` and the
 401 response, then regenerate. Do not hand-edit generated Go.
 
 The single-flight record already includes callsign, position, aircraft,
@@ -284,7 +285,7 @@ div icons will stutter if each one transitions.
 
 - Logged out: the map page, server options, flight list, and one flight
   detail all return 200 when cache is warm, and 503 when it is not.
-- Logged out: `/api/v1/game/sessions/active` is still 401.
+- Logged out: `/api/v1/user/me` is still 401.
 - A bot API key still works on the two flight reads.
 - Filter changes update the status line, the markers, and the query string
   without reloading the map.

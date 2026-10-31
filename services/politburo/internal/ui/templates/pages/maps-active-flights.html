@@ -1,110 +1,93 @@
 {{define "maps-active-flights-content"}}
-<div class="maps-shell" id="maps-shell">
+<div class="maps-shell {{.Maps.Chrome.ShellClass}}" id="maps-shell"
+     data-detail-enabled="{{if .Maps.Chrome.DetailRailEnabled}}1{{else}}0{{end}}"
+     data-embed="{{if .Maps.Chrome.Embed}}1{{else}}0{{end}}">
   <div class="maps-map-area">
-    <div id="leaflet-map" aria-label="Active flights map"></div>
-    <form class="maps-filters" id="maps-filters">
-      <div class="maps-filters__status">
-        <span id="maps-count">0 flights</span>
-        <span id="maps-cached"></span>
-        <span id="maps-error" hidden></span>
-      </div>
-      <label class="maps-filters__field">
-        Server
-        <select id="maps-server" name="serverId"
-                hx-get="/maps/flights/active/servers{{if .ServerID}}?serverId={{.ServerID}}{{end}}"
-                hx-trigger="load"
-                hx-swap="innerHTML"></select>
-      </label>
-      <fieldset class="maps-filters__states">
-        <legend>Pilot state</legend>
-        <label><input type="checkbox" name="pilotState" value="active"> Active</label>
-        <label><input type="checkbox" name="pilotState" value="away_in_flight"> Away in flight</label>
-        <label><input type="checkbox" name="pilotState" value="away_parked"> Away parked</label>
-        <label><input type="checkbox" name="pilotState" value="in_background"> In background</label>
-      </fieldset>
-      <label class="maps-filters__check">
-        <input id="maps-show-callsigns" name="showCallsigns" type="checkbox" checked>
-        Show callsigns
-      </label>
-      <label class="maps-filters__field">
-        Callsign
-        <input id="maps-callsign" name="callSign" type="search" autocomplete="off">
-      </label>
-      <label class="maps-filters__field">
-        Username
-        <input id="maps-username" name="userName" type="search" autocomplete="off">
-      </label>
-      <label class="maps-filters__field">
-        VA code
-        <input id="maps-vacode" name="vaCode" type="search" autocomplete="off">
-      </label>
-    </form>
-  </div>
-  <aside id="maps-detail-panel" class="maps-detail-panel" hidden aria-label="Flight details">
-    <div class="maps-detail-panel__tabs" role="tablist">
-      <button type="button" class="maps-detail-panel__tab" role="tab" data-tab="route" aria-selected="false">Route profile</button>
-      <button type="button" class="maps-detail-panel__tab maps-detail-panel__tab--active" role="tab" data-tab="info" aria-selected="true">Flight info</button>
-    </div>
-    <div class="maps-detail-panel__body">
-      <div class="maps-detail-panel__pane" data-pane="route" hidden>
-        <p class="maps-detail-panel__placeholder">Route profile will appear here when flight-plan data is available.</p>
-      </div>
-      <div class="maps-detail-panel__pane" data-pane="info">
-        <div id="maps-detail-empty" class="maps-detail-panel__empty">Select a flight on the map to view details.</div>
-        <div id="maps-detail-loading" class="maps-detail-panel__loading" hidden>Loading flight…</div>
-        <div id="maps-detail-error" class="maps-detail-panel__error" hidden></div>
-        <div id="maps-detail-content" class="maps-detail-info" hidden>
-          <header class="maps-detail-info__header">
-            <h2 class="maps-detail-info__title">Flight overview</h2>
-            <div class="maps-detail-info__pager">
-              <button type="button" id="maps-detail-page-prev" class="maps-detail-info__page-btn" disabled aria-label="Previous page">‹</button>
-              <span id="maps-detail-page-label">Page 01/02</span>
-              <button type="button" id="maps-detail-page-next" class="maps-detail-info__page-btn" aria-label="Next page">›</button>
-            </div>
-          </header>
-          <div id="maps-detail-page-1" class="maps-detail-info__page">
-            <p id="maps-detail-callsign" class="maps-detail-info__callsign"></p>
-            <ul class="maps-detail-info__meta">
-              <li><span class="maps-detail-info__label">Username</span><span id="maps-detail-username"></span></li>
-              <li><span class="maps-detail-info__label">Virtual organization</span><span id="maps-detail-vo"></span></li>
-              <li><span class="maps-detail-info__label">Aircraft</span><span id="maps-detail-aircraft"></span></li>
-              <li><span class="maps-detail-info__label">Livery</span><span id="maps-detail-livery"></span></li>
-              <li><span class="maps-detail-info__label">Session</span><span id="maps-detail-session"></span></li>
-            </ul>
-            <div class="maps-detail-info__grid">
-              <div class="maps-detail-info__cell"><span class="maps-detail-info__label">Speed</span><span id="maps-detail-speed"></span></div>
-              <div class="maps-detail-info__cell"><span class="maps-detail-info__label">Altitude</span><span id="maps-detail-altitude"></span></div>
-              <div class="maps-detail-info__cell maps-detail-info__cell--wide">
-                <span class="maps-detail-info__label">Vertical speed</span>
-                <span id="maps-detail-vspeed"></span>
-                <span id="maps-detail-vspeed-badge" class="maps-detail-badge" hidden></span>
-              </div>
-              <div class="maps-detail-info__cell"><span class="maps-detail-info__label">Track</span><span id="maps-detail-track"></span></div>
-              <div class="maps-detail-info__cell">
-                <span class="maps-detail-info__label">Pilot state</span>
-                <span id="maps-detail-pilot-badge" class="maps-detail-badge maps-detail-badge--pilot"></span>
-              </div>
-              <div class="maps-detail-info__cell">
-                <span class="maps-detail-info__label">Connection</span>
-                <span id="maps-detail-connection-badge" class="maps-detail-badge maps-detail-badge--connection"></span>
-              </div>
-            </div>
-            <ul class="maps-detail-info__meta maps-detail-info__meta--footer">
-              <li><span class="maps-detail-info__label">FPL sync required</span><span id="maps-detail-fpl" class="maps-detail-badge maps-detail-badge--warn"></span></li>
-              <li><span class="maps-detail-info__label">Last report</span><span id="maps-detail-last-report"></span></li>
-            </ul>
-          </div>
-          <div id="maps-detail-page-2" class="maps-detail-info__page" hidden>
-            <ul class="maps-detail-info__meta">
-              <li><span class="maps-detail-info__label">Flight ID</span><span id="maps-detail-flight-id"></span></li>
-              <li><span class="maps-detail-info__label">User ID</span><span id="maps-detail-user-id"></span></li>
-              <li><span class="maps-detail-info__label">Position</span><span id="maps-detail-position"></span></li>
-              <li><span class="maps-detail-info__label">Pilot state code</span><span id="maps-detail-pilot-code"></span></li>
-              <li><span class="maps-detail-info__label">Session ID</span><span id="maps-detail-session-id"></span></li>
-            </ul>
+    <div id="leaflet-map" aria-label="Active flights map" hx-preserve="true"></div>
+    {{if .Maps.Chrome.ShowMapOnlyButton}}
+    <button type="button" class="maps-map-only" id="maps-map-only" aria-pressed="false">Map only</button>
+    {{end}}
+    <div class="maps-filters-wrap">
+      <button type="button" class="maps-filters-toggle" id="maps-filters-toggle" aria-expanded="{{if .Maps.Chrome.FiltersOpen}}true{{else}}false{{end}}">
+        Filters <span class="maps-filters-toggle__count" id="maps-filters-toggle-count"></span>
+      </button>
+      <form class="maps-filters" id="maps-filters"
+            hx-get="/maps/flights/active/flights"
+            hx-target="#maps-flights-swap"
+            hx-swap="innerHTML transition:true"
+            hx-trigger="load, every 60s, change, keyup changed delay:300ms from:input[type=search]">
+        {{range $k, $v := .Maps.ChromeHidden}}
+        <input type="hidden" name="{{$k}}" value="{{$v}}">
+        {{end}}
+        <div id="maps-flights-swap" class="maps-flights-swap">
+          <div class="maps-filters__status">
+            <span id="maps-count">0 flights</span>
+            <span id="maps-cached"></span>
+            <span id="maps-error" hidden></span>
           </div>
         </div>
+        <div class="maps-filters__toolbar">
+          <button type="button" class="maps-filters__collapse" id="maps-filters-collapse" aria-label="Collapse filters">−</button>
+        </div>
+        <label class="maps-filters__field">
+          Server
+          <select id="maps-server" name="serverId"
+                  hx-get="/maps/flights/active/servers{{if .Maps.ServerID}}?serverId={{.Maps.ServerID}}{{end}}"
+                  hx-trigger="load"
+                  hx-swap="innerHTML">
+            {{if .Maps.ServerID}}<option value="{{.Maps.ServerID}}" selected>{{.Maps.ServerID}}</option>{{end}}
+          </select>
+        </label>
+        <fieldset class="maps-filters__states">
+          <legend>Pilot state</legend>
+          <label class="maps-filters__chip maps-filters__chip--active">
+            <input type="checkbox" name="pilotState" value="active"{{if pilotStateChecked .Maps.PilotStates "active"}} checked{{end}}> Active
+          </label>
+          <label class="maps-filters__chip maps-filters__chip--away-flight">
+            <input type="checkbox" name="pilotState" value="away_in_flight"{{if pilotStateChecked .Maps.PilotStates "away_in_flight"}} checked{{end}}> Away in flight
+          </label>
+          <label class="maps-filters__chip maps-filters__chip--away-parked">
+            <input type="checkbox" name="pilotState" value="away_parked"{{if pilotStateChecked .Maps.PilotStates "away_parked"}} checked{{end}}> Away parked
+          </label>
+          <label class="maps-filters__chip maps-filters__chip--background">
+            <input type="checkbox" name="pilotState" value="in_background"{{if pilotStateChecked .Maps.PilotStates "in_background"}} checked{{end}}> In background
+          </label>
+        </fieldset>
+        <label class="maps-filters__check">
+          <input id="maps-show-callsigns" name="showCallsigns" type="checkbox" value="1"{{if .Maps.ShowCallsigns}} checked{{end}}>
+          Show callsigns
+        </label>
+        <label class="maps-filters__field">
+          Callsign
+          <input id="maps-callsign" name="callSign" type="search" autocomplete="off" value="{{.Maps.CallSign}}">
+        </label>
+        <label class="maps-filters__field">
+          Username
+          <input id="maps-username" name="userName" type="search" autocomplete="off" value="{{.Maps.UserName}}">
+        </label>
+        <label class="maps-filters__field">
+          VA code
+          <input id="maps-vacode" name="vaCode" type="search" autocomplete="off" value="{{.Maps.VACode}}">
+        </label>
+      </form>
+    </div>
+  </div>
+  <aside id="maps-detail-panel" class="maps-detail-panel" hidden aria-label="Flight details">
+    <header class="maps-detail-panel__header">
+      <div class="maps-detail-panel__tabs" role="tablist" id="maps-detail-tabs">
+        <a class="maps-detail-panel__tab maps-detail-panel__tab--active" role="tab"
+           href="#" data-tab="flight" aria-selected="true">Flight</a>
+        <a class="maps-detail-panel__tab" role="tab"
+           href="#" data-tab="route" aria-selected="false">Route</a>
+        <a class="maps-detail-panel__tab" role="tab"
+           href="#" data-tab="user" aria-selected="false">User</a>
       </div>
+      <button type="button" class="maps-detail-panel__close" id="maps-detail-close" aria-label="Close flight details">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.29 19.71 2.88 18.3 9.17 12 2.88 5.71 4.29 4.3 10.59 10.6l6.29-6.3z"/></svg>
+      </button>
+    </header>
+    <div class="maps-detail-panel__body" id="maps-detail-body">
+      <p class="maps-detail-panel__empty">Select a flight on the map to view details.</p>
     </div>
   </aside>
 </div>

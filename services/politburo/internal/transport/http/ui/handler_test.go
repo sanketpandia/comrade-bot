@@ -49,7 +49,7 @@ func newUIHandler(t *testing.T, sessions sessionManager, tickets ticketConsumer)
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	return NewHandler(renderer, sessions, tickets, nil, nil, nil, nil, nil, nil, false)
+	return NewHandler(renderer, sessions, tickets, nil, nil, nil, nil, nil, nil, nil, false)
 }
 
 func TestLoginConsumesTicketThenSetsCookie(t *testing.T) {
@@ -189,7 +189,7 @@ func newContactUIHandler(t *testing.T, submitter contactSubmitter) *Handler {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	return NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, submitter, nil, nil, nil, nil, false)
+	return NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, submitter, nil, nil, nil, nil, nil, false)
 }
 
 func TestContactRendersForm(t *testing.T) {
@@ -420,17 +420,33 @@ func TestActiveFlightsMapRenders(t *testing.T) {
 	if !strings.Contains(body, `id="leaflet-map"`) || !strings.Contains(body, `id="maps-filters"`) {
 		t.Fatalf("missing map shell: %s", body)
 	}
-	if !strings.Contains(body, `id="maps-detail-panel"`) {
-		t.Fatalf("missing flight detail panel: %s", body)
+	if !strings.Contains(body, `id="maps-detail-panel"`) || !strings.Contains(body, `hidden`) {
+		t.Fatalf("detail panel should start closed: %s", body)
 	}
-	if !strings.Contains(body, `aria-label="Primary"`) || !strings.Contains(body, `class="maps-page"`) {
+	for _, tab := range []string{">Flight<", ">Route<", ">User<"} {
+		if !strings.Contains(body, tab) {
+			t.Fatalf("missing tab %q: %s", tab, body)
+		}
+	}
+	if !strings.Contains(body, `aria-label="Primary"`) || !strings.Contains(body, `maps-page`) {
 		t.Fatalf("map is outside the app shell: %s", body)
 	}
-	if !strings.Contains(body, "/static/js/maps/active-flights.mjs") || !strings.Contains(body, "/static/js/htmx.min.js") {
-		t.Fatalf("missing page script: %s", body)
+	if !strings.Contains(body, `hx-get="/maps/flights/active/flights"`) {
+		t.Fatalf("missing flights partial request: %s", body)
 	}
-	if !strings.Contains(body, `hx-get="/maps/flights/active/servers"`) {
-		t.Fatalf("missing server options request: %s", body)
+}
+
+func TestActiveFlightsMapEmbedHidesHeader(t *testing.T) {
+	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
+	req := httptest.NewRequest(http.MethodGet, "/maps/flights/active?mode=embed", nil)
+	recorder := httptest.NewRecorder()
+	handler.ActiveFlightsMap(recorder, req)
+	body := recorder.Body.String()
+	if strings.Contains(body, `aria-label="Primary"`) {
+		t.Fatalf("embed mode should omit topbar: %s", body)
+	}
+	if !strings.Contains(body, `maps-shell--embed`) {
+		t.Fatalf("missing embed shell class: %s", body)
 	}
 }
 
@@ -478,7 +494,7 @@ func TestDashboardShowsConnectWhenOAuthConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, true)
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true)
 	recorder := httptest.NewRecorder()
 	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
 	body := recorder.Body.String()

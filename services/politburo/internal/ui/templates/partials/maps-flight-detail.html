@@ -1,0 +1,58 @@
+{{define "maps-flight-detail"}}
+{{if .GoneMessage}}
+<p class="maps-detail-panel__error">{{.GoneMessage}}</p>
+{{else if eq .Tab "route"}}
+<p class="maps-detail-panel__placeholder">Route information will appear here when flight-plan data is available.</p>
+{{else if eq .Tab "user"}}
+<p class="maps-detail-panel__placeholder">User profile information is not available on the public map.</p>
+{{else if .Record}}
+<div class="maps-detail-info">
+  <p class="maps-detail-info__callsign">{{.Record.Callsign}}</p>
+  <ul class="maps-detail-info__meta">
+    <li><span class="maps-detail-info__label">Username</span><span>{{.Record.Username}}</span></li>
+    <li><span class="maps-detail-info__label">Virtual organization</span><span>{{.Record.VirtualOrganization}}</span></li>
+    <li><span class="maps-detail-info__label">Aircraft</span><span>{{.Record.AircraftName}}</span></li>
+    <li><span class="maps-detail-info__label">Livery</span><span>{{.Record.LiveryName}}</span></li>
+    <li><span class="maps-detail-info__label">Session</span><span>{{.Record.SessionName}}</span></li>
+  </ul>
+  <div class="maps-detail-info__grid">
+    <div class="maps-detail-info__cell"><span class="maps-detail-info__label">Speed</span><span>{{.Record.Speed}}</span></div>
+    <div class="maps-detail-info__cell"><span class="maps-detail-info__label">Altitude</span><span>{{.Record.Altitude}}</span></div>
+    <div class="maps-detail-info__cell maps-detail-info__cell--wide">
+      <span class="maps-detail-info__label">Vertical speed</span>
+      <span>{{.Record.VerticalSpeed}}</span>
+      <span class="maps-detail-badge {{.Record.VSpeedTrendClass}}">{{.Record.VSpeedTrend}}</span>
+    </div>
+    <div class="maps-detail-info__cell"><span class="maps-detail-info__label">Track</span><span>{{.Record.Track}}</span></div>
+    <div class="maps-detail-info__cell">
+      <span class="maps-detail-info__label">Pilot state</span>
+      <span class="maps-detail-badge {{.Record.PilotStateClass}}">{{.Record.PilotState}}</span>
+    </div>
+    <div class="maps-detail-info__cell">
+      <span class="maps-detail-info__label">Connection</span>
+      <span class="maps-detail-badge {{.Record.ConnectionClass}}">{{.Record.Connection}}</span>
+    </div>
+  </div>
+  <ul class="maps-detail-info__meta maps-detail-info__meta--footer">
+    <li>
+      <span class="maps-detail-info__label">FPL sync required</span>
+      {{if .Record.FPLSyncRequired}}
+      <span class="maps-detail-badge maps-detail-badge--warn">YES</span>
+      {{else}}
+      <span class="maps-detail-badge maps-detail-badge--muted">NO</span>
+      {{end}}
+    </li>
+    <li><span class="maps-detail-info__label">Last report</span><span>{{.Record.LastReport}}</span></li>
+  </ul>
+  <div class="maps-detail-info__ids">
+    <dl>
+      <div><dt>Flight ID</dt><dd>{{.Record.FlightID}}</dd></div>
+      <div><dt>User ID</dt><dd>{{.Record.UserID}}</dd></div>
+      <div><dt>Position</dt><dd>{{.Record.Position}}</dd></div>
+      <div><dt>Pilot state code</dt><dd>{{.Record.PilotStateCode}}</dd></div>
+      <div><dt>Session ID</dt><dd>{{.Record.SessionID}}</dd></div>
+    </dl>
+  </div>
+</div>
+{{end}}
+{{end}}

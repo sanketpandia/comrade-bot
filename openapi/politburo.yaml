@@ -58,9 +58,6 @@ paths:
       summary: Read the latest active Infinite Flight sessions from cache
       tags:
         - Game
-      security:
-        - ApiKeyAuth: []
-        - CookieAuth: []
       responses:
         '200':
           description: The latest cached active sessions
@@ -68,12 +65,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ActiveSessionsResponse'
-        '401':
-          description: Missing or inactive API key or session cookie
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: The cache entry could not be read
           content:
@@ -92,9 +83,6 @@ paths:
       summary: Read cached active flight motion tracks for a server
       tags:
         - Game
-      security:
-        - ApiKeyAuth: []
-        - CookieAuth: []
       parameters:
         - name: normalizedServerName
           in: path
@@ -157,12 +145,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Missing or inactive API key or session cookie
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: The cache entry could not be read
           content:
@@ -181,9 +163,6 @@ paths:
       summary: Read cached enriched record for one active flight
       tags:
         - Game
-      security:
-        - ApiKeyAuth: []
-        - CookieAuth: []
       parameters:
         - name: flightId
           in: path
@@ -201,12 +180,6 @@ paths:
                 $ref: '#/components/schemas/ActiveFlightRecordResponse'
         '400':
           description: An invalid flight identifier was supplied
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Missing or inactive API key or session cookie
           content:
             application/json:
               schema:

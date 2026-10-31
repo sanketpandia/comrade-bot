@@ -15,6 +15,7 @@ import (
 
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/access/session"
+	domainflights "infinite-experiment/politburo/internal/livegame/flights"
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/operations/contact"
 	"infinite-experiment/politburo/internal/operations/operator"
@@ -80,6 +81,7 @@ type Handler struct {
 	sessions       sessionManager
 	tickets        ticketConsumer
 	lister         sessionLister
+	flights        *domainflights.Reader
 	reports        *reports.Repository
 	contact        contactSubmitter
 	contactLimiter contactRateLimiter
@@ -98,10 +100,12 @@ func NewHandler(
 	operatorService *operator.Service,
 	platformOperators []string,
 	lister sessionLister,
+	flightsReader *domainflights.Reader,
 	ifOAuthEnabled bool,
 ) *Handler {
 	return &Handler{
 		renderer: renderer, sessions: sessions, tickets: tickets, lister: lister,
+		flights: flightsReader,
 		reports: reportRepo, contact: contactRepo, contactLimiter: contactLimiter,
 		operator: operatorService, operators: platformOperators,
 		ifOAuthEnabled: ifOAuthEnabled,
@@ -321,8 +325,9 @@ func (h *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 
 // ActiveFlightsMap is the full-screen live flights map.
 func (h *Handler) ActiveFlightsMap(w http.ResponseWriter, r *http.Request) {
+	view := mapsPageViewFromRequest(r)
 	data := basePageData(r, "Active flights", "maps-active-flights-content", map[string]any{
-		"ServerID": strings.TrimSpace(r.URL.Query().Get("serverId")),
+		"Maps": view,
 	})
 	if err := h.renderer.Render(w, "base", data); err != nil {
 		http.Error(w, "template render failed", http.StatusInternalServerError)

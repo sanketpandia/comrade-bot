@@ -61,6 +61,11 @@ func AuthenticateAPI(lookup APIKeyLookup, sessions SessionLookup) func(http.Hand
 				return
 			}
 
+			if isPublicGameCacheRead(r.Method, path) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			if sessions != nil && isSessionAPIPath(path) {
 				claims, ok, err := sessions.Lookup(r)
 				if err != nil {
@@ -116,6 +121,24 @@ func isSessionAPIPath(path string) bool {
 
 func isSessionOnlyPath(path string) bool {
 	return path == "/oauth/callback"
+}
+
+func isPublicGameCacheRead(method, path string) bool {
+	if method != http.MethodGet {
+		return false
+	}
+	if path == "/api/v1/game/sessions/active" {
+		return true
+	}
+	if strings.HasPrefix(path, "/api/v1/game/flights/active/") {
+		rest := strings.TrimPrefix(path, "/api/v1/game/flights/active/")
+		return rest != "" && !strings.Contains(rest, "/")
+	}
+	if strings.HasPrefix(path, "/api/v1/game/flight/active/") {
+		rest := strings.TrimPrefix(path, "/api/v1/game/flight/active/")
+		return rest != ""
+	}
+	return false
 }
 
 // RequireDiscordBotContext requires Discord user and server headers after API
