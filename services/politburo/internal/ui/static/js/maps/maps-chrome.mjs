@@ -36,10 +36,18 @@ export function onChromeTransitionEnd(callback) {
   window.setTimeout(callback, 220);
 }
 
+function setFiltersExpanded(shell, filtersToggle, expanded) {
+  shell.classList.toggle('maps-shell--filters-collapsed', !expanded);
+  if (!filtersToggle) return;
+  filtersToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  filtersToggle.setAttribute('aria-label', 'Expand filters');
+}
+
 export function initMapsChrome({ shell, map, getMapPadding }) {
   if (!shell) return;
 
   const filtersToggle = document.getElementById('maps-filters-toggle');
+  const filtersCollapse = document.getElementById('maps-filters-collapse');
   const mapOnlyBtn = document.getElementById('maps-map-only');
 
   function invalidate() {
@@ -51,23 +59,23 @@ export function initMapsChrome({ shell, map, getMapPadding }) {
     });
   }
 
-  filtersToggle?.addEventListener('click', () => {
-    shell.classList.remove('maps-shell--filters-collapsed');
-    filtersToggle.setAttribute('aria-expanded', 'true');
+  function persistFiltersCollapsed(collapsed) {
     if (!urlHasChromeFlags()) {
       const stored = readStoredCollapse() || {};
-      writeStoredCollapse({ ...stored, filtersCollapsed: false });
+      writeStoredCollapse({ ...stored, filtersCollapsed: collapsed });
     }
+  }
+
+  filtersToggle?.addEventListener('click', () => {
+    if (!shell.classList.contains('maps-shell--filters-collapsed')) return;
+    setFiltersExpanded(shell, filtersToggle, true);
+    persistFiltersCollapsed(false);
     invalidate();
   });
 
-  document.getElementById('maps-filters-collapse')?.addEventListener('click', () => {
-    shell.classList.add('maps-shell--filters-collapsed');
-    filtersToggle?.setAttribute('aria-expanded', 'false');
-    if (!urlHasChromeFlags()) {
-      const stored = readStoredCollapse() || {};
-      writeStoredCollapse({ ...stored, filtersCollapsed: true });
-    }
+  filtersCollapse?.addEventListener('click', () => {
+    setFiltersExpanded(shell, filtersToggle, false);
+    persistFiltersCollapsed(true);
     invalidate();
   });
 
@@ -84,8 +92,7 @@ export function initMapsChrome({ shell, map, getMapPadding }) {
   if (!urlHasChromeFlags()) {
     const stored = readStoredCollapse();
     if (stored?.filtersCollapsed) {
-      shell.classList.add('maps-shell--filters-collapsed');
-      filtersToggle?.setAttribute('aria-expanded', 'false');
+      setFiltersExpanded(shell, filtersToggle, false);
     }
     if (stored?.mapOnly) {
       shell.classList.add('maps-shell--map-only');

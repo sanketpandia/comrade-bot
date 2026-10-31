@@ -328,6 +328,7 @@ func TestDashboardRendersShell(t *testing.T) {
 		`href="` + routes.MapsFlightsActive + `?serverId=expert"`,
 		`href="` + routes.MapsFlightsActive + `?serverId=casual"`,
 		`href="` + routes.MapsFlightsActive + `?serverId=training"`,
+		routes.StaticPrefix + "css/tokens.css",
 		routes.StaticPrefix + "css/base.css",
 	} {
 		if !strings.Contains(body, want) {
@@ -434,6 +435,30 @@ func TestActiveFlightsMapRenders(t *testing.T) {
 	}
 	if !strings.Contains(body, `hx-get="`+routes.MapsFlightsActiveFlights+`"`) {
 		t.Fatalf("missing flights partial request: %s", body)
+	}
+	if !strings.Contains(body, `id="maps-server"`) {
+		t.Fatalf("missing server select: %s", body)
+	}
+	if !strings.Contains(body, `hx-get="`+routes.MapsFlightsActiveServers) {
+		t.Fatalf("server select must load options via HTMX: %s", body)
+	}
+	if !strings.Contains(body, `hx-target="this"`) {
+		t.Fatalf("server select must swap into itself, not inherit form hx-target: %s", body)
+	}
+	if !strings.Contains(body, `id="maps-pilot-state"`) || !strings.Contains(body, `multiselect__trigger`) {
+		t.Fatalf("pilot state should use the custom multi-select dropdown: %s", body)
+	}
+	if !strings.Contains(body, `id="maps-filters-apply"`) {
+		t.Fatalf("missing apply filters control: %s", body)
+	}
+	if !strings.Contains(body, `id="maps-filters-toggle"`) || !strings.Contains(body, `maps-filters__icon-toggle`) {
+		t.Fatalf("missing filters icon toggle: %s", body)
+	}
+	if !strings.Contains(body, `id="maps-filters-collapse"`) || !strings.Contains(body, `maps-filters__header`) {
+		t.Fatalf("missing expanded filters header row: %s", body)
+	}
+	if strings.Contains(body, `keyup changed delay:300ms`) {
+		t.Fatalf("filters should not search on keystroke: %s", body)
 	}
 }
 

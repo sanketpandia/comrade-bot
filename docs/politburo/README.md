@@ -27,6 +27,8 @@ the previous implementation is kept separately during migration.
   Swagger UI, and Comrade Bot TypeScript generation.
 - `development/containers.md`: development/production images, CI, and runtime
   secret injection.
+- `development/styling-guide.md`: SSR UI tokens, glass surfaces, shared
+  components, and the plan to bring every page in line with the live map.
 - `observability/metrics.md`: performance-oriented Prometheus metrics.
 - `product/`: application thesis, data ownership, rewrite inventory, and the
   feature planning board (see `product/README.md`).

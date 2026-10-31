@@ -71,10 +71,8 @@ This document describes standards for new work across the Infinite Experiment wo
 - UI handlers should render templates or partials and delegate domain work to services.
 - Do not access infrastructure directly from templates or UI handlers when a domain/platform service exists.
 - Prefer reusable partials under the active `politburo/templates/partials/` tree.
-- Follow shared styling tokens and components from `static/css/design-system.css`; avoid inline styles and parallel theme systems.
-- Use shared Vizburo UI primitives for forms, dropdowns, multiselects, modals, cards, buttons, alerts, and badges before adding page-local component styles.
-- Put reusable Vizburo behavior in ES modules under `politburo/static/js/`, following the `FlightMap` component pattern: exported classes/functions, clear constructor options, no hidden global dependencies beyond explicit browser/library requirements.
-- Initialize reusable HTML components through `static/js/ui-components.mjs` data attributes such as `data-ui-dropdown`, `data-ui-multiselect`, and `data-ui-modal`; preserve normal form submission and HTMX compatibility.
+- Follow the tokens and components in `docs/politburo/development/styling-guide.md` (rewrite UI under `services/politburo/internal/ui/`); avoid inline styles and parallel theme systems.
+- Use shared UI classes from `docs/politburo/development/styling-guide.md` (`tokens.css`, `components.css`, and modules under `services/politburo/internal/ui/static/js/ui/`); preserve normal form submission and HTMX compatibility.
 - Prefer HTMX/server-rendered partial updates over adding a separate frontend state system.
 - Classify mobile behavior for each UI change; admin screens may be desktop-first when that tradeoff is explicit.
 - `infra/templates.Renderer` should cache parsed templates outside local development and preserve local reload behavior when `APP_ENV=local`.
@@ -120,7 +118,7 @@ This document describes standards for new work across the Infinite Experiment wo
 - When touching large legacy files, split by responsibility instead of adding unrelated behavior.
 - Known split candidates include `internal/events/handler.go`, `internal/pilots/stats_service.go`, `internal/flights/service.go`, `internal/vaadmin/handler.go`, and `internal/pireps/service.go`.
 - PIREP sync has Redis queue and Watermill behavior side-by-side; avoid deepening legacy queue dependence unless required.
-- Vizburo styling should converge on shared design-system tokens and reusable partials.
+- Politburo SSR styling should follow `docs/politburo/development/styling-guide.md` (shared tokens, components, and partials).
 - Comrade Bot command registration has converged on `src/commands/registry.ts`; do not revive removed/stubbed command handlers unless the active registry requires them.
 - Header naming is mid-migration; prefer the `X-Discord-User-Id` and `X-Discord-Server-Id` middleware constants for new bot-context API work.
 
@@ -130,7 +128,7 @@ This document describes standards for new work across the Infinite Experiment wo
 - For registration/OpenAPI work, run the focused API regression set documented in `AGENTS.md` and regenerate with `make generate-api` after spec edits.
 - For upstream LiveAPI client work, run `make generate-liveapi-client`, focused `infra/liveapi` and LiveAPI consumer package tests, a server build, and a short worker-start validation when the wrapper behavior changes.
 - For Comrade Bot changes, run `npm run build` from `comrade-bot/`.
-- For Vizburo CSS changes, edit `static/css/design-system.css` directly and run focused Go template/build checks; the old Tailwind `npm run css:build` path is retired for active root Vizburo.
+- For Politburo SSR CSS changes, edit sources under `services/politburo/internal/ui/static/css/` per `docs/politburo/development/styling-guide.md` and run focused Go template/build checks.
 - For infra changes, validate compose, scrape targets, dashboards, env templates, health checks, ports, volumes, and labels from `labour-bureau/`.
 - User-visible, admin-facing, config, deployment, and observability behavior changes should update the relevant docs or help text in the same feature slice.
 

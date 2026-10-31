@@ -1,5 +1,6 @@
 import { FlightMap } from '/static/js/map/flight-map.mjs';
 import { initMapsChrome, onChromeTransitionEnd } from '/static/js/maps/maps-chrome.mjs';
+import { initMultiselect } from '/static/js/ui/multiselect.mjs';
 
 const DEFAULT_SERVER = 'casual';
 const MARKER_COLOR = '#d5c4a1';
@@ -75,8 +76,7 @@ function applyTracksFromPartial() {
   syncShowCallsignsField();
   const countEl = document.getElementById('maps-count');
   if (toggleCount && countEl) {
-    toggleCount.textContent = countEl.textContent.replace(/^\d+/, (n) => `· ${n}`).replace('· ', '· ');
-    toggleCount.textContent = countEl.textContent;
+    toggleCount.textContent = countEl.textContent.trim();
   }
   const flights = readTracksFromDOM();
   const padding = getMapPadding();
@@ -109,9 +109,9 @@ function closeDetailPanel() {
 
 function setActiveTab(tab) {
   if (!detailTabs) return;
-  for (const link of detailTabs.querySelectorAll('.maps-detail-panel__tab')) {
+  for (const link of detailTabs.querySelectorAll('.tabs__tab')) {
     const active = link.dataset.tab === tab;
-    link.classList.toggle('maps-detail-panel__tab--active', active);
+    link.classList.toggle('tabs__tab--active', active);
     link.setAttribute('aria-selected', active ? 'true' : 'false');
   }
 }
@@ -133,14 +133,14 @@ async function loadFlightDetail(flightId, tab = 'flight') {
     }
   } catch {
     if (detailBody) {
-      detailBody.innerHTML = '<p class="maps-detail-panel__error">Failed to load flight details.</p>';
+      detailBody.innerHTML = '<p class="panel-message panel-message--error">Failed to load flight details.</p>';
     }
   }
 }
 
 function bindDetailTabs() {
   detailTabs?.addEventListener('click', (event) => {
-    const link = event.target.closest('.maps-detail-panel__tab');
+    const link = event.target.closest('.tabs__tab');
     if (!link || !selectedFlightId) return;
     event.preventDefault();
     loadFlightDetail(selectedFlightId, link.dataset.tab || 'flight');
@@ -188,13 +188,17 @@ document.body.addEventListener('htmx:afterSettle', (event) => {
   }
 });
 
-form?.addEventListener('change', syncShowCallsignsField);
+form?.addEventListener('htmx:beforeRequest', (event) => {
+  if (event.target !== form) return;
+  syncShowCallsignsField();
+});
 form?.addEventListener('submit', (event) => {
   event.preventDefault();
 });
 
 function start() {
   initMapsChrome({ shell, map, getMapPadding });
+  initMultiselect(document.getElementById('maps-pilot-state'));
   bindDetailTabs();
   map.onFlightClick((flight) => {
     const flightId = flight?.flightId ?? flight?.flight_id ?? '';

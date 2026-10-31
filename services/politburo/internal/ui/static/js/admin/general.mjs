@@ -7,7 +7,7 @@ function showStatus(message, isError) {
   }
   statusEl.textContent = message;
   statusEl.hidden = !message;
-  statusEl.classList.toggle('admin-panel__status--error', Boolean(isError));
+  statusEl.classList.toggle('panel-message--error', Boolean(isError));
 }
 
 async function loadVADetails() {
