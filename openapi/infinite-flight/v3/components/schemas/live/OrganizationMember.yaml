@@ -1,0 +1,28 @@
+type: object
+required:
+  - userId
+  - role
+  - joinedAt
+  - activeLifts
+description: Member of a Live organization.
+properties:
+  userId:
+    type: string
+    format: uuid
+    description: Infinite Flight user ID.
+    x-go-type: string
+  username:
+    type: string
+    nullable: true
+    description: Current public username, if available.
+  role:
+    $ref: ../enums/PersistentOrganizationMemberRole.yaml
+  joinedAt:
+    type: string
+    format: date-time
+    description: UTC time when the member joined the organization.
+  activeLifts:
+    type: integer
+    description: |
+      Lifts the member applied to this organization that are active now. Expired, refunded, and
+      reassigned lifts are not counted.

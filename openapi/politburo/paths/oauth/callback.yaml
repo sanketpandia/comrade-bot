@@ -1,0 +1,33 @@
+get:
+  operationId: completeInfiniteFlightOAuthCallback
+  summary: Infinite Flight OAuth redirect callback
+  description: |
+    Browser return target registered with the Infinite Flight OAuth client
+    (`{UI_BASE_URL}/oauth/callback`). Exchanges the authorization code for tokens,
+    stores them in Redis for the Politburo user id stored in pending OAuth state, and redirects
+    to the dashboard. A `session_id` cookie is optional; when present it must match the pending user.
+
+    This path is not under `/api/v1` so the redirect URI matches Infinite Flight app settings.
+  tags: [Auth]
+  security: []
+  parameters:
+    - name: code
+      in: query
+      required: true
+      description: Authorization code from Infinite Flight.
+      schema:
+        type: string
+    - name: state
+      in: query
+      required: true
+      description: Opaque value from the authorize request; must match pending Redis state.
+      schema:
+        type: string
+  responses:
+    "303":
+      description: Redirect to the dashboard (`oauth=connected` or `oauth=error` query flag).
+      headers:
+        Location:
+          schema:
+            type: string
+            example: /dashboard?oauth=connected

@@ -2,9 +2,6 @@ get:
   operationId: getActiveFlights
   summary: Read cached active flight motion tracks for a server
   tags: [Game]
-  security:
-    - ApiKeyAuth: []
-    - CookieAuth: []
   parameters:
     - name: normalizedServerName
       in: path
@@ -63,12 +60,6 @@ get:
             $ref: "../../components/schemas/ActiveFlightsResponse.yaml"
     "400":
       description: An invalid query value was supplied, or `vaCode` is not an active virtual airline
-      content:
-        application/json:
-          schema:
-            $ref: "../../components/schemas/ErrorResponse.yaml"
-    "401":
-      description: Missing or inactive API key or session cookie
       content:
         application/json:
           schema:

@@ -1,0 +1,32 @@
+post:
+  operationId: oauthToken
+  summary: OAuth2 token endpoint
+  description: |
+    Exchange an authorization code or refresh token for tokens. Request body is
+    `application/x-www-form-urlencoded` (OAuth2 standard).
+
+    **Confidential client** (`authorization_code`): include `client_secret`. **Public client**: send
+    `client_id` and `code_verifier` only — no `client_secret`.
+
+    **Refresh** (`refresh_token`): confidential clients include `client_secret`; public clients send
+    `client_id` and `refresh_token` only. Refresh tokens rotate; persist the new `refresh_token` from each response.
+  tags: [OAuth2]
+  security: []
+  servers:
+    - url: https://api.infiniteflight.com/auth/v2
+      description: OAuth2 authorization server
+  requestBody:
+    required: true
+    content:
+      application/x-www-form-urlencoded:
+        schema:
+          $ref: ../../components/schemas/OAuthTokenRequest.yaml
+  responses:
+    "200":
+      description: Token response.
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/OAuthTokenResponse.yaml
+    "400":
+      description: Invalid grant, client authentication failure, or malformed request.

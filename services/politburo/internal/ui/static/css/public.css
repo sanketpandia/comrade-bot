@@ -82,6 +82,69 @@ html, body { height: 100%; }
 
 .public-footer a:hover { color: var(--text-primary); }
 
+.public-copy--left { text-align: left; }
+
+.public-form {
+  width: 100%;
+  text-align: left;
+}
+
+.public-form__label {
+  display: block;
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.public-form__input,
+.public-form__textarea {
+  display: block;
+  width: 100%;
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface, var(--bg-app));
+  color: var(--text-primary);
+  font: inherit;
+  line-height: 1.45;
+}
+
+.public-form__textarea { resize: vertical; min-height: 8rem; }
+
+.public-form__input:focus-visible,
+.public-form__textarea:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.public-form__actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 0.25rem;
+}
+
+.public-form__success {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  text-align: left;
+}
+
+.public-form__error {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, #c0392b 15%, transparent);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  text-align: left;
+}
+
 .public-loader {
   position: fixed;
   inset: 0;

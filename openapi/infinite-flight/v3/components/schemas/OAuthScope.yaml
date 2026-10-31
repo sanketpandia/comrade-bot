@@ -1,0 +1,21 @@
+type: string
+enum:
+  - openid
+  - profile
+  - offline_access
+  - live:organizations.read
+  - live:members.read
+  - live:aircraft.read
+  - live:schedules.read
+  - live:schedules.write
+description: |
+  Request only needed scopes. In the authorization request, scopes are space-delimited in the `scope` query parameter.
+x-enum-descriptions:
+  openid: Sign the user in.
+  profile: Read the user's basic sign-in profile.
+  offline_access: Request a refresh token.
+  live:organizations.read: Read Live organizations the user belongs to.
+  live:members.read: Read members of Live organizations the user belongs to, with roles and active lifts.
+  live:aircraft.read: Read Live aircraft in organizations the user belongs to.
+  live:schedules.read: Read Live schedules in organizations the user belongs to.
+  live:schedules.write: Create, update, reorder, and delete Live schedules and manage crew where allowed.

@@ -41,6 +41,12 @@ const (
 	// PrefixLoginTicket namespaces one-time signed-link tickets.
 	PrefixLoginTicket = PrefixAuth + "login_ticket:"
 
+	// PrefixIFOAuthPending namespaces one-time OAuth PKCE state.
+	PrefixIFOAuthPending = PrefixAuth + "if_oauth:"
+
+	// PrefixIFOAuthUser namespaces stored Infinite Flight OAuth tokens per user.
+	PrefixIFOAuthUser = PrefixAuth + "if_oauth_user:"
+
 	// PrefixSession namespaces browser session objects.
 	PrefixSession = "session:"
 )
@@ -51,6 +57,14 @@ func KeyAPIKeyStatus(apiKey string) string {
 
 func KeyLoginTicket(ticketID string) string {
 	return PrefixLoginTicket + ticketID
+}
+
+func KeyIFOAuthPending(state string) string {
+	return PrefixIFOAuthPending + state
+}
+
+func KeyIFOAuthUser(userID string) string {
+	return PrefixIFOAuthUser + userID
 }
 
 func KeySession(sessionID string) string {

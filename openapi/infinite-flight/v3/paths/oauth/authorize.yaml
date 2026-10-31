@@ -1,0 +1,78 @@
+get:
+  operationId: oauthAuthorize
+  summary: OAuth2 authorization endpoint
+  description: |
+    Authorization code flow with **PKCE** (`code_challenge_method=S256`). Redirect the user to this endpoint.
+    The user signs in at `auth.infiniteflight.com` and approves requested scopes. On approval, the server
+    redirects to the registered `redirect_uri` with `code` and the original `state`.
+
+    By default, consent may be skipped when the same user already authorized the same client and scopes.
+    Add `prompt=consent` to always show the consent screen (useful for iOS Universal Links that need a
+    user-initiated final redirect).
+  tags: [OAuth2]
+  security: []
+  servers:
+    - url: https://api.infiniteflight.com/auth/v2
+      description: OAuth2 authorization server
+  parameters:
+    - name: response_type
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [code]
+    - name: client_id
+      in: query
+      required: true
+      description: OAuth client id (for example `ifc_your_client_id`).
+      schema:
+        type: string
+    - name: redirect_uri
+      in: query
+      required: true
+      description: Must match a redirect URI registered for the client.
+      schema:
+        type: string
+        format: uri
+    - name: scope
+      in: query
+      required: true
+      description: Space-delimited scopes (see `OAuthScope`).
+      schema:
+        type: string
+        example: openid profile live:organizations.read live:aircraft.read
+    - name: state
+      in: query
+      required: true
+      description: Opaque value returned unchanged on redirect for CSRF protection.
+      schema:
+        type: string
+    - name: code_challenge
+      in: query
+      required: true
+      description: PKCE challenge derived from `code_verifier`.
+      schema:
+        type: string
+    - name: code_challenge_method
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [S256]
+    - name: prompt
+      in: query
+      required: false
+      description: Set to `consent` to force the consent screen even when prior consent exists.
+      schema:
+        type: string
+        enum: [consent]
+  responses:
+    "302":
+      description: Redirect to `redirect_uri` with `code` and `state` query parameters on success.
+      headers:
+        Location:
+          schema:
+            type: string
+            format: uri
+    "400":
+      description: Invalid or rejected authorization request.

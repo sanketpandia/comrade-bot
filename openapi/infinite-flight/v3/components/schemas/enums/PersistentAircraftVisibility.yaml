@@ -1,0 +1,4 @@
+type: integer
+description: Whether the aircraft is visible or hangared (`PersistentAircraftVisibility`).
+enum: [0, 1, 2]
+x-enum-varnames: [Unknown, Visible, Hangared]

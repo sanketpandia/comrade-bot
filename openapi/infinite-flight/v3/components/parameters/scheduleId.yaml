@@ -1,0 +1,8 @@
+name: scheduleId
+in: path
+required: true
+description: Schedule ID (`Schedule.id`).
+schema:
+  type: string
+  format: uuid
+  x-go-type: string

@@ -8,6 +8,6 @@ request:
 
 docs:
   content: |-
-    Bot-oriented auth helpers from the rewrite OpenAPI. Signed links require
-    `X-API-Key` and `X-Discord-User-Id`.
+    Auth helpers from the Politburo OpenAPI: signed links (bot + API key), Infinite Flight OAuth
+    (dashboard session cookie), and the OAuth callback replay URL.
   type: text/markdown

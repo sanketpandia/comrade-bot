@@ -1,0 +1,41 @@
+get:
+  operationId: getInfiniteFlightOAuthAuthorize
+  summary: Start Infinite Flight OAuth for the signed-in user
+  description: |
+    Returns the Infinite Flight authorization URL for the current browser session.
+    Politburo stores short-lived PKCE state in Redis; the user completes consent at
+    Infinite Flight and returns via `GET /oauth/callback` (tokens bind to pending state).
+
+    Auth matches other session-backed `/api/v1` routes: `session_id` cookie after
+    signed-link login, or API key on paths that accept it (see `AuthenticateAPI`).
+
+    Requires Infinite Flight OAuth client credentials on the server.
+  tags: [Auth]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  responses:
+    "200":
+      description: Authorize URL for the browser
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/InfiniteFlightOAuthAuthorizeResponse.yaml"
+    "401":
+      description: Missing or invalid session (Politburo user id required)
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "503":
+      description: Infinite Flight OAuth is not configured on this deployment
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Could not start OAuth
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

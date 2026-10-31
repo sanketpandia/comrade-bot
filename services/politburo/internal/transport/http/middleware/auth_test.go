@@ -48,12 +48,12 @@ func TestAPIKeyAuthRequiresKeyOnAPIPaths(t *testing.T) {
 	}))
 
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/sessions/active", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/signed-link", nil))
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", recorder.Code)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/game/sessions/active", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/signed-link", nil)
 	req.Header.Set(APIKeyHeader, "good")
 	req.Header.Set(DiscordUserIDHeader, "user")
 	req.Header.Set(DiscordServerIDHeader, "server")
@@ -81,7 +81,7 @@ func TestAuthenticateAPIAcceptsSessionCookieOnGamePaths(t *testing.T) {
 	}))
 
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/user/me", nil))
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204", recorder.Code)
 	}
@@ -103,7 +103,7 @@ func TestAuthenticateAPICookieWinsOverAPIKeyOnGamePaths(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/game/sessions/active", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/user/me", nil)
 	req.Header.Set(APIKeyHeader, "good")
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, req)
@@ -125,8 +125,8 @@ func TestAuthenticateAPIFallsBackToAPIKeyOnGamePaths(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil))
-	if recorder.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want 401", recorder.Code)
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("public active flights status = %d, want 204", recorder.Code)
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil)
@@ -139,8 +139,8 @@ func TestAuthenticateAPIFallsBackToAPIKeyOnGamePaths(t *testing.T) {
 
 	recorder = httptest.NewRecorder()
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flight/active/c34118e7-cbdd-4e22-8751-0cda93e41d75", nil))
-	if recorder.Code != http.StatusUnauthorized {
-		t.Fatalf("active flight status = %d, want 401", recorder.Code)
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("public active flight status = %d, want 204", recorder.Code)
 	}
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/game/flight/active/c34118e7-cbdd-4e22-8751-0cda93e41d75", nil)
 	req.Header.Set(APIKeyHeader, "good")
@@ -148,6 +148,18 @@ func TestAuthenticateAPIFallsBackToAPIKeyOnGamePaths(t *testing.T) {
 	handler.ServeHTTP(recorder, req)
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("active flight with key status = %d, want 204", recorder.Code)
+	}
+
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/sessions/active", nil))
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("public sessions status = %d, want 204", recorder.Code)
+	}
+
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/user/me", nil))
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("user/me status = %d, want 401", recorder.Code)
 	}
 }
 
@@ -176,6 +188,51 @@ func TestAuthenticateAPIRequiresAPIKeyForSignedLink(t *testing.T) {
 	req.Header.Set(APIKeyHeader, "good")
 	recorder = httptest.NewRecorder()
 	handler.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", recorder.Code)
+	}
+}
+
+func TestAuthenticateAPIAcceptsSessionCookieOnOAuthCallback(t *testing.T) {
+	keys := apiKeyLookupFunc(func(*http.Request, string) (auth.Claims, bool, error) {
+		t.Fatal("API key lookup should not run on OAuth callback")
+		return auth.Claims{}, false, nil
+	})
+	sessions := sessionLookupFunc(func(*http.Request) (auth.Claims, bool, error) {
+		return auth.Claims{PbUserID: "user-1"}, true, nil
+	})
+	handler := AuthenticateAPI(keys, sessions)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, ok := auth.ClaimsFromContext(r.Context())
+		if !ok || claims.PbUserID != "user-1" {
+			t.Fatalf("claims = %#v ok=%v", claims, ok)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/oauth/callback?code=x&state=y", nil))
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", recorder.Code)
+	}
+}
+
+func TestAuthenticateAPIOAuthCallbackPassesThroughWithoutSession(t *testing.T) {
+	keys := apiKeyLookupFunc(func(*http.Request, string) (auth.Claims, bool, error) {
+		t.Fatal("API key lookup should not run on OAuth callback")
+		return auth.Claims{}, false, nil
+	})
+	sessions := sessionLookupFunc(func(*http.Request) (auth.Claims, bool, error) {
+		return auth.Claims{}, false, nil
+	})
+	handler := AuthenticateAPI(keys, sessions)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := auth.ClaimsFromContext(r.Context()); ok {
+			t.Fatal("expected no claims without session cookie")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/oauth/callback?code=x&state=y", nil))
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204", recorder.Code)
 	}
@@ -239,7 +296,7 @@ func TestAuthenticateAPISessionLookupError(t *testing.T) {
 		t.Fatal("next should not run")
 	}))
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/user/me", nil))
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", recorder.Code)
 	}

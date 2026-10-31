@@ -2,9 +2,6 @@ get:
   operationId: getActiveFlight
   summary: Read cached enriched record for one active flight
   tags: [Game]
-  security:
-    - ApiKeyAuth: []
-    - CookieAuth: []
   parameters:
     - name: flightId
       in: path
@@ -22,12 +19,6 @@ get:
             $ref: "../../components/schemas/ActiveFlightRecordResponse.yaml"
     "400":
       description: An invalid flight identifier was supplied
-      content:
-        application/json:
-          schema:
-            $ref: "../../components/schemas/ErrorResponse.yaml"
-    "401":
-      description: Missing or inactive API key or session cookie
       content:
         application/json:
           schema:

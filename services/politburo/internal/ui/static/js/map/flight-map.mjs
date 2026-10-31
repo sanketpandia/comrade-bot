@@ -278,7 +278,7 @@ export class FlightMap {
     this.map = L.map(container, {
       center: center,
       zoom: zoom,
-      zoomControl: true,
+      zoomControl: false,
       attributionControl: true,
       maxZoom: 22,
       minZoom: 3,
@@ -286,6 +286,7 @@ export class FlightMap {
       maxBoundsViscosity: 1.0,
       worldCopyJump: false,
     });
+    L.control.zoom({ position: 'topright' }).addTo(this.map);
 
     // Add OpenStreetMap tiles
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -307,7 +308,17 @@ export class FlightMap {
     // Click handler callback
     this.onFlightClickCallback = null;
     this._showCallsignsPref = true;
+    this._markerColor = '#d5c4a1';
+    this._fitBoundsPadding = { paddingTopLeft: [50, 50], paddingBottomRight: [50, 120] };
     this.map.on('moveend', () => this._syncCallsignTooltips());
+  }
+
+  setFitBoundsPadding(padding) {
+    if (!padding) return;
+    this._fitBoundsPadding = {
+      paddingTopLeft: padding.paddingTopLeft || [50, 50],
+      paddingBottomRight: padding.paddingBottomRight || [50, 120],
+    };
   }
 
   _callsignsVisibleAtZoom() {
@@ -369,8 +380,19 @@ export class FlightMap {
    * @param {boolean} options.showCallsigns - User preference for callsign labels (default: true); still gated by zoom
    */
   addFlights(flights, options = {}) {
-    const { fitBounds = true, showCallsigns = true } = options;
+    const {
+      fitBounds = true,
+      showCallsigns = true,
+      markerColor = this._markerColor,
+      fitBoundsPadding = null,
+    } = options;
     this._showCallsignsPref = showCallsigns;
+    if (markerColor) {
+      this._markerColor = markerColor;
+    }
+    if (fitBoundsPadding) {
+      this.setFitBoundsPadding(fitBoundsPadding);
+    }
     this.clearFlights();
 
     if (!Array.isArray(flights) || flights.length === 0) {
@@ -384,7 +406,7 @@ export class FlightMap {
     }
 
     validFlights.forEach(flight => {
-      const color = getFlightPhaseColor(flightState(flight));
+      const color = this._markerColor;
       const icon = flight.track != null
         ? createFlightIcon(flight, color)
         : createCircleIcon(color);
@@ -411,8 +433,7 @@ export class FlightMap {
     if (fitBounds && validFlights.length > 0) {
       const bounds = validFlights.map(f => [f.latitude, f.longitude]);
       this.map.fitBounds(bounds, {
-        paddingTopLeft: [50, 50],
-        paddingBottomRight: [50, 120],
+        ...this._fitBoundsPadding,
         maxZoom: 22
       });
     }
@@ -704,6 +725,10 @@ export class FlightMap {
     this.onFlightClickCallback = callback;
   }
 
+  invalidateSize() {
+    this.map.invalidateSize();
+  }
+
   /**
    * Focus on a specific flight by flight_id
    * @param {string} flightId - Flight ID to focus on
@@ -713,7 +738,10 @@ export class FlightMap {
    * @param {Object} options.flightData - Optional flight data object (used if marker not found)
    */
   focusFlight(flightId, options = {}) {
-    const { zoom = 10, padding = 50, flightData = null } = options;
+    const { zoom = 10, padding = 50, flightData = null, markerColor = this._markerColor } = options;
+    if (markerColor) {
+      this._markerColor = markerColor;
+    }
     
     const marker = this.flightMarkers.get(flightId);
     let position = null;
@@ -727,7 +755,7 @@ export class FlightMap {
         const flight = flightMarker._flightData;
         if (!flight) return;
         flight._selected = getFlightId(flight) === flightId;
-        flightMarker.setIcon(createFlightIcon(flight, getFlightPhaseColor(flightState(flight))));
+        flightMarker.setIcon(createFlightIcon(flight, this._markerColor));
       });
     } else if (flightData) {
       // Fallback to flight data if marker doesn't exist

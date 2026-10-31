@@ -1,0 +1,35 @@
+put:
+  operationId: updateLiveScheduleFlightPlan
+  summary: Update schedule flight plan
+  description: |
+    Updates the flight plan attached to a Live schedule.
+    Requires organization owner or admin role in addition to the `live:schedules.write` scope.
+  tags: [Schedules]
+  security:
+    - oauth2: [live:schedules.write]
+  parameters:
+    - $ref: ../../components/parameters/scheduleId.yaml
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          description: Request body — detailed fields pending Data Types documentation.
+  responses:
+    "200":
+      description: Success (`errorCode` is `0`).
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/PublicApiResponse.yaml
+    "400":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/BadRequest
+    "401":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/Unauthorized
+    "403":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/Forbidden
+    "404":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/NotFound
+    "429":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/TooManyRequests

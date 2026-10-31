@@ -1,0 +1,27 @@
+type: object
+required: [userId, flightTimeSeconds, startSeconds]
+properties:
+  userId:
+    type: string
+    format: uuid
+    description: Infinite Flight user ID of the pilot.
+    x-go-type: string
+  username:
+    type: string
+    nullable: true
+    description: Current public username, if available.
+  flightTimeSeconds:
+    type: number
+    format: double
+    description: Seconds the pilot flew in this period.
+  startSeconds:
+    type: number
+    format: double
+    description: Aircraft flight time since engine start, seconds, when this period started.
+  endSeconds:
+    type: number
+    format: double
+    nullable: true
+    description: |
+      Aircraft flight time since engine start, seconds, at the last update of this period. Null until the
+      first update.

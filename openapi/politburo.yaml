@@ -9,7 +9,7 @@ info:
     **Authentication**
     - `X-API-Key` — UUID API key for `/api/v1/*` machine clients (Discord bot, integrations).
     - `X-Discord-User-Id` and `X-Discord-Server-Id` — Discord context on bot-originated requests.
-    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger`, and related routes).
+    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/oauth/infinite-flight`, `/oauth/callback`, `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger`, and related routes).
 
     **Documentation** — https://sanketpandia.github.io/comrade-bot/api/reference/
 servers:
@@ -58,9 +58,6 @@ paths:
       summary: Read the latest active Infinite Flight sessions from cache
       tags:
         - Game
-      security:
-        - ApiKeyAuth: []
-        - CookieAuth: []
       responses:
         '200':
           description: The latest cached active sessions
@@ -68,12 +65,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ActiveSessionsResponse'
-        '401':
-          description: Missing or inactive API key or session cookie
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: The cache entry could not be read
           content:
@@ -92,9 +83,6 @@ paths:
       summary: Read cached active flight motion tracks for a server
       tags:
         - Game
-      security:
-        - ApiKeyAuth: []
-        - CookieAuth: []
       parameters:
         - name: normalizedServerName
           in: path
@@ -157,12 +145,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Missing or inactive API key or session cookie
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: The cache entry could not be read
           content:
@@ -181,9 +163,6 @@ paths:
       summary: Read cached enriched record for one active flight
       tags:
         - Game
-      security:
-        - ApiKeyAuth: []
-        - CookieAuth: []
       parameters:
         - name: flightId
           in: path
@@ -201,12 +180,6 @@ paths:
                 $ref: '#/components/schemas/ActiveFlightRecordResponse'
         '400':
           description: An invalid flight identifier was supplied
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Missing or inactive API key or session cookie
           content:
             application/json:
               schema:
@@ -292,6 +265,84 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/oauth/infinite-flight:
+    get:
+      operationId: getInfiniteFlightOAuthAuthorize
+      summary: Start Infinite Flight OAuth for the signed-in user
+      description: |
+        Returns the Infinite Flight authorization URL for the current browser session.
+        Politburo stores short-lived PKCE state in Redis; the user completes consent at
+        Infinite Flight and returns via `GET /oauth/callback` (tokens bind to pending state).
+
+        Auth matches other session-backed `/api/v1` routes: `session_id` cookie after
+        signed-link login, or API key on paths that accept it (see `AuthenticateAPI`).
+
+        Requires Infinite Flight OAuth client credentials on the server.
+      tags:
+        - Auth
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Authorize URL for the browser
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfiniteFlightOAuthAuthorizeResponse'
+        '401':
+          description: Missing or invalid session (Politburo user id required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Could not start OAuth
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Infinite Flight OAuth is not configured on this deployment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /oauth/callback:
+    get:
+      operationId: completeInfiniteFlightOAuthCallback
+      summary: Infinite Flight OAuth redirect callback
+      description: |
+        Browser return target registered with the Infinite Flight OAuth client
+        (`{UI_BASE_URL}/oauth/callback`). Exchanges the authorization code for tokens,
+        stores them in Redis for the Politburo user id stored in pending OAuth state, and redirects
+        to the dashboard. A `session_id` cookie is optional; when present it must match the pending user.
+
+        This path is not under `/api/v1` so the redirect URI matches Infinite Flight app settings.
+      tags:
+        - Auth
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          description: Authorization code from Infinite Flight.
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          description: Opaque value from the authorize request; must match pending Redis state.
+          schema:
+            type: string
+      responses:
+        '303':
+          description: Redirect to the dashboard (`oauth=connected` or `oauth=error` query flag).
+          headers:
+            Location:
+              schema:
+                type: string
+                example: /dashboard?oauth=connected
   /api/v1/user/me:
     get:
       operationId: getCurrentUser
@@ -1709,6 +1760,22 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/CurrentUser'
+    InfiniteFlightOAuthAuthorizeData:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Infinite Flight authorization URL (`/connect/authorize`) to open in the browser.
+    InfiniteFlightOAuthAuthorizeResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/InfiniteFlightOAuthAuthorizeData'
     ActiveFlightTrack:
       type: object
       required:

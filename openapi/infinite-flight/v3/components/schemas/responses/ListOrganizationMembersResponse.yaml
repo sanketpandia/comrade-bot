@@ -1,0 +1,27 @@
+type: object
+required: [errorCode, result]
+properties:
+  errorCode:
+    type: integer
+    description: |
+      `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+    enum: [0]
+  result:
+    type: array
+    description: |
+      All members of the organization. Owners first, then admins, then members; each group sorted by username.
+    items:
+      $ref: ../live/OrganizationMember.yaml
+example:
+  errorCode: 0
+  result:
+    - userId: 5b0c3f4e-8f3a-4f0e-9c55-2f1a6c7d9e10
+      username: PacificJetCEO
+      role: 2
+      joinedAt: 2026-07-03T12:00:00Z
+      activeLifts: 3
+    - userId: a9d2e7c1-3b4f-4c8a-8e21-6f0b5d4c3a29
+      username: LineCaptain
+      role: 0
+      joinedAt: 2026-08-14T09:30:00Z
+      activeLifts: 0

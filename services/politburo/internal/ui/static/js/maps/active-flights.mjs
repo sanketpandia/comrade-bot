@@ -1,247 +1,216 @@
 import { FlightMap } from '/static/js/map/flight-map.mjs';
-import { getSelectedFlightId, initFlightDetailPanel, loadFlightDetail } from '/static/js/maps/flight-detail-panel.mjs';
+import { initMapsChrome, onChromeTransitionEnd } from '/static/js/maps/maps-chrome.mjs';
 
-const POLL_MS = 60_000;
-const FILTER_DEBOUNCE_MS = 300;
 const DEFAULT_SERVER = 'casual';
-const PAGE_LENGTH = 5000;
+const MARKER_COLOR = '#d5c4a1';
 
 const form = document.getElementById('maps-filters');
 const serverSelect = document.getElementById('maps-server');
-const countEl = document.getElementById('maps-count');
-const cachedEl = document.getElementById('maps-cached');
-const errorEl = document.getElementById('maps-error');
+const shell = document.getElementById('maps-shell');
+const detailPanel = document.getElementById('maps-detail-panel');
+const detailBody = document.getElementById('maps-detail-body');
+const detailTabs = document.getElementById('maps-detail-tabs');
+const detailClose = document.getElementById('maps-detail-close');
+const toggleCount = document.getElementById('maps-filters-toggle-count');
 
 const map = new FlightMap('leaflet-map', { center: [20, 0], zoom: 2 });
 let fittedOnce = false;
-let pollTimer = 0;
-let debounceTimer = 0;
+let selectedFlightId = '';
 
-function readFiltersFromForm() {
-  const data = new FormData(form);
-  return {
-    serverId: String(data.get('serverId') || '').trim(),
-    callSign: String(data.get('callSign') || '').trim(),
-    userName: String(data.get('userName') || '').trim(),
-    pilotState: data.getAll('pilotState').map(String),
-    vaCode: String(data.get('vaCode') || '').trim(),
-    showCallsigns: data.get('showCallsigns') != null,
-  };
+function detailEnabled() {
+  return shell?.dataset.detailEnabled !== '0';
 }
 
-function applyFiltersToForm(filters) {
-  if (filters.serverId) {
-    serverSelect.value = filters.serverId;
-  }
-  form.elements.callSign.value = filters.callSign || '';
-  form.elements.userName.value = filters.userName || '';
-  form.elements.vaCode.value = filters.vaCode || '';
-  for (const input of form.querySelectorAll('input[name="pilotState"]')) {
-    input.checked = filters.pilotState.includes(input.value);
-  }
-  form.elements.showCallsigns.checked = filters.showCallsigns !== false;
+function readShowCallsigns() {
+  const box = document.getElementById('maps-show-callsigns');
+  return box ? box.checked : true;
 }
 
-function readFiltersFromURL() {
-  const params = new URLSearchParams(window.location.search);
-  const showCallsignsParam = params.get('showCallsigns');
-  return {
-    serverId: (params.get('serverId') || '').trim(),
-    callSign: (params.get('callSign') || '').trim(),
-    userName: (params.get('userName') || '').trim(),
-    pilotState: params.getAll('pilotState'),
-    vaCode: (params.get('vaCode') || '').trim(),
-    showCallsigns: showCallsignsParam === null ? true : showCallsignsParam !== '0',
-  };
+function syncShowCallsignsField() {
+  const box = document.getElementById('maps-show-callsigns');
+  if (!box || !form) return;
+  if (!box.checked) {
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = 'showCallsigns';
+    hidden.value = '0';
+    hidden.dataset.ephemeral = '1';
+    form.querySelectorAll('input[data-ephemeral="1"]').forEach((n) => n.remove());
+    form.appendChild(hidden);
+  } else {
+    form.querySelectorAll('input[data-ephemeral="1"]').forEach((n) => n.remove());
+  }
 }
 
-function writeFiltersToURL(filters) {
-  const params = new URLSearchParams();
-  if (filters.serverId) params.set('serverId', filters.serverId);
-  for (const state of filters.pilotState) {
-    params.append('pilotState', state);
+function readTracksFromDOM() {
+  const node = document.getElementById('maps-tracks');
+  if (!node?.textContent) return [];
+  try {
+    const parsed = JSON.parse(node.textContent);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
   }
-  if (filters.callSign) params.set('callSign', filters.callSign);
-  if (filters.userName) params.set('userName', filters.userName);
-  if (filters.vaCode) params.set('vaCode', filters.vaCode);
-  if (!filters.showCallsigns) params.set('showCallsigns', '0');
-  const query = params.toString();
-  const next = query ? `${window.location.pathname}?${query}` : window.location.pathname;
-  window.history.replaceState(null, '', next);
 }
 
-async function fetchJSON(url) {
-  const response = await fetch(url, { credentials: 'same-origin' });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = body?.error?.message || `Request failed (${response.status})`;
-    const error = new Error(message);
-    error.status = response.status;
-    throw error;
+export function getMapPadding() {
+  const filtersOpen = shell && !shell.classList.contains('maps-shell--filters-collapsed');
+  const detailOpen = shell?.classList.contains('maps-shell--detail-open');
+  const top = 72;
+  let left = filtersOpen ? 380 : 56;
+  let right = detailOpen ? 360 : 56;
+  let bottom = 56;
+  if (shell?.classList.contains('maps-shell--map-only')) {
+    left = 56;
+    right = 56;
+    bottom = 56;
   }
-  return body;
+  if (window.matchMedia('(max-width: 768px)').matches && detailOpen) {
+    bottom = Math.floor(window.innerHeight * 0.42) + 24;
+  }
+  return { paddingTopLeft: [left, top], paddingBottomRight: [right, bottom] };
 }
 
-function setError(message) {
-  if (!message) {
-    errorEl.hidden = true;
-    errorEl.textContent = '';
-    return;
+function applyTracksFromPartial() {
+  syncShowCallsignsField();
+  const countEl = document.getElementById('maps-count');
+  if (toggleCount && countEl) {
+    toggleCount.textContent = countEl.textContent.replace(/^\d+/, (n) => `· ${n}`).replace('· ', '· ');
+    toggleCount.textContent = countEl.textContent;
   }
-  errorEl.hidden = false;
-  errorEl.textContent = message;
+  const flights = readTracksFromDOM();
+  const padding = getMapPadding();
+  map.addFlights(flights, {
+    fitBounds: !fittedOnce && flights.length > 0,
+    showCallsigns: readShowCallsigns(),
+    markerColor: MARKER_COLOR,
+    fitBoundsPadding: padding,
+  });
+  if (flights.length > 0) fittedOnce = true;
+  if (selectedFlightId) {
+    map.focusFlight(selectedFlightId, { markerColor: MARKER_COLOR });
+  }
 }
 
-function setStatus(count, lastCached) {
-  countEl.textContent = `${count} ${count === 1 ? 'flight' : 'flights'}`;
-  if (!lastCached) {
-    cachedEl.textContent = '';
-    return;
+function openDetailPanel() {
+  if (!detailPanel || !shell) return;
+  detailPanel.hidden = false;
+  shell.classList.add('maps-shell--detail-open');
+  onChromeTransitionEnd(() => map.invalidateSize());
+}
+
+function closeDetailPanel() {
+  if (!detailPanel || !shell) return;
+  shell.classList.remove('maps-shell--detail-open');
+  detailPanel.hidden = true;
+  selectedFlightId = '';
+  onChromeTransitionEnd(() => map.invalidateSize());
+}
+
+function setActiveTab(tab) {
+  if (!detailTabs) return;
+  for (const link of detailTabs.querySelectorAll('.maps-detail-panel__tab')) {
+    const active = link.dataset.tab === tab;
+    link.classList.toggle('maps-detail-panel__tab--active', active);
+    link.setAttribute('aria-selected', active ? 'true' : 'false');
   }
-  const at = new Date(lastCached);
-  cachedEl.textContent = Number.isNaN(at.getTime()) ? '' : `Cached ${at.toISOString()}`;
+}
+
+async function loadFlightDetail(flightId, tab = 'flight') {
+  if (!flightId || !detailEnabled()) return;
+  selectedFlightId = flightId;
+  openDetailPanel();
+  setActiveTab(tab);
+  const url = tab === 'flight'
+    ? `/maps/flights/active/flights/${encodeURIComponent(flightId)}`
+    : `/maps/flights/active/flights/${encodeURIComponent(flightId)}?tab=${encodeURIComponent(tab)}`;
+  try {
+    const response = await fetch(url, { credentials: 'same-origin' });
+    const html = await response.text();
+    if (detailBody) detailBody.innerHTML = html;
+    if (response.ok) {
+      map.focusFlight(flightId, { markerColor: MARKER_COLOR });
+    }
+  } catch {
+    if (detailBody) {
+      detailBody.innerHTML = '<p class="maps-detail-panel__error">Failed to load flight details.</p>';
+    }
+  }
+}
+
+function bindDetailTabs() {
+  detailTabs?.addEventListener('click', (event) => {
+    const link = event.target.closest('.maps-detail-panel__tab');
+    if (!link || !selectedFlightId) return;
+    event.preventDefault();
+    loadFlightDetail(selectedFlightId, link.dataset.tab || 'flight');
+  });
+  detailClose?.addEventListener('click', () => closeDetailPanel());
 }
 
 function ensureServerOption(serverId) {
-  const preferred = serverId || DEFAULT_SERVER;
-  if ([...serverSelect.options].some((option) => option.value === preferred)) {
-    serverSelect.value = preferred;
-    return;
+  if (!serverSelect || !serverId) return;
+  for (const option of serverSelect.options) {
+    if (option.value === serverId) {
+      serverSelect.value = serverId;
+      return;
+    }
   }
-  if (serverSelect.options.length === 0) {
-    const option = document.createElement('option');
-    option.value = preferred;
-    option.textContent = preferred;
-    serverSelect.append(option);
-  }
-  serverSelect.value = serverSelect.options[0].value;
+  const option = document.createElement('option');
+  option.value = serverId;
+  option.textContent = serverId;
+  option.selected = true;
+  serverSelect.appendChild(option);
+}
+
+function readServerFromURL() {
+  return new URLSearchParams(window.location.search).get('serverId')?.trim() || '';
 }
 
 function whenServersReady() {
-  if (serverSelect.options.length > 0) return Promise.resolve();
   return new Promise((resolve) => {
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      serverSelect.removeEventListener('htmx:afterSettle', finish);
-      serverSelect.removeEventListener('htmx:responseError', finish);
-      serverSelect.removeEventListener('htmx:sendError', finish);
+    if (!serverSelect) {
+      resolve();
+      return;
+    }
+    const done = () => {
+      serverSelect.removeEventListener('htmx:afterSettle', done);
       resolve();
     };
-    serverSelect.addEventListener('htmx:afterSettle', finish);
-    serverSelect.addEventListener('htmx:responseError', finish);
-    serverSelect.addEventListener('htmx:sendError', finish);
-    window.setTimeout(finish, 4000);
+    serverSelect.addEventListener('htmx:afterSettle', done);
+    window.setTimeout(resolve, 2000);
   });
 }
 
-function flightsURL(filters, pageNumber) {
-  const params = new URLSearchParams();
-  params.set('pageNumber', String(pageNumber));
-  params.set('pageLength', String(PAGE_LENGTH));
-  for (const state of filters.pilotState) {
-    params.append('pilotState', state);
-  }
-  if (filters.callSign) params.set('callSign', filters.callSign);
-  if (filters.userName) params.set('userName', filters.userName);
-  if (filters.vaCode) params.set('vaCode', filters.vaCode);
-  const query = params.toString();
-  return `/api/v1/game/flights/active/${encodeURIComponent(filters.serverId)}?${query}`;
-}
-
-async function fetchAllFlights(filters) {
-  const all = [];
-  let pageNumber = 1;
-  let totalLength = 0;
-  let lastCached = '';
-  for (;;) {
-    const body = await fetchJSON(flightsURL(filters, pageNumber));
-    const page = Array.isArray(body?.data?.result) ? body.data.result : [];
-    all.push(...page);
-    totalLength = body?.data?.pagination?.totalLength ?? all.length;
-    lastCached = body?.data?.meta?.lastCached ?? lastCached;
-    if (all.length >= totalLength || page.length === 0) {
-      return { flights: all, totalLength, lastCached };
-    }
-    pageNumber += 1;
-  }
-}
-
-function flightIdFromTrack(flight) {
-  return flight?.flightId ?? flight?.flight_id ?? '';
-}
-
-async function loadFlights() {
-  const filters = readFiltersFromForm();
-  if (!filters.serverId) {
-    map.addFlights([], { fitBounds: false });
-    setStatus(0, '');
-    setError('Select a server');
-    return;
-  }
-  writeFiltersToURL(filters);
-  try {
-    const { flights, totalLength, lastCached } = await fetchAllFlights(filters);
-    map.addFlights(flights, {
-      fitBounds: !fittedOnce && flights.length > 0,
-      showCallsigns: filters.showCallsigns,
-    });
-    if (flights.length > 0) fittedOnce = true;
-    setStatus(totalLength, lastCached);
-    setError('');
-    const selectedId = getSelectedFlightId();
-    if (selectedId && flights.some((f) => flightIdFromTrack(f) === selectedId)) {
-      await loadFlightDetail(selectedId, fetchJSON);
-    }
-  } catch (err) {
-    map.addFlights([], { fitBounds: false });
-    setStatus(0, '');
-    setError(err.message || 'Failed to load flights');
-  }
-}
-
-function scheduleLoad() {
-  window.clearTimeout(debounceTimer);
-  debounceTimer = window.setTimeout(() => {
-    loadFlights();
-  }, FILTER_DEBOUNCE_MS);
-}
-
-form.addEventListener('change', () => {
-  loadFlights();
-});
-form.addEventListener('input', (event) => {
-  if (event.target instanceof HTMLInputElement && event.target.type === 'search') {
-    scheduleLoad();
+document.body.addEventListener('htmx:afterSettle', (event) => {
+  if (event.target === form || event.detail?.target?.id === 'maps-flights-swap') {
+    applyTracksFromPartial();
   }
 });
-form.addEventListener('submit', (event) => {
+
+form?.addEventListener('change', syncShowCallsignsField);
+form?.addEventListener('submit', (event) => {
   event.preventDefault();
-  loadFlights();
 });
 
-async function start() {
-  initFlightDetailPanel();
+function start() {
+  initMapsChrome({ shell, map, getMapPadding });
+  bindDetailTabs();
   map.onFlightClick((flight) => {
-    const flightId = flightIdFromTrack(flight);
+    const flightId = flight?.flightId ?? flight?.flight_id ?? '';
     if (!flightId) return;
-    loadFlightDetail(flightId, fetchJSON);
+    loadFlightDetail(flightId, 'flight');
   });
-  await whenServersReady();
-  const urlFilters = readFiltersFromURL();
-  ensureServerOption(urlFilters.serverId || DEFAULT_SERVER);
-  applyFiltersToForm({
-    ...urlFilters,
-    serverId: serverSelect.value,
+  whenServersReady().then(() => {
+    const fromURL = readServerFromURL();
+    ensureServerOption(fromURL || DEFAULT_SERVER);
+    if (!serverSelect.value) {
+      serverSelect.value = DEFAULT_SERVER;
+    }
+    syncShowCallsignsField();
   });
-  await loadFlights();
-  pollTimer = window.setInterval(loadFlights, POLL_MS);
 }
-
-window.addEventListener('beforeunload', () => {
-  window.clearInterval(pollTimer);
-  window.clearTimeout(debounceTimer);
-});
 
 start();
+
+export { map, closeDetailPanel, loadFlightDetail };

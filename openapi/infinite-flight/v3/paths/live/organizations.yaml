@@ -1,0 +1,27 @@
+get:
+  operationId: listLiveOrganizations
+  summary: List organizations
+  description: |
+    Returns **active** Live organizations the signed-in user belongs to, including their role in each.
+
+    **Authorization:** `Authorization: Bearer <access_token>` with scope `live:organizations.read`.
+    No additional user requirement — only organizations the signed-in user is a member of are returned.
+    Users who are not members of any Live organization receive an empty `result` array.
+  tags: [Organizations]
+  security:
+    - oauth2: [live:organizations.read]
+  responses:
+    "200":
+      description: Success (`errorCode` is `0`).
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/responses/ListOrganizationsResponse.yaml
+    "400":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/BadRequest
+    "401":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/Unauthorized
+    "403":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/Forbidden
+    "429":
+      $ref: ../../components/responses/PublicApiErrors.yaml#/TooManyRequests

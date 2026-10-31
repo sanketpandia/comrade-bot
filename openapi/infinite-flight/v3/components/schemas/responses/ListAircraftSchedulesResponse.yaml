@@ -1,0 +1,39 @@
+type: object
+required: [errorCode, result]
+properties:
+  errorCode:
+    type: integer
+    description: |
+      `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+    enum: [0]
+  result:
+    type: array
+    description: Schedules for the aircraft, ordered by `sequence`.
+    items:
+      $ref: ../live/Schedule.yaml
+example:
+  errorCode: 0
+  result:
+    - id: fd0f8a7c-fab2-4fd0-baf7-4b87e8f7cc2f
+      status: 1
+      callsign: PJX421
+      organizationId: 1337830a-abf9-4315-9488-e8cebd7f485a
+      aircraftId: 28fb4508-9eca-4120-abe4-3c4f06f6e71c
+      flightType: 1
+      originIcao: KLAX
+      destinationIcao: KJFK
+      isTimeless: false
+      scheduledDepartureUtc: 2026-07-03T18:30:00Z
+      scheduledArrivalUtc: 2026-07-03T23:45:00Z
+      actualDepartureUtc: null
+      actualArrivalUtc: null
+      briefing: Scheduled transcontinental service.
+      debriefing: null
+      flightPlan: KLAX DCT KJFK
+      crew:
+        - userId: 3f8b28bf-bbb1-4024-80ae-2a0ea9b30685
+          username: Chhettri22
+          role: 0
+      sequence: 1
+      createdAt: 2026-07-03T12:00:00Z
+      updatedAt: 2026-07-03T12:00:00Z

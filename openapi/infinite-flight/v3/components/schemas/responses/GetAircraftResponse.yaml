@@ -1,0 +1,23 @@
+type: object
+required: [errorCode, result]
+properties:
+  errorCode:
+    type: integer
+    description: |
+      `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+    enum: [0]
+  result:
+    $ref: ../live/Aircraft.yaml
+example:
+  errorCode: 0
+  result:
+    id: 28fb4508-9eca-4120-abe4-3c4f06f6e71c
+    aircraftId: 3f78766a-30c8-4d65-95ae-ebc2fb758aac
+    organizationId: 1337830a-abf9-4315-9488-e8cebd7f485a
+    registration: N682XL
+    status: 0
+    visibility: 1
+    fleetPriority: 1000
+    fleetRank: 1
+    isFleetActiveSlot: true
+    createdAt: 2026-07-03T12:00:00Z

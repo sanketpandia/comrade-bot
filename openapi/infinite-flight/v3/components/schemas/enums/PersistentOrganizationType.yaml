@@ -1,0 +1,4 @@
+type: integer
+description: Join type (`PersistentOrganizationType`).
+enum: [0, 1, 2, 3, 4]
+x-enum-varnames: [AutoJoin, ManualJoin, ApplyToJoin, InviteOnly, SingleMember]

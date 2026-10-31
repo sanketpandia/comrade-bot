@@ -1,0 +1,25 @@
+type: object
+required: [errorCode, result]
+properties:
+  errorCode:
+    type: integer
+    description: |
+      `0` means success. Non-zero values indicate validation, authorization, or lookup failures.
+    enum: [0]
+  result:
+    $ref: ../live/AircraftPosition.yaml
+example:
+  errorCode: 0
+  result:
+    id: 28fb4508-9eca-4120-abe4-3c4f06f6e71c
+    state: 2
+    isOnGround: false
+    latitude: 27.3172
+    longitude: 48.6787
+    altitude: 34750
+    heading: 83.4
+    speed: 451.2
+    verticalSpeed: 0
+    lastPilotId: 3f8b28bf-bbb1-4024-80ae-2a0ea9b30685
+    lastPilotUsername: Chhettri22
+    updatedAt: 2026-07-03T12:05:00Z

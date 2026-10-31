@@ -1,4 +1,5 @@
 {{define "dashboard-content"}}
 <h1>Dashboard</h1>
+{{template "if-oauth-tile" .}}
 {{template "live-flights-tile" .}}
 {{end}}

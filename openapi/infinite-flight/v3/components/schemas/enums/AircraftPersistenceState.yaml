@@ -1,0 +1,4 @@
+type: integer
+description: Last persisted aircraft state (`AircraftPersistenceState`).
+enum: [0, 1, 2, 3, 4, 5]
+x-enum-varnames: [Unknown, OnGround, InFlight, Cancelled, Stopped, Maintenance]

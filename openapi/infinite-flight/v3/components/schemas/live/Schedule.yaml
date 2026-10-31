@@ -1,0 +1,90 @@
+type: object
+required:
+  - id
+  - status
+  - callsign
+  - organizationId
+  - aircraftId
+  - flightType
+  - originIcao
+  - destinationIcao
+  - isTimeless
+  - scheduledDepartureUtc
+  - scheduledArrivalUtc
+  - crew
+  - sequence
+  - createdAt
+  - updatedAt
+properties:
+  id:
+    type: string
+    format: uuid
+    description: |
+      Schedule ID. Use as `{scheduleId}` for update, flight plan update, crew management, delete, and reorder.
+    x-go-type: string
+  status:
+    $ref: ../enums/ScheduledFlightStatus.yaml
+  callsign:
+    type: string
+  organizationId:
+    type: string
+    format: uuid
+    x-go-type: string
+  aircraftId:
+    type: string
+    format: uuid
+    description: Persistent organization aircraft ID (`Aircraft.id`).
+    x-go-type: string
+  flightType:
+    $ref: ../enums/PersistentFlightType.yaml
+  originIcao:
+    type: string
+    description: Origin airport ICAO or airport code.
+  destinationIcao:
+    type: string
+    description: Destination airport ICAO or airport code.
+  isTimeless:
+    type: boolean
+    description: When `true`, the schedule has no times and pilots can fly it when they want.
+  scheduledDepartureUtc:
+    type: string
+    format: date-time
+    description: Planned departure, UTC. `0001-01-01T00:00:00Z` when `isTimeless` is `true`.
+  scheduledArrivalUtc:
+    type: string
+    format: date-time
+    description: Planned arrival, UTC. `0001-01-01T00:00:00Z` when `isTimeless` is `true`.
+  actualDepartureUtc:
+    type: string
+    format: date-time
+    nullable: true
+    description: Actual departure, UTC, if known.
+  actualArrivalUtc:
+    type: string
+    format: date-time
+    nullable: true
+    description: Actual arrival, UTC, if known.
+  briefing:
+    type: string
+    nullable: true
+  debriefing:
+    type: string
+    nullable: true
+  flightPlan:
+    type: string
+    nullable: true
+    description: Flight plan text.
+  crew:
+    type: array
+    description: Assigned crew. Empty when no crew is assigned.
+    items:
+      $ref: ./ScheduleCrewMember.yaml
+  sequence:
+    type: integer
+    description: Sort order in the aircraft's schedule list.
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time

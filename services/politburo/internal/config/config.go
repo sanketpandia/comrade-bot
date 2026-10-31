@@ -64,6 +64,14 @@ type InfiniteFlight struct {
 	BaseURL        string
 	APIKey         string
 	RequestTimeout time.Duration
+	ClientID       string
+	ClientSecret   string
+	AuthBaseURL    string
+}
+
+// OAuthRedirectURI is the registered callback for Infinite Flight OAuth clients.
+func (c Config) OAuthRedirectURI() string {
+	return c.Auth.UIBaseURL + "/oauth/callback"
 }
 
 func Load() (Config, error) {
@@ -80,6 +88,10 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	infiniteFlightAPIKey, err := secret("IF_API_KEY", "")
+	if err != nil {
+		return Config{}, err
+	}
+	infiniteFlightClientSecret, err := secret("INFINITE_FLIGHT_CLIENT_SECRET", "")
 	if err != nil {
 		return Config{}, err
 	}
@@ -128,6 +140,9 @@ func Load() (Config, error) {
 			BaseURL:        env("IF_API_BASE_URL", "https://api.infiniteflight.com/public/v2"),
 			APIKey:         infiniteFlightAPIKey,
 			RequestTimeout: duration("IF_API_REQUEST_TIMEOUT", 15*time.Second),
+			ClientID:       strings.TrimSpace(env("INFINITE_FLIGHT_CLIENT_ID", "")),
+			ClientSecret:   infiniteFlightClientSecret,
+			AuthBaseURL:    strings.TrimRight(env("INFINITE_FLIGHT_AUTH_BASE_URL", "https://api.infiniteflight.com/auth/v2"), "/"),
 		},
 		Auth: Auth{
 			SignedLinkSecret: parsedSecret,
@@ -154,6 +169,13 @@ func Load() (Config, error) {
 	}
 	if cfg.Jobs.Enabled && cfg.InfiniteFlight.APIKey == "" {
 		return Config{}, fmt.Errorf("IF_API_KEY is required when JOBS_ENABLED=true")
+	}
+	authBaseURL, err := url.ParseRequestURI(cfg.InfiniteFlight.AuthBaseURL)
+	if err != nil || authBaseURL.Scheme == "" || authBaseURL.Host == "" {
+		return Config{}, fmt.Errorf("INFINITE_FLIGHT_AUTH_BASE_URL must be an absolute URL")
+	}
+	if cfg.InfiniteFlight.ClientID != "" && cfg.InfiniteFlight.ClientSecret == "" {
+		return Config{}, fmt.Errorf("INFINITE_FLIGHT_CLIENT_SECRET is required when INFINITE_FLIGHT_CLIENT_ID is set")
 	}
 	return cfg, nil
 }

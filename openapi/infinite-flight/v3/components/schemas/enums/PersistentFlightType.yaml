@@ -1,0 +1,17 @@
+type: integer
+description: Flight category (`PersistentFlightType`).
+enum: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+x-enum-varnames:
+  - None
+  - Commercial
+  - Charter
+  - Cargo
+  - Training
+  - TestFlight
+  - MedicalEmergency
+  - Military
+  - VIPExecutive
+  - HumanitarianRelief
+  - GeneralAviation
+  - Airshow
+  - Other

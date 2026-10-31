@@ -19,7 +19,10 @@ type Renderer struct {
 }
 
 func NewRenderer() (*Renderer, error) {
-	templates, err := template.ParseFS(Assets, "templates/layouts/*.html", "templates/partials/*.html", "templates/pages/*.html")
+	funcMap := template.FuncMap{
+		"pilotStateChecked": pilotStateChecked,
+	}
+	templates, err := template.New("").Funcs(funcMap).ParseFS(Assets, "templates/layouts/*.html", "templates/partials/*.html", "templates/pages/*.html")
 	if err != nil {
 		return nil, err
 	}
@@ -36,6 +39,15 @@ func (r *Renderer) Render(w http.ResponseWriter, name string, data any) error {
 
 func (r *Renderer) RenderTo(w io.Writer, name string, data any) error {
 	return r.templates.ExecuteTemplate(w, name, data)
+}
+
+func pilotStateChecked(states []string, value string) bool {
+	for _, s := range states {
+		if s == value {
+			return true
+		}
+	}
+	return false
 }
 
 // StaticFS returns the embedded static file tree.
