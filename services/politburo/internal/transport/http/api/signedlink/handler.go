@@ -3,14 +3,14 @@ package signedlink
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
-	"log/slog"
 	"net/http"
 	"strings"
 
 	"infinite-experiment/politburo/internal/access/auth"
-	"infinite-experiment/politburo/internal/transport/http/response"
 	"infinite-experiment/politburo/internal/community/users"
+	"infinite-experiment/politburo/internal/transport/http/response"
 )
 
 type userLookup interface {
@@ -30,18 +30,15 @@ type vaByDiscordServer interface {
 }
 
 type Handler struct {
-	users       userLookup
-	tickets     ticketIssuer
-	membership  membershipResolver
-	vaLookup    vaByDiscordServer
-	uiBaseURL   string
+	svc *Service
 }
 
-func NewHandler(users userLookup, tickets ticketIssuer, membership membershipResolver, vaLookup vaByDiscordServer, uiBaseURL string) *Handler {
-	return &Handler{users: users, tickets: tickets, membership: membership, vaLookup: vaLookup, uiBaseURL: uiBaseURL}
+func NewHandler(users userLookup, tickets ticketIssuer, membership membershipResolver, vaLookup vaByDiscordServer, mapLink vaMapLinkResolver, uiBaseURL string) *Handler {
+	return &Handler{svc: NewService(users, tickets, membership, vaLookup, mapLink, uiBaseURL)}
 }
 
 type requestBody struct {
+	Type        string `json:"type"`
 	RedirectTo  string `json:"redirectTo"`
 	RedirectTo2 string `json:"redirect_to"`
 }
@@ -65,68 +62,50 @@ func (h *Handler) GenerateSignedLink(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	redirectTo, err := auth.NormalizeRedirect(firstNonEmpty(body.RedirectTo, body.RedirectTo2))
-	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "INVALID_REDIRECT", "redirectTo must be a relative path")
-		return
-	}
 
-	user, err := h.users.GetByDiscordID(r.Context(), claims.DsUserID)
+	customRedirect := firstNonEmpty(body.RedirectTo, body.RedirectTo2)
+	result, err := h.svc.Generate(r.Context(), claims, body.Type, customRedirect)
 	if err != nil {
-		slog.Error("lookup user for signed link", "error", err)
-		response.WriteError(w, http.StatusInternalServerError, "USER_LOOKUP_FAILED", "user lookup failed")
-		return
-	}
-	if user == nil {
-		response.WriteError(w, http.StatusNotFound, "USER_NOT_FOUND", "user not found")
-		return
-	}
-
-	vaID, role := "", ""
-	if claims.DsServerID != "" && h.vaLookup != nil {
-		configured, err := h.vaLookup.IsConfiguredVA(r.Context(), claims.DsServerID)
-		if err != nil {
-			slog.Error("lookup va for signed link", "error", err)
-			response.WriteError(w, http.StatusInternalServerError, "VA_LOOKUP_FAILED", "va lookup failed")
-			return
-		}
-		if configured && h.membership != nil {
-			resolvedVA, resolvedRole, ok, err := h.membership.ResolveMembership(r.Context(), claims.DsUserID, claims.DsServerID)
-			if err != nil {
-				slog.Error("resolve membership for signed link", "error", err)
-				response.WriteError(w, http.StatusInternalServerError, "MEMBERSHIP_LOOKUP_FAILED", "membership lookup failed")
-				return
-			}
-			if !ok {
-				response.WriteError(w, http.StatusForbidden, "NOT_VA_MEMBER", "You must join this virtual airline before opening the portal")
-				return
-			}
-			vaID, role = resolvedVA, resolvedRole
-		}
-	}
-
-	token, err := h.tickets.Issue(r.Context(), auth.LoginTicket{
-		UserID:          user.ID,
-		DiscordUserID:   user.DiscordID,
-		DiscordServerID: claims.DsServerID,
-		VaID:            vaID,
-		Role:            role,
-		Username:        user.DisplayName(),
-		RedirectTo:      redirectTo,
-	})
-	if err != nil {
-		slog.Error("issue signed link ticket", "error", err)
-		response.WriteError(w, http.StatusInternalServerError, "GENERATION_FAILED", "failed to generate signed link")
+		writeGenerateError(w, err)
 		return
 	}
 
 	response.WriteJSON(w, http.StatusOK, map[string]any{
 		"data": map[string]any{
-			"url":        auth.FormatLoginURL(h.uiBaseURL, token),
-			"expiresIn":  int(auth.TicketTTL.Seconds()),
-			"redirectTo": redirectTo,
+			"url":        result.URL,
+			"expiresIn":  result.ExpiresIn,
+			"redirectTo": result.RedirectTo,
 		},
 	})
+}
+
+func writeGenerateError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, ErrMissingLinkType):
+		response.WriteError(w, http.StatusBadRequest, "MISSING_LINK_TYPE", "type is required")
+	case errors.Is(err, ErrInvalidLinkType):
+		response.WriteError(w, http.StatusBadRequest, "INVALID_LINK_TYPE", "type must be DASHBOARD, LIVE_MAP, or CUSTOM")
+	case errors.Is(err, ErrMissingRedirect):
+		response.WriteError(w, http.StatusBadRequest, "MISSING_REDIRECT", "redirectTo is required when type is CUSTOM")
+	case errors.Is(err, ErrInvalidRedirect):
+		response.WriteError(w, http.StatusBadRequest, "INVALID_REDIRECT", "redirectTo must be a relative path")
+	case errors.Is(err, ErrUserNotFound):
+		response.WriteError(w, http.StatusNotFound, "USER_NOT_FOUND", "user not found")
+	case errors.Is(err, ErrNotVAMember):
+		response.WriteError(w, http.StatusForbidden, "NOT_VA_MEMBER", "You must join this virtual airline before opening the portal")
+	case errors.Is(err, ErrUserLookupFailed):
+		response.WriteError(w, http.StatusInternalServerError, "USER_LOOKUP_FAILED", "user lookup failed")
+	case errors.Is(err, ErrVALookupFailed):
+		response.WriteError(w, http.StatusInternalServerError, "VA_LOOKUP_FAILED", "va lookup failed")
+	case errors.Is(err, ErrMembershipLookupFailed):
+		response.WriteError(w, http.StatusInternalServerError, "MEMBERSHIP_LOOKUP_FAILED", "membership lookup failed")
+	case errors.Is(err, ErrMapLinkFailed):
+		response.WriteError(w, http.StatusInternalServerError, "GENERATION_FAILED", "failed to generate signed link")
+	case errors.Is(err, ErrTicketIssueFailed):
+		response.WriteError(w, http.StatusInternalServerError, "GENERATION_FAILED", "failed to generate signed link")
+	default:
+		response.WriteError(w, http.StatusInternalServerError, "GENERATION_FAILED", "failed to generate signed link")
+	}
 }
 
 func firstNonEmpty(a, b string) string {

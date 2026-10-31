@@ -11,6 +11,7 @@ import (
 
 	"infinite-experiment/politburo/internal/cache"
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 type stubDB struct {
@@ -54,7 +55,7 @@ func TestStatusAllActive(t *testing.T) {
 
 	handler := NewHandler(stubDB{}, stubCache{}, false, time.Now().Add(-time.Second))
 	recorder := httptest.NewRecorder()
-	handler.GetStatus(recorder, httptest.NewRequest(http.MethodGet, "/health/status", nil))
+	handler.GetStatus(recorder, httptest.NewRequest(http.MethodGet, routes.HealthStatus, nil))
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", recorder.Code)
@@ -75,7 +76,7 @@ func TestStatusCacheDown(t *testing.T) {
 
 	handler := NewHandler(stubDB{}, stubCache{pingErr: errors.New("redis down")}, false, time.Now())
 	recorder := httptest.NewRecorder()
-	handler.GetStatus(recorder, httptest.NewRequest(http.MethodGet, "/health/status", nil))
+	handler.GetStatus(recorder, httptest.NewRequest(http.MethodGet, routes.HealthStatus, nil))
 
 	if recorder.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", recorder.Code)
@@ -99,7 +100,7 @@ func TestStatusSessionsStaleWhenJobsEnabled(t *testing.T) {
 	handler.now = func() time.Time { return now }
 
 	recorder := httptest.NewRecorder()
-	handler.GetStatus(recorder, httptest.NewRequest(http.MethodGet, "/health/status", nil))
+	handler.GetStatus(recorder, httptest.NewRequest(http.MethodGet, routes.HealthStatus, nil))
 
 	if recorder.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", recorder.Code)
@@ -120,7 +121,7 @@ func TestStatusSessionsFreshWhenJobsEnabled(t *testing.T) {
 	handler.now = func() time.Time { return now }
 
 	recorder := httptest.NewRecorder()
-	handler.GetStatus(recorder, httptest.NewRequest(http.MethodGet, "/health/status", nil))
+	handler.GetStatus(recorder, httptest.NewRequest(http.MethodGet, routes.HealthStatus, nil))
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", recorder.Code)

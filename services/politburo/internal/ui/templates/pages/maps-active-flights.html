@@ -8,86 +8,116 @@
     <button type="button" class="maps-map-only" id="maps-map-only" aria-pressed="false">Map only</button>
     {{end}}
     <div class="maps-filters-wrap">
-      <button type="button" class="maps-filters-toggle" id="maps-filters-toggle" aria-expanded="{{if .Maps.Chrome.FiltersOpen}}true{{else}}false{{end}}">
-        Filters <span class="maps-filters-toggle__count" id="maps-filters-toggle-count"></span>
-      </button>
-      <form class="maps-filters" id="maps-filters"
+      <form class="maps-filters panel panel--glass" id="maps-filters"
             hx-get="/maps/flights/active/flights"
             hx-target="#maps-flights-swap"
             hx-swap="innerHTML transition:true"
-            hx-trigger="load, every 60s, change, keyup changed delay:300ms from:input[type=search]">
+            hx-trigger="load, every 60s, click from:#maps-filters-apply">
         {{range $k, $v := .Maps.ChromeHidden}}
         <input type="hidden" name="{{$k}}" value="{{$v}}">
         {{end}}
-        <div id="maps-flights-swap" class="maps-flights-swap">
-          <div class="maps-filters__status">
-            <span id="maps-count">0 flights</span>
-            <span id="maps-cached"></span>
-            <span id="maps-error" hidden></span>
+        <div class="panel__header maps-filters__header">
+          <span class="icon-btn" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M4.25 5.61C4.25 4.72 4.97 4 5.86 4h12.28c.89 0 1.61.72 1.61 1.61v.61c0 .55-.28 1.06-.75 1.35l-5.14 3.08a1.6 1.6 0 0 0-.75 1.35v4.24c0 .55-.45 1-1 1h-1.72a1 1 0 0 1-1-1v-4.24c0-.52-.27-1-.75-1.35L4.99 7.57a1.6 1.6 0 0 1-.74-1.35v-.61Z"/>
+            </svg>
+          </span>
+          <div id="maps-flights-swap" class="maps-flights-swap">
+            <div class="maps-filters__status">
+              <p class="maps-filters__count-line"><span id="maps-count" class="count-primary">0</span> flights</p>
+              <span id="maps-cached" class="count-muted"></span>
+              <span id="maps-error" class="count-error" hidden></span>
+            </div>
           </div>
+          <button type="button" class="icon-btn" id="maps-filters-collapse" aria-label="Collapse filters">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.29 19.71 2.88 18.3 9.17 12 2.88 5.71 4.29 4.3 10.59 10.6l6.29-6.3z"/>
+            </svg>
+          </button>
         </div>
-        <div class="maps-filters__toolbar">
-          <button type="button" class="maps-filters__collapse" id="maps-filters-collapse" aria-label="Collapse filters">−</button>
-        </div>
-        <label class="maps-filters__field">
-          Server
-          <select id="maps-server" name="serverId"
+        <label class="field">
+          <span class="field__label">Server</span>
+          <select class="select" id="maps-server" name="serverId"
                   hx-get="/maps/flights/active/servers{{if .Maps.ServerID}}?serverId={{.Maps.ServerID}}{{end}}"
                   hx-trigger="load"
+                  hx-target="this"
                   hx-swap="innerHTML">
             {{if .Maps.ServerID}}<option value="{{.Maps.ServerID}}" selected>{{.Maps.ServerID}}</option>{{end}}
           </select>
         </label>
-        <fieldset class="maps-filters__states">
-          <legend>Pilot state</legend>
-          <label class="maps-filters__chip maps-filters__chip--active">
-            <input type="checkbox" name="pilotState" value="active"{{if pilotStateChecked .Maps.PilotStates "active"}} checked{{end}}> Active
-          </label>
-          <label class="maps-filters__chip maps-filters__chip--away-flight">
-            <input type="checkbox" name="pilotState" value="away_in_flight"{{if pilotStateChecked .Maps.PilotStates "away_in_flight"}} checked{{end}}> Away in flight
-          </label>
-          <label class="maps-filters__chip maps-filters__chip--away-parked">
-            <input type="checkbox" name="pilotState" value="away_parked"{{if pilotStateChecked .Maps.PilotStates "away_parked"}} checked{{end}}> Away parked
-          </label>
-          <label class="maps-filters__chip maps-filters__chip--background">
-            <input type="checkbox" name="pilotState" value="in_background"{{if pilotStateChecked .Maps.PilotStates "in_background"}} checked{{end}}> In background
-          </label>
-        </fieldset>
-        <label class="maps-filters__check">
+        <div class="field">
+          <span class="field__label">Pilot state</span>
+          <div class="multiselect" id="maps-pilot-state"
+               data-empty="Any pilot state" data-all="All pilot states">
+            <button type="button" class="multiselect__trigger" id="maps-pilot-state-trigger"
+                    aria-expanded="false" aria-controls="maps-pilot-state-panel">
+              <span class="multiselect__value" id="maps-pilot-state-label">Any pilot state</span>
+              <span class="multiselect__chevron" aria-hidden="true"></span>
+            </button>
+            <div class="multiselect__panel" id="maps-pilot-state-panel" hidden role="group" aria-label="Pilot state">
+              <label class="multiselect__option multiselect__option--active">
+                <input type="checkbox" name="pilotState" value="active"{{if pilotStateChecked .Maps.PilotStates "active"}} checked{{end}}>
+                Active
+              </label>
+              <label class="multiselect__option multiselect__option--away-flight">
+                <input type="checkbox" name="pilotState" value="away_in_flight"{{if pilotStateChecked .Maps.PilotStates "away_in_flight"}} checked{{end}}>
+                Away in flight
+              </label>
+              <label class="multiselect__option multiselect__option--away-parked">
+                <input type="checkbox" name="pilotState" value="away_parked"{{if pilotStateChecked .Maps.PilotStates "away_parked"}} checked{{end}}>
+                Away parked
+              </label>
+              <label class="multiselect__option multiselect__option--background">
+                <input type="checkbox" name="pilotState" value="in_background"{{if pilotStateChecked .Maps.PilotStates "in_background"}} checked{{end}}>
+                In background
+              </label>
+            </div>
+          </div>
+        </div>
+        <label class="field">
+          <span class="field__label">Callsign</span>
+          <input class="input" id="maps-callsign" name="callSign" type="search" autocomplete="off" value="{{.Maps.CallSign}}">
+        </label>
+        <label class="field">
+          <span class="field__label">Username</span>
+          <input class="input" id="maps-username" name="userName" type="search" autocomplete="off" value="{{.Maps.UserName}}">
+        </label>
+        <label class="field">
+          <span class="field__label">VA code</span>
+          <input class="input" id="maps-vacode" name="vaCode" type="search" autocomplete="off" value="{{.Maps.VACode}}">
+        </label>
+        <label class="check-chip">
           <input id="maps-show-callsigns" name="showCallsigns" type="checkbox" value="1"{{if .Maps.ShowCallsigns}} checked{{end}}>
           Show callsigns
         </label>
-        <label class="maps-filters__field">
-          Callsign
-          <input id="maps-callsign" name="callSign" type="search" autocomplete="off" value="{{.Maps.CallSign}}">
-        </label>
-        <label class="maps-filters__field">
-          Username
-          <input id="maps-username" name="userName" type="search" autocomplete="off" value="{{.Maps.UserName}}">
-        </label>
-        <label class="maps-filters__field">
-          VA code
-          <input id="maps-vacode" name="vaCode" type="search" autocomplete="off" value="{{.Maps.VACode}}">
-        </label>
+        <button type="button" class="btn btn--primary btn--block" id="maps-filters-apply">Apply</button>
       </form>
+      <button type="button" class="maps-filters__icon-toggle icon-btn icon-btn--glass" id="maps-filters-toggle"
+              aria-expanded="{{if .Maps.Chrome.FiltersOpen}}true{{else}}false{{end}}"
+              aria-label="Expand filters">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M4.25 5.61C4.25 4.72 4.97 4 5.86 4h12.28c.89 0 1.61.72 1.61 1.61v.61c0 .55-.28 1.06-.75 1.35l-5.14 3.08a1.6 1.6 0 0 0-.75 1.35v4.24c0 .55-.45 1-1 1h-1.72a1 1 0 0 1-1-1v-4.24c0-.52-.27-1-.75-1.35L4.99 7.57a1.6 1.6 0 0 1-.74-1.35v-.61Z"/>
+        </svg>
+        <span class="maps-filters__icon-toggle-count" id="maps-filters-toggle-count" aria-hidden="true"></span>
+      </button>
     </div>
   </div>
-  <aside id="maps-detail-panel" class="maps-detail-panel" hidden aria-label="Flight details">
-    <header class="maps-detail-panel__header">
-      <div class="maps-detail-panel__tabs" role="tablist" id="maps-detail-tabs">
-        <a class="maps-detail-panel__tab maps-detail-panel__tab--active" role="tab"
+  <aside id="maps-detail-panel" class="maps-detail-panel panel panel--glass" hidden aria-label="Flight details">
+    <header class="panel__header">
+      <div class="tabs" role="tablist" id="maps-detail-tabs">
+        <a class="tabs__tab tabs__tab--active" role="tab"
            href="#" data-tab="flight" aria-selected="true">Flight</a>
-        <a class="maps-detail-panel__tab" role="tab"
+        <a class="tabs__tab" role="tab"
            href="#" data-tab="route" aria-selected="false">Route</a>
-        <a class="maps-detail-panel__tab" role="tab"
+        <a class="tabs__tab" role="tab"
            href="#" data-tab="user" aria-selected="false">User</a>
       </div>
-      <button type="button" class="maps-detail-panel__close" id="maps-detail-close" aria-label="Close flight details">
+      <button type="button" class="icon-btn" id="maps-detail-close" aria-label="Close flight details">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.29 19.71 2.88 18.3 9.17 12 2.88 5.71 4.29 4.3 10.59 10.6l6.29-6.3z"/></svg>
       </button>
     </header>
-    <div class="maps-detail-panel__body" id="maps-detail-body">
-      <p class="maps-detail-panel__empty">Select a flight on the map to view details.</p>
+    <div class="panel-body" id="maps-detail-body">
+      <p class="panel-message">Select a flight on the map to view details.</p>
     </div>
   </aside>
 </div>

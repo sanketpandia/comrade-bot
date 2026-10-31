@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"infinite-experiment/politburo/internal/routes"
 )
 
 func TestLoadUsesRewriteSafeDefaults(t *testing.T) {
@@ -245,7 +247,7 @@ func TestLoadAcceptsInfiniteFlightOAuthCredentials(t *testing.T) {
 	if cfg.InfiniteFlight.AuthBaseURL != "https://auth.example/v2" {
 		t.Fatalf("auth base URL = %q", cfg.InfiniteFlight.AuthBaseURL)
 	}
-	if cfg.OAuthRedirectURI() != "https://viz.example/oauth/callback" {
+	if cfg.OAuthRedirectURI() != "https://viz.example"+routes.OAuthCallback {
 		t.Fatalf("redirect URI = %q", cfg.OAuthRedirectURI())
 	}
 }

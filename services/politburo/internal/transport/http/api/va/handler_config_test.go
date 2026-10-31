@@ -14,6 +14,7 @@ import (
 	"infinite-experiment/politburo/internal/community/users"
 	"infinite-experiment/politburo/internal/community/virtualairlines"
 	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 func configTestVA() vaRepoStub {
@@ -68,7 +69,7 @@ func (s userRepoStub) GetByDiscordID(_ context.Context, _ string) (*users.User, 
 func TestGetVAConfigNotFound(t *testing.T) {
 	handler := &Handler{vas: configTestVA(), configs: configRepoStub{}}
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/api/v1/va/config?configType=BASIC", nil), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.VAConfig+"?configType=BASIC", nil), auth.Claims{
 		PbServerID: "va-1",
 		Role:       "administrator",
 	})
@@ -88,7 +89,7 @@ func TestGetVAConfigOK(t *testing.T) {
 		UpdatedBy:  "user-1",
 	}}}
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/api/v1/va/config?configType=BASIC", nil), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.VAConfig+"?configType=BASIC", nil), auth.Claims{
 		PbServerID: "va-1",
 		Role:       "administrator",
 	})
@@ -110,7 +111,7 @@ func TestUpsertVAConfigRequiresActor(t *testing.T) {
 	handler := &Handler{vas: configTestVA(), configs: configRepoStub{}}
 	recorder := httptest.NewRecorder()
 	body := bytes.NewBufferString(`{"game_callsign":{"prefix":"IE","suffix":""}}`)
-	req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/config?configType=BASIC", body), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodPost, routes.VAConfig+"?configType=BASIC", body), auth.Claims{
 		PbServerID: "va-1",
 		Role:       "administrator",
 	})
@@ -127,7 +128,7 @@ func TestUpsertVAConfigOK(t *testing.T) {
 	}
 	recorder := httptest.NewRecorder()
 	body := bytes.NewBufferString(`{"game_callsign":{"prefix":"IE","suffix":""}}`)
-	req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/config?configType=BASIC", body), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodPost, routes.VAConfig+"?configType=BASIC", body), auth.Claims{
 		PbServerID: "va-1",
 		PbUserID:   "user-1",
 		Role:       "administrator",
@@ -142,7 +143,7 @@ func TestUpsertVAConfigInvalidConfig(t *testing.T) {
 	handler := &Handler{vas: configTestVA(), configs: configRepoStub{}}
 	recorder := httptest.NewRecorder()
 	body := bytes.NewBufferString(`{"game_callsign":{"prefix":1}}`)
-	req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/config?configType=BASIC", body), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodPost, routes.VAConfig+"?configType=BASIC", body), auth.Claims{
 		PbServerID: "va-1",
 		PbUserID:   "user-1",
 		Role:       "administrator",
@@ -156,7 +157,7 @@ func TestUpsertVAConfigInvalidConfig(t *testing.T) {
 func TestUpsertVAConfigUnknownType(t *testing.T) {
 	handler := &Handler{vas: configTestVA(), configs: configRepoStub{}}
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/config?configType=FUTURE", bytes.NewBufferString(`{}`)), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodPost, routes.VAConfig+"?configType=FUTURE", bytes.NewBufferString(`{}`)), auth.Claims{
 		PbServerID: "va-1",
 		PbUserID:   "user-1",
 		Role:       "administrator",
@@ -175,7 +176,7 @@ func TestUpsertVAConfigValidatesWebhooks(t *testing.T) {
 	}
 	for body, want := range cases {
 		recorder := httptest.NewRecorder()
-		req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/config?configType=WEBHOOKS", bytes.NewBufferString(body)), auth.Claims{
+		req := withClaims(httptest.NewRequest(http.MethodPost, routes.VAConfig+"?configType=WEBHOOKS", bytes.NewBufferString(body)), auth.Claims{
 			PbServerID: "va-1",
 			PbUserID:   "user-1",
 			Role:       "administrator",
@@ -195,7 +196,7 @@ func TestUpsertVAConfigResolvesDiscordUser(t *testing.T) {
 	}
 	recorder := httptest.NewRecorder()
 	body := bytes.NewBufferString(`{"game_callsign":{"prefix":"X","suffix":""}}`)
-	req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/config?configType=BASIC", body), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodPost, routes.VAConfig+"?configType=BASIC", body), auth.Claims{
 		PbServerID: "va-1",
 		DsUserID:   "discord-1",
 		Role:       "administrator",
@@ -213,7 +214,7 @@ func TestUpsertVAConfigSaveError(t *testing.T) {
 	}
 	recorder := httptest.NewRecorder()
 	body := bytes.NewBufferString(`{"game_callsign":{"prefix":"IE","suffix":""}}`)
-	req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/config?configType=BASIC", body), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodPost, routes.VAConfig+"?configType=BASIC", body), auth.Claims{
 		PbServerID: "va-1",
 		PbUserID:   "user-1",
 		Role:       "administrator",

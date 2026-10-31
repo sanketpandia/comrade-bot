@@ -1,58 +1,126 @@
 {{define "maps-flight-detail"}}
 {{if .GoneMessage}}
-<p class="maps-detail-panel__error">{{.GoneMessage}}</p>
+<p class="panel-message panel-message--error">{{.GoneMessage}}</p>
 {{else if eq .Tab "route"}}
-<p class="maps-detail-panel__placeholder">Route information will appear here when flight-plan data is available.</p>
+<p class="panel-message">Route information will appear here when flight-plan data is available.</p>
 {{else if eq .Tab "user"}}
-<p class="maps-detail-panel__placeholder">User profile information is not available on the public map.</p>
+<p class="panel-message">User profile information is not available on the public map.</p>
 {{else if .Record}}
-<div class="maps-detail-info">
-  <p class="maps-detail-info__callsign">{{.Record.Callsign}}</p>
-  <ul class="maps-detail-info__meta">
-    <li><span class="maps-detail-info__label">Username</span><span>{{.Record.Username}}</span></li>
-    <li><span class="maps-detail-info__label">Virtual organization</span><span>{{.Record.VirtualOrganization}}</span></li>
-    <li><span class="maps-detail-info__label">Aircraft</span><span>{{.Record.AircraftName}}</span></li>
-    <li><span class="maps-detail-info__label">Livery</span><span>{{.Record.LiveryName}}</span></li>
-    <li><span class="maps-detail-info__label">Session</span><span>{{.Record.SessionName}}</span></li>
-  </ul>
-  <div class="maps-detail-info__grid">
-    <div class="maps-detail-info__cell"><span class="maps-detail-info__label">Speed</span><span>{{.Record.Speed}}</span></div>
-    <div class="maps-detail-info__cell"><span class="maps-detail-info__label">Altitude</span><span>{{.Record.Altitude}}</span></div>
-    <div class="maps-detail-info__cell maps-detail-info__cell--wide">
-      <span class="maps-detail-info__label">Vertical speed</span>
-      <span>{{.Record.VerticalSpeed}}</span>
-      <span class="maps-detail-badge {{.Record.VSpeedTrendClass}}">{{.Record.VSpeedTrend}}</span>
+<div class="stack">
+  <p class="hero-value">{{.Record.Callsign}}</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <span class="eyebrow">Aircraft</span>
+      <span class="card__value">{{if .Record.AircraftName}}{{.Record.AircraftName}}{{else}}—{{end}}</span>
     </div>
-    <div class="maps-detail-info__cell"><span class="maps-detail-info__label">Track</span><span>{{.Record.Track}}</span></div>
-    <div class="maps-detail-info__cell">
-      <span class="maps-detail-info__label">Pilot state</span>
-      <span class="maps-detail-badge {{.Record.PilotStateClass}}">{{.Record.PilotState}}</span>
+    <div class="card">
+      <span class="eyebrow">Livery</span>
+      <span class="card__value">{{if .Record.LiveryName}}{{.Record.LiveryName}}{{else}}—{{end}}</span>
     </div>
-    <div class="maps-detail-info__cell">
-      <span class="maps-detail-info__label">Connection</span>
-      <span class="maps-detail-badge {{.Record.ConnectionClass}}">{{.Record.Connection}}</span>
+    <div class="card">
+      <span class="eyebrow">Username</span>
+      <span class="card__value">{{if .Record.Username}}{{.Record.Username}}{{else}}—{{end}}</span>
+    </div>
+    <div class="card">
+      <span class="eyebrow">Server</span>
+      <span class="card__value">{{if .Record.Server}}{{.Record.Server}}{{else}}—{{end}}</span>
     </div>
   </div>
-  <ul class="maps-detail-info__meta maps-detail-info__meta--footer">
-    <li>
-      <span class="maps-detail-info__label">FPL sync required</span>
-      {{if .Record.FPLSyncRequired}}
-      <span class="maps-detail-badge maps-detail-badge--warn">YES</span>
-      {{else}}
-      <span class="maps-detail-badge maps-detail-badge--muted">NO</span>
+
+  <section class="section">
+    <h3 class="section__title">Flight metrics</h3>
+    <table class="kv-table">
+      <tbody>
+        <tr><th scope="row">Speed</th><td>{{.Record.Speed}}</td></tr>
+        <tr><th scope="row">Altitude</th><td>{{.Record.Altitude}}</td></tr>
+        <tr>
+          <th scope="row">Vertical speed</th>
+          <td>
+            {{.Record.VerticalSpeed}}
+            <span class="badge {{.Record.VSpeedTrendClass}}">{{.Record.VSpeedTrend}}</span>
+          </td>
+        </tr>
+        <tr><th scope="row">Track</th><td>{{.Record.Track}}</td></tr>
+        <tr>
+          <th scope="row">Pilot state</th>
+          <td><span class="badge {{.Record.PilotStateClass}}">{{.Record.PilotState}}</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Position</th>
+          <td>
+            <a class="data-link"
+               href="https://www.openstreetmap.org/?mlat={{.Record.Latitude}}&mlon={{.Record.Longitude}}#map=10/{{.Record.Latitude}}/{{.Record.Longitude}}"
+               target="_blank" rel="noopener noreferrer">{{.Record.Position}}</a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  {{with .Record.Analytics}}
+  <section class="section">
+    <h3 class="section__title">Analytics</h3>
+    <table class="kv-table">
+      <tbody>
+        <tr>
+          <th scope="row">Phase</th>
+          <td>
+            <span class="inline-cluster">
+              <span>{{if .Phase}}{{.Phase}}{{else}}—{{end}}</span>
+              <span class="confidence confidence--{{.ConfidenceLevel}}"
+                    role="img"
+                    aria-label="Confidence {{.ConfidenceLevel}} ({{.ConfidencePercent}})"
+                    title="Confidence {{.ConfidencePercent}}">
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <rect class="confidence__bar confidence__bar--1" x="1" y="10" width="3.5" height="5" rx="1"/>
+                  <rect class="confidence__bar confidence__bar--2" x="6.25" y="6" width="3.5" height="9" rx="1"/>
+                  <rect class="confidence__bar confidence__bar--3" x="11.5" y="2" width="3.5" height="13" rx="1"/>
+                </svg>
+              </span>
+            </span>
+            {{if .PhaseSince}}
+            <span class="text-subtle">since <time datetime="{{.PhaseSinceISO}}" title="{{.PhaseSinceISO}}">{{.PhaseSince}}</time> · {{.PhaseSinceRelative}}</span>
+            {{end}}
+          </td>
+        </tr>
+        <tr><th scope="row">Previous phase</th><td>{{if .PreviousPhase}}{{.PreviousPhase}}{{else}}—{{end}}</td></tr>
+        <tr><th scope="row">Activity</th><td>{{if .Activity}}{{.Activity}}{{else}}—{{end}}</td></tr>
+        <tr>
+          <th scope="row">AP+</th>
+          <td>
+            {{if .APPlusCandidate}}
+            <span class="badge badge--warn">Candidate · {{.APPlusScore}}</span>
+            {{if .APPlusSince}}<span class="text-subtle">since {{.APPlusSince}}</span>{{end}}
+            {{range .APPlusReasons}}<span class="text-subtle">{{.}}</span>{{end}}
+            {{else}}
+            <span class="badge badge--muted">No</span>
+            {{end}}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+  {{end}}
+
+  {{if .Record.DebugKeys}}
+  <details class="collapsible">
+    <summary class="collapsible__summary">Debugging keys</summary>
+    <ul class="collapsible__body">
+      {{range .Record.DebugKeys}}
+      <li>
+        <button type="button" class="copy-key" data-copy="{{.Value}}" title="Copy {{.Label}}">
+          <span class="copy-key__label eyebrow">
+            <span class="copy-key__source copy-key__source--{{.Source}}">{{.Source}}</span>
+            {{.Label}}
+          </span>
+          <span class="copy-key__value">{{.Value}}</span>
+        </button>
+      </li>
       {{end}}
-    </li>
-    <li><span class="maps-detail-info__label">Last report</span><span>{{.Record.LastReport}}</span></li>
-  </ul>
-  <div class="maps-detail-info__ids">
-    <dl>
-      <div><dt>Flight ID</dt><dd>{{.Record.FlightID}}</dd></div>
-      <div><dt>User ID</dt><dd>{{.Record.UserID}}</dd></div>
-      <div><dt>Position</dt><dd>{{.Record.Position}}</dd></div>
-      <div><dt>Pilot state code</dt><dd>{{.Record.PilotStateCode}}</dd></div>
-      <div><dt>Session ID</dt><dd>{{.Record.SessionID}}</dd></div>
-    </dl>
-  </div>
+    </ul>
+  </details>
+  {{end}}
 </div>
 {{end}}
 {{end}}

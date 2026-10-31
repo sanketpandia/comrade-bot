@@ -17,7 +17,7 @@ export async function execute(interaction: DiscordInteraction): Promise<void> {
     const metaInfo = interaction.getMetaInfo();
 
     try {
-        const signedLinkResponse = await ApiService.generateSignedLink(metaInfo, "/maps/flights/active");
+        const signedLinkResponse = await ApiService.generateSignedLink(metaInfo, { type: "LIVE_MAP" });
 
         if (!signedLinkResponse?.result?.url) {
             await chat.editReply({

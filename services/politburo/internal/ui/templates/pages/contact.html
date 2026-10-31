@@ -7,15 +7,17 @@
 {{if .FormError}}
 <p class="public-form__error" role="alert">{{.FormError}}</p>
 {{end}}
-<form class="public-form" method="post" action="/contact">
-  <label class="public-form__label" for="if_community_id">IF Community username</label>
-  <input class="public-form__input" type="text" id="if_community_id" name="if_community_id" maxlength="30" autocomplete="username" value="{{.IFCommunityID}}" required>
-
-  <label class="public-form__label" for="message">Message</label>
-  <textarea class="public-form__textarea" id="message" name="message" rows="8" maxlength="5000" required>{{.Message}}</textarea>
-
+<form class="public-form form-stack" method="post" action="/contact">
+  <div class="field">
+    <label class="field__label" for="if_community_id">IF Community username</label>
+    <input class="input" type="text" id="if_community_id" name="if_community_id" maxlength="30" autocomplete="username" value="{{.IFCommunityID}}" required>
+  </div>
+  <div class="field">
+    <label class="field__label" for="message">Message</label>
+    <textarea class="input" id="message" name="message" rows="8" maxlength="5000" required>{{.Message}}</textarea>
+  </div>
   <div class="public-form__actions">
-    <button type="submit" class="public-button">Send message</button>
+    <button type="submit" class="btn btn--solid">Send message</button>
   </div>
 </form>
 {{end}}

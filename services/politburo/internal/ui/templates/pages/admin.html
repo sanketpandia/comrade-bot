@@ -1,17 +1,17 @@
 {{define "admin-content"}}
 <h1>Admin</h1>
 <div class="admin-layout">
-  <nav class="admin-tabs" aria-label="Admin sections">
-    <a class="admin-tabs__link" href="/admin/general"{{if eq .AdminTab "general"}} aria-current="page"{{end}}>General</a>
+  <nav class="tabs tabs--nav" aria-label="Admin sections">
+    <a class="tabs__tab" href="/admin/general"{{if eq .AdminTab "general"}} aria-current="page"{{end}}>General</a>
   </nav>
-  <section class="admin-panel tile" aria-labelledby="admin-general-heading">
-    <h2 id="admin-general-heading">General</h2>
-    <p class="admin-panel__lead">Virtual airline settings for this server.</p>
-    <p id="admin-general-status" class="admin-panel__status" role="status" hidden></p>
-    <form class="admin-form" id="admin-general-form">
-      <div class="admin-field">
-        <label for="va-code">VA code</label>
-        <input id="va-code" name="code" type="text" readonly autocomplete="off" placeholder="Loading…">
+  <section class="panel" aria-labelledby="admin-general-heading">
+    <h2 class="panel-heading" id="admin-general-heading">General</h2>
+    <p class="panel-lead">Virtual airline settings for this server.</p>
+    <p id="admin-general-status" class="panel-message" role="status" hidden></p>
+    <form class="form-stack" id="admin-general-form">
+      <div class="field">
+        <label class="field__label" for="va-code">VA code</label>
+        <input class="input" id="va-code" name="code" type="text" readonly autocomplete="off" placeholder="Loading…">
       </div>
     </form>
   </section>

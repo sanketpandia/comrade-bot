@@ -20,6 +20,7 @@ import (
 	"infinite-experiment/politburo/internal/operations/contact"
 	"infinite-experiment/politburo/internal/operations/operator"
 	"infinite-experiment/politburo/internal/operations/reports"
+	"infinite-experiment/politburo/internal/routes"
 	"infinite-experiment/politburo/internal/transport/http/response"
 	appui "infinite-experiment/politburo/internal/ui"
 )
@@ -196,7 +197,7 @@ func (h *Handler) SubmitContact(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	http.Redirect(w, r, "/contact?sent=1", http.StatusSeeOther)
+	http.Redirect(w, r, routes.Contact+"?sent=1", http.StatusSeeOther)
 }
 
 func (h *Handler) renderContactForm(w http.ResponseWriter, page publicPage) {
@@ -263,9 +264,9 @@ func (h *Handler) NotFound(w http.ResponseWriter, r *http.Request) {
 }
 
 func machineNotFound(path string) bool {
-	return strings.HasPrefix(path, "/api/") ||
-		path == "/health" || strings.HasPrefix(path, "/health/") ||
-		path == "/metrics" || strings.HasPrefix(path, "/metrics/")
+	return strings.HasPrefix(path, routes.APIPrefix) ||
+		path == routes.Health || strings.HasPrefix(path, routes.HealthPrefix) ||
+		path == routes.Metrics || strings.HasPrefix(path, routes.MetricsPrefix)
 }
 
 func (h *Handler) renderPublic(w http.ResponseWriter, status int, page publicPage) {
@@ -305,7 +306,7 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 // AdminRedirect sends /admin to the default General tab.
 func (h *Handler) AdminRedirect(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/admin/general", http.StatusSeeOther)
+	http.Redirect(w, r, routes.AdminGeneral, http.StatusSeeOther)
 }
 
 // Admin is the VA administrator settings area.
@@ -411,7 +412,7 @@ func (h *Handler) ResolveOperatorReport(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-	http.Redirect(w, r, "/operator/reports", http.StatusSeeOther)
+	http.Redirect(w, r, routes.OperatorReports, http.StatusSeeOther)
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -467,7 +468,7 @@ func Brand() http.Handler {
 	if err != nil {
 		panic("ui brand assets missing: " + err.Error())
 	}
-	files := http.StripPrefix("/static/brand/", http.FileServer(http.FS(sub)))
+	files := http.StripPrefix(routes.StaticBrandPrefix, http.FileServer(http.FS(sub)))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "public, max-age=604800")
 		files.ServeHTTP(w, r)
@@ -480,5 +481,5 @@ func Static() http.Handler {
 	if err != nil {
 		panic("ui static assets missing: " + err.Error())
 	}
-	return http.StripPrefix("/static/", http.FileServer(http.FS(sub)))
+	return http.StripPrefix(routes.StaticPrefix, http.FileServer(http.FS(sub)))
 }

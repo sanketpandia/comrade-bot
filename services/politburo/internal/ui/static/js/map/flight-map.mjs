@@ -774,11 +774,6 @@ export class FlightMap {
       animate: true,
       duration: 0.75
     });
-
-    // Also trigger the click handler to show flight details
-    if (this.onFlightClickCallback && data) {
-      this.onFlightClickCallback(data);
-    }
   }
 
   /**

@@ -13,6 +13,7 @@ import (
 	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/webhooks/dispatch"
 	webhookjobs "infinite-experiment/politburo/internal/webhooks/jobs"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 type webhookTriggerStub struct {
@@ -32,7 +33,7 @@ func TestTriggerVAWebhookSuccess(t *testing.T) {
 	handler := &Handler{vas: configTestVA(), webhooks: trigger}
 	body := bytes.NewBufferString(`{"webhookType":" active_flights "}`)
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/webhook/trigger", body), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodPost, routes.VAWebhookTrigger, body), auth.Claims{
 		PbServerID: "va-1",
 		Role:       "administrator",
 	})
@@ -57,7 +58,7 @@ func TestTriggerVAWebhookNotFound(t *testing.T) {
 		handler := &Handler{vas: configTestVA(), webhooks: &webhookTriggerStub{err: err}}
 		body := bytes.NewBufferString(`{"webhookType":"hourly"}`)
 		recorder := httptest.NewRecorder()
-		req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/webhook/trigger", body), auth.Claims{
+		req := withClaims(httptest.NewRequest(http.MethodPost, routes.VAWebhookTrigger, body), auth.Claims{
 			PbServerID: "va-1",
 			Role:       "administrator",
 		})
@@ -71,7 +72,7 @@ func TestTriggerVAWebhookNotFound(t *testing.T) {
 func TestTriggerVAWebhookInvalidBody(t *testing.T) {
 	handler := &Handler{vas: configTestVA(), webhooks: &webhookTriggerStub{}}
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/webhook/trigger", bytes.NewBufferString(`{}`)), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodPost, routes.VAWebhookTrigger, bytes.NewBufferString(`{}`)), auth.Claims{
 		PbServerID: "va-1",
 		Role:       "administrator",
 	})
@@ -85,7 +86,7 @@ func TestTriggerVAWebhookDispatchError(t *testing.T) {
 	handler := &Handler{vas: configTestVA(), webhooks: &webhookTriggerStub{err: errors.New("db down")}}
 	body := bytes.NewBufferString(`{"webhookType":"active_flights"}`)
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodPost, "/api/v1/va/webhook/trigger", body), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodPost, routes.VAWebhookTrigger, body), auth.Claims{
 		PbServerID: "va-1",
 		Role:       "administrator",
 	})

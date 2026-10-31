@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 type repoStub struct {
@@ -52,7 +53,7 @@ func (c *cacheMem) SetJSON(_ context.Context, key string, value any, _ time.Dura
 func TestLookupCachesActiveStatus(t *testing.T) {
 	repo := &repoStub{active: true, found: true}
 	lookup := NewLookup(repo, newCacheMem())
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/game/sessions/active", nil)
+	req := httptest.NewRequest(http.MethodGet, routes.GameSessionsActive, nil)
 
 	claims, ok, err := lookup.Lookup(req, "key-1")
 	if err != nil || !ok || !claims.APIKeyPresent {

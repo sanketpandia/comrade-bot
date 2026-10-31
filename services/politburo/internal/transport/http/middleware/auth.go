@@ -8,6 +8,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"infinite-experiment/politburo/internal/access/auth"
+	"infinite-experiment/politburo/internal/routes"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
 
@@ -56,7 +57,7 @@ func AuthenticateAPI(lookup APIKeyLookup, sessions SessionLookup) func(http.Hand
 				return
 			}
 
-			if !strings.HasPrefix(path, "/api/v1") {
+			if !strings.HasPrefix(path, routes.APIV1) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -104,38 +105,40 @@ func AuthenticateAPI(lookup APIKeyLookup, sessions SessionLookup) func(http.Hand
 }
 
 func isGameAPIPath(path string) bool {
-	return strings.HasPrefix(path, "/api/v1/game/")
+	return strings.HasPrefix(path, routes.APIV1GamePrefix)
 }
 
 func isVAAdminAPIPath(path string) bool {
-	return path == "/api/v1/va" || strings.HasPrefix(path, "/api/v1/va/")
+	return path == routes.VA || strings.HasPrefix(path, routes.APIV1VAPrefix)
 }
 
 func isSessionAPIPath(path string) bool {
 	return isGameAPIPath(path) ||
-		strings.HasPrefix(path, "/api/v1/operator/") ||
+		strings.HasPrefix(path, routes.APIV1OperatorPrefix) ||
 		isVAAdminAPIPath(path) ||
-		path == "/api/v1/user/me" ||
-		path == "/api/v1/oauth/infinite-flight"
+		path == routes.UserMe ||
+		path == routes.OAuthInfiniteFlight
 }
 
 func isSessionOnlyPath(path string) bool {
-	return path == "/oauth/callback"
+	return path == routes.OAuthCallback
 }
 
 func isPublicGameCacheRead(method, path string) bool {
 	if method != http.MethodGet {
 		return false
 	}
-	if path == "/api/v1/game/sessions/active" {
+	if path == routes.GameSessionsActive {
 		return true
 	}
-	if strings.HasPrefix(path, "/api/v1/game/flights/active/") {
-		rest := strings.TrimPrefix(path, "/api/v1/game/flights/active/")
+	flightsPrefix := routes.Prefix(routes.GameFlightsActive)
+	if strings.HasPrefix(path, flightsPrefix) {
+		rest := strings.TrimPrefix(path, flightsPrefix)
 		return rest != "" && !strings.Contains(rest, "/")
 	}
-	if strings.HasPrefix(path, "/api/v1/game/flight/active/") {
-		rest := strings.TrimPrefix(path, "/api/v1/game/flight/active/")
+	flightPrefix := routes.Prefix(routes.GameFlightActive)
+	if strings.HasPrefix(path, flightPrefix) {
+		rest := strings.TrimPrefix(path, flightPrefix)
 		return rest != ""
 	}
 	return false

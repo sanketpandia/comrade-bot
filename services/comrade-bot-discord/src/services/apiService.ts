@@ -308,27 +308,25 @@ export class ApiService {
     }
 
     /**
-     * Generate a signed link with redirect URL support
-     * @param meta - Meta information for API authentication
-     * @param redirectTo - URL to redirect to after authentication (can include query parameters)
-     * @param ttlMinutes - Time to live in minutes (default: 15)
-     * @returns Signed link URL and expiration info
+     * Generate a one-time signed portal URL.
      */
     static async generateSignedLink(
         meta: MetaInfo,
-        redirectTo: string,
-        ttlMinutes?: number
+        destination: { type: "LIVE_MAP" } | { type: "DASHBOARD" } | { type: "CUSTOM"; redirectTo: string }
     ): Promise<ApiResponse<{ url: string; expires_in: number; redirect_to: string }>> {
         try {
+            const body: { type: string; redirectTo?: string } = { type: destination.type };
+            if (destination.type === "CUSTOM") {
+                body.redirectTo = destination.redirectTo;
+            }
+
             const res = await fetch(`${getPolitburoApiUrl()}/api/v1/signed-link`, {
                 method: "POST",
                 headers: {
                     ...generateRegistrationMetaHeaders(meta),
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                    redirectTo,
-                })
+                body: JSON.stringify(body)
             });
 
             if (res.status === 401) {
@@ -355,7 +353,7 @@ export class ApiService {
                 result: {
                     url: data.url,
                     expires_in: data.expiresIn ?? data.expires_in ?? 600,
-                    redirect_to: data.redirectTo ?? data.redirect_to ?? redirectTo,
+                    redirect_to: data.redirectTo ?? data.redirect_to ?? (destination.type === "CUSTOM" ? destination.redirectTo : ""),
                 },
             };
         } catch (err) {

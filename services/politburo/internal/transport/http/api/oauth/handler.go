@@ -12,6 +12,7 @@ import (
 	"infinite-experiment/politburo/internal/access/session"
 	"infinite-experiment/politburo/internal/cache"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
+	"infinite-experiment/politburo/internal/routes"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
 
@@ -19,8 +20,6 @@ type tokenCache interface {
 	SetJSON(context.Context, string, any, time.Duration) error
 	GetDelJSON(context.Context, string, any) error
 }
-
-const dashboardOAuthQuery = "/dashboard"
 
 // Handler serves Politburo Infinite Flight OAuth start and callback routes.
 type Handler struct {
@@ -81,7 +80,7 @@ func (h *Handler) GetAuthorizeURL(w http.ResponseWriter, r *http.Request) {
 // CompleteCallback exchanges the authorization code and stores tokens in Redis.
 func (h *Handler) CompleteCallback(w http.ResponseWriter, r *http.Request, code, state string) {
 	if h.client == nil {
-		http.Redirect(w, r, dashboardOAuthQuery+"?oauth=error", http.StatusSeeOther)
+		http.Redirect(w, r, routes.Dashboard+"?oauth=error", http.StatusSeeOther)
 		return
 	}
 	claims, _ := auth.ClaimsFromContext(r.Context())
@@ -89,7 +88,7 @@ func (h *Handler) CompleteCallback(w http.ResponseWriter, r *http.Request, code,
 	code = strings.TrimSpace(code)
 	if state == "" || code == "" {
 		slog.Info("oauth callback missing parameters")
-		http.Redirect(w, r, dashboardOAuthQuery+"?oauth=error", http.StatusSeeOther)
+		http.Redirect(w, r, routes.Dashboard+"?oauth=error", http.StatusSeeOther)
 		return
 	}
 	var pending infiniteflight.OAuthPending
@@ -99,23 +98,23 @@ func (h *Handler) CompleteCallback(w http.ResponseWriter, r *http.Request, code,
 		} else {
 			slog.Info("oauth callback unknown or expired state")
 		}
-		http.Redirect(w, r, dashboardOAuthQuery+"?oauth=error", http.StatusSeeOther)
+		http.Redirect(w, r, routes.Dashboard+"?oauth=error", http.StatusSeeOther)
 		return
 	}
 	userID := strings.TrimSpace(pending.UserID)
 	if userID == "" {
-		http.Redirect(w, r, dashboardOAuthQuery+"?oauth=error", http.StatusSeeOther)
+		http.Redirect(w, r, routes.Dashboard+"?oauth=error", http.StatusSeeOther)
 		return
 	}
 	if sessionUserID := strings.TrimSpace(claims.PbUserID); sessionUserID != "" && sessionUserID != userID {
 		slog.Info("oauth callback user mismatch")
-		http.Redirect(w, r, dashboardOAuthQuery+"?oauth=error", http.StatusSeeOther)
+		http.Redirect(w, r, routes.Dashboard+"?oauth=error", http.StatusSeeOther)
 		return
 	}
 	tokens, err := h.client.ExchangeCode(r.Context(), h.redirectURI, code, pending.CodeVerifier)
 	if err != nil {
 		slog.Error("exchange oauth code", "error", err)
-		http.Redirect(w, r, dashboardOAuthQuery+"?oauth=error", http.StatusSeeOther)
+		http.Redirect(w, r, routes.Dashboard+"?oauth=error", http.StatusSeeOther)
 		return
 	}
 	expiresAt := time.Now().UTC().Add(time.Duration(tokens.ExpiresIn) * time.Second)
@@ -131,8 +130,8 @@ func (h *Handler) CompleteCallback(w http.ResponseWriter, r *http.Request, code,
 	}
 	if err := h.cache.SetJSON(r.Context(), cache.KeyIFOAuthUser(userID), stored, session.TTL); err != nil {
 		slog.Error("store oauth token session", "error", err)
-		http.Redirect(w, r, dashboardOAuthQuery+"?oauth=error", http.StatusSeeOther)
+		http.Redirect(w, r, routes.Dashboard+"?oauth=error", http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, dashboardOAuthQuery+"?oauth=connected", http.StatusSeeOther)
+	http.Redirect(w, r, routes.Dashboard+"?oauth=connected", http.StatusSeeOther)
 }

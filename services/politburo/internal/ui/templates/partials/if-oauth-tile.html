@@ -1,15 +1,15 @@
 {{define "if-oauth-tile"}}
 {{if .IFOAuthEnabled}}
-<section class="tile">
-  <h2>Infinite Flight account</h2>
-  <p>Connect your Infinite Flight account for Live API access.</p>
+<section class="panel panel--spaced">
+  <h2 class="panel-heading">Infinite Flight account</h2>
+  <p class="panel-lead">Connect your Infinite Flight account for Live API access.</p>
   {{if eq .OAuthStatus "connected"}}
-  <p class="tile__status tile__status--ok">Connected to Infinite Flight.</p>
+  <p class="panel-lead status-ok">Connected to Infinite Flight.</p>
   {{else if eq .OAuthStatus "error"}}
-  <p class="tile__status tile__status--error">Connection failed. Try again.</p>
+  <p class="panel-lead status-error">Connection failed. Try again.</p>
   {{end}}
-  <div class="tile__links">
-    <button type="button" class="tile__link tile__link--button" id="if-oauth-connect">Connect Infinite Flight</button>
+  <div class="link-row">
+    <button type="button" class="btn" id="if-oauth-connect">Connect Infinite Flight</button>
   </div>
 </section>
 {{end}}

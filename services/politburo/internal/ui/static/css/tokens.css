@@ -1,0 +1,55 @@
+:root {
+  color-scheme: dark;
+
+  /* Palette */
+  --bg-app: #282828;
+  --bg-surface: #1d2021;
+  --bg-surface-elevated: #3c3836;
+  --text-primary: #ebdbb2;
+  --text-secondary: #d5c4a1;
+  --text-muted: #a89984;
+  --border-color: #3c3836;
+  --accent-primary: #fe8019;
+  --accent-text: #282828;
+  --status-active: #8ec07c;
+  --status-away-in-flight: #d3869b;
+  --status-away-parked: #a89984;
+  --status-in-background: #665c54;
+  --status-error: #fb4934;
+  --status-warn: var(--accent-primary);
+
+  /* Glass */
+  --glass-bg: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+  --glass-bg-strong: color-mix(in srgb, var(--bg-surface) 86%, transparent);
+  --glass-tile: color-mix(in srgb, var(--bg-surface-elevated) 42%, transparent);
+  --glass-border: color-mix(in srgb, var(--text-primary) 11%, transparent);
+  --glass-blur: blur(14px) saturate(140%);
+
+  /* Elevation */
+  --shadow-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.22), 0 6px 16px rgba(0, 0, 0, 0.26);
+  --shadow-3: 0 1px 2px rgba(0, 0, 0, 0.22), 0 6px 16px rgba(0, 0, 0, 0.26), 0 18px 44px rgba(0, 0, 0, 0.34);
+  --shadow-glass-panel: var(--shadow-highlight), var(--shadow-3);
+
+  /* Shape, motion, layering */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-pill: 999px;
+  --duration-fast: 0.15s;
+  --duration-base: 0.22s;
+  --ease-out: ease-out;
+  --focus-ring: 2px solid var(--accent-primary);
+  --z-panel: 450;
+  --z-chrome: 500;
+  --z-popover: 600;
+  --chrome-inset: 12px;
+
+  /* Type scale */
+  --text-2xs: 0.6rem;
+  --text-xs: 0.68rem;
+  --text-sm: 0.8rem;
+  --text-md: 0.85rem;
+  --text-lg: 1.15rem;
+  --text-xl: 1.35rem;
+}

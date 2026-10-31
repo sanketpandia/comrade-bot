@@ -20,7 +20,7 @@ async function execute(interaction: DiscordInteraction): Promise<void> {
 
         try {
             // Generate signed link for dashboard (same as /tour command)
-            const signedLinkResponse = await ApiService.generateSignedLink(metaInfo, "/dashboard");
+            const signedLinkResponse = await ApiService.generateSignedLink(metaInfo, { type: "DASHBOARD" });
             
             if (!signedLinkResponse?.result?.url) {
                 await chat.editReply({

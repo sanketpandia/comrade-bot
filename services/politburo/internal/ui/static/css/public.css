@@ -41,35 +41,6 @@ html, body { height: 100%; }
   justify-content: center;
 }
 
-.public-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.6rem;
-  padding: 0.55rem 1.2rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  background: var(--accent-primary);
-  color: var(--accent-text);
-  font: inherit;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.public-button--ghost {
-  background: transparent;
-  border-color: var(--border-color);
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.public-button:hover { filter: brightness(1.06); }
-
-.public-button:focus-visible {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 3px;
-}
-
 .public-footer {
   margin-top: 2rem;
 }
@@ -87,36 +58,11 @@ html, body { height: 100%; }
 .public-form {
   width: 100%;
   text-align: left;
+  max-width: none;
 }
 
-.public-form__label {
-  display: block;
-  margin: 0 0 0.35rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.public-form__input,
-.public-form__textarea {
-  display: block;
-  width: 100%;
-  margin: 0 0 1rem;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface, var(--bg-app));
-  color: var(--text-primary);
-  font: inherit;
-  line-height: 1.45;
-}
-
-.public-form__textarea { resize: vertical; min-height: 8rem; }
-
-.public-form__input:focus-visible,
-.public-form__textarea:focus-visible {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
+.public-form .field {
+  margin-bottom: 0.25rem;
 }
 
 .public-form__actions {
@@ -139,7 +85,7 @@ html, body { height: 100%; }
   margin: 0 0 1rem;
   padding: 0.65rem 0.85rem;
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, #c0392b 15%, transparent);
+  background: color-mix(in srgb, var(--status-error) 15%, transparent);
   color: var(--text-primary);
   font-size: 0.95rem;
   text-align: left;

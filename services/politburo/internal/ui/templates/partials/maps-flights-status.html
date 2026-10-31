@@ -1,15 +1,15 @@
 {{define "maps-flights-status"}}
 <div class="maps-filters__status">
-  <span id="maps-count">{{.Count}} flights</span>
+  <p class="maps-filters__count-line"><span id="maps-count" class="count-primary">{{.Count}}</span> flights</p>
   {{if .CacheISO}}
-  <time id="maps-cached" datetime="{{.CacheISO}}" title="{{.CacheISO}}">{{.CacheRelative}}</time>
+  <time id="maps-cached" class="count-muted" datetime="{{.CacheISO}}" title="{{.CacheISO}}">{{.CacheRelative}}</time>
   {{else}}
-  <span id="maps-cached"></span>
+  <span id="maps-cached" class="count-muted"></span>
   {{end}}
   {{if .Error}}
-  <span id="maps-error">{{.Error}}</span>
+  <span id="maps-error" class="count-error">{{.Error}}</span>
   {{else}}
-  <span id="maps-error" hidden></span>
+  <span id="maps-error" class="count-error" hidden></span>
   {{end}}
 </div>
 <script type="application/json" id="maps-tracks">{{.TracksJSON}}</script>

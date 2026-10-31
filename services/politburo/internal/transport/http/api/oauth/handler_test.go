@@ -14,6 +14,7 @@ import (
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/cache"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 type oauthCacheStub struct {
@@ -59,9 +60,9 @@ func TestGetAuthorizeURLReturnsAuthorizeLinkAndPendingSession(t *testing.T) {
 		t.Fatalf("NewOAuthClient() error = %v", err)
 	}
 	cacheStub := newOAuthCacheStub()
-	handler := NewHandler(oauthClient, "http://localhost:8082/oauth/callback", cacheStub)
+	handler := NewHandler(oauthClient, "http://localhost:8082"+routes.OAuthCallback, cacheStub)
 
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/api/v1/oauth/infinite-flight", nil), auth.Claims{PbUserID: "user-1"})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.OAuthInfiniteFlight, nil), auth.Claims{PbUserID: "user-1"})
 	recorder := httptest.NewRecorder()
 	handler.GetAuthorizeURL(recorder, req)
 	if recorder.Code != http.StatusOK {
@@ -94,10 +95,10 @@ func TestGetAuthorizeURLReturnsAuthorizeLinkAndPendingSession(t *testing.T) {
 func TestGetAuthorizeURLRequiresSessionUser(t *testing.T) {
 	handler := NewHandler(
 		mustOAuthClient(t, "https://auth.example/v2", "ifc_test", "secret"),
-		"http://localhost:8082/oauth/callback",
+		"http://localhost:8082"+routes.OAuthCallback,
 		newOAuthCacheStub(),
 	)
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/api/v1/oauth/infinite-flight", nil), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.OAuthInfiniteFlight, nil), auth.Claims{
 		DsUserID: "ds-1", APIKeyPresent: true,
 	})
 	recorder := httptest.NewRecorder()
@@ -128,14 +129,14 @@ func TestCompleteCallbackStoresTokenSession(t *testing.T) {
 		UserID: "user-1", CodeVerifier: "verifier-xyz",
 	}, infiniteflight.OAuthPendingTTL)
 
-	handler := NewHandler(oauthClient, "http://localhost:8082/oauth/callback", cacheStub)
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/oauth/callback?code=auth-code&state="+state, nil), auth.Claims{PbUserID: "user-1"})
+	handler := NewHandler(oauthClient, "http://localhost:8082"+routes.OAuthCallback, cacheStub)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.OAuthCallback+"?code=auth-code&state="+state, nil), auth.Claims{PbUserID: "user-1"})
 	recorder := httptest.NewRecorder()
 	handler.CompleteCallback(recorder, req, "auth-code", state)
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d, want 303", recorder.Code)
 	}
-	if loc := recorder.Header().Get("Location"); loc != "/dashboard?oauth=connected" {
+	if loc := recorder.Header().Get("Location"); loc != routes.Dashboard+"?oauth=connected" {
 		t.Fatalf("location = %q", loc)
 	}
 	var stored infiniteflight.OAuthTokenSession
@@ -164,10 +165,10 @@ func TestCompleteCallbackStoresTokenSessionWithoutCookie(t *testing.T) {
 		UserID: "user-1", CodeVerifier: "verifier-xyz",
 	}, infiniteflight.OAuthPendingTTL)
 
-	handler := NewHandler(oauthClient, "http://localhost:8082/oauth/callback", cacheStub)
+	handler := NewHandler(oauthClient, "http://localhost:8082"+routes.OAuthCallback, cacheStub)
 	recorder := httptest.NewRecorder()
-	handler.CompleteCallback(recorder, httptest.NewRequest(http.MethodGet, "/oauth/callback", nil), "auth-code", state)
-	if loc := recorder.Header().Get("Location"); loc != "/dashboard?oauth=connected" {
+	handler.CompleteCallback(recorder, httptest.NewRequest(http.MethodGet, routes.OAuthCallback, nil), "auth-code", state)
+	if loc := recorder.Header().Get("Location"); loc != routes.Dashboard+"?oauth=connected" {
 		t.Fatalf("location = %q", loc)
 	}
 }
@@ -183,7 +184,7 @@ func TestCompleteCallbackRejectsMissingPendingState(t *testing.T) {
 		t.Fatalf("NewOAuthClient() error = %v", err)
 	}
 	handler := NewHandler(oauthClient, "http://localhost:8082/oauth/callback", newOAuthCacheStub())
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/oauth/callback?code=auth-code&state=missing", nil), auth.Claims{PbUserID: "user-1"})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.OAuthCallback+"?code=auth-code&state=missing", nil), auth.Claims{PbUserID: "user-1"})
 	recorder := httptest.NewRecorder()
 	handler.CompleteCallback(recorder, req, "auth-code", "missing")
 	if loc := recorder.Header().Get("Location"); !strings.Contains(loc, "oauth=error") {

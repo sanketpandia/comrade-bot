@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"infinite-experiment/politburo/internal/access/auth"
+	"infinite-experiment/politburo/internal/routes"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
 
@@ -28,7 +29,7 @@ func UISessionAuth(lookup SessionLookup) func(http.Handler) http.Handler {
 				return
 			}
 			if !ok {
-				http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+				http.Redirect(w, r, routes.AuthLogin, http.StatusSeeOther)
 				return
 			}
 			next.ServeHTTP(w, r.WithContext(auth.SetClaims(r.Context(), claims)))

@@ -7,8 +7,11 @@
   <title>{{if .Title}}{{.Title}}{{else}}Comrade Bot{{end}}</title>
   <link rel="icon" href="/static/brand/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="/static/brand/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/tokens.css">
   <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/components.css">
   <link rel="stylesheet" href="/static/css/public.css">
+  <script type="module" src="/static/js/ui/copy.mjs"></script>
   <script>
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       document.documentElement.classList.add("reduce-motion");

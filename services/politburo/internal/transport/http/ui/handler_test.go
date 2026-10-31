@@ -10,6 +10,7 @@ import (
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/access/session"
 	"infinite-experiment/politburo/internal/operations/contact"
+	"infinite-experiment/politburo/internal/routes"
 	appui "infinite-experiment/politburo/internal/ui"
 )
 
@@ -54,18 +55,18 @@ func newUIHandler(t *testing.T, sessions sessionManager, tickets ticketConsumer)
 
 func TestLoginConsumesTicketThenSetsCookie(t *testing.T) {
 	tickets := &ticketConsumerStub{ticket: &auth.LoginTicket{
-		UserID: "u1", DiscordUserID: "ds-1", RedirectTo: "/maps/flights/active",
+		UserID: "u1", DiscordUserID: "ds-1", RedirectTo: routes.MapsFlightsActive,
 	}}
 	sessions := &sessionManagerStub{created: session.Session{SessionID: "sess-abc"}}
 	handler := newUIHandler(t, sessions, tickets)
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/login?token=once", nil)
+	req := httptest.NewRequest(http.MethodGet, routes.AuthLogin+"?token=once", nil)
 	recorder := httptest.NewRecorder()
 	handler.Login(recorder, req)
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d, want 303", recorder.Code)
 	}
-	if loc := recorder.Header().Get("Location"); loc != "/maps/flights/active" {
+	if loc := recorder.Header().Get("Location"); loc != routes.MapsFlightsActive {
 		t.Fatalf("location = %q", loc)
 	}
 	cookie := recorder.Header().Get("Set-Cookie")
@@ -79,7 +80,7 @@ func TestLoginConsumesTicketThenSetsCookie(t *testing.T) {
 
 func TestLoginReplayRendersExpired(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{err: auth.ErrInvalidTicket})
-	req := httptest.NewRequest(http.MethodGet, "/auth/login?token=used", nil)
+	req := httptest.NewRequest(http.MethodGet, routes.AuthLogin+"?token=used", nil)
 	recorder := httptest.NewRecorder()
 	handler.Login(recorder, req)
 	if recorder.Code != http.StatusUnauthorized {
@@ -89,7 +90,7 @@ func TestLoginReplayRendersExpired(t *testing.T) {
 		t.Fatalf("expired login must not set session cookie: %q", cookie)
 	}
 	body := recorder.Body.String()
-	if !strings.Contains(body, "Sign-in link expired") || !strings.Contains(body, "/dashboard") {
+	if !strings.Contains(body, "Sign-in link expired") || !strings.Contains(body, routes.Dashboard) {
 		t.Fatalf("missing unauthorized copy: %s", body)
 	}
 	if !strings.Contains(body, `href="/"`) {
@@ -99,7 +100,7 @@ func TestLoginReplayRendersExpired(t *testing.T) {
 
 func TestHomeRendersPublicLinks(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, routes.Home, nil)
 	recorder := httptest.NewRecorder()
 	handler.Home(recorder, req)
 	if recorder.Code != http.StatusOK {
@@ -107,7 +108,7 @@ func TestHomeRendersPublicLinks(t *testing.T) {
 	}
 	body := recorder.Body.String()
 	for _, want := range []string{
-		`href="/dashboard"`,
+		`href="` + routes.Dashboard + `"`,
 		`href="https://sanketpandia.github.io/comrade-bot/"`,
 		`href="https://github.com/sanketpandia/comrade-bot"`,
 		`aria-label="Profile"`,
@@ -131,14 +132,14 @@ func TestLegalPagesRenderPublicShell(t *testing.T) {
 	}{
 		{
 			name:    "terms",
-			path:    "/terms-conditions",
+			path:    routes.TermsConditions,
 			handler: handler.TermsConditions,
 			title:   "Terms of Service",
 			marker:  "TERMS OF SERVICE",
 		},
 		{
 			name:    "privacy",
-			path:    "/privacy-policy",
+			path:    routes.Privacy,
 			handler: handler.PrivacyPolicy,
 			title:   "Privacy Policy",
 			marker:  "PRIVACY POLICY",
@@ -195,7 +196,7 @@ func newContactUIHandler(t *testing.T, submitter contactSubmitter) *Handler {
 func TestContactRendersForm(t *testing.T) {
 	handler := newContactUIHandler(t, &contactSubmitterStub{})
 	recorder := httptest.NewRecorder()
-	handler.Contact(recorder, httptest.NewRequest(http.MethodGet, "/contact", nil))
+	handler.Contact(recorder, httptest.NewRequest(http.MethodGet, routes.Contact, nil))
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", recorder.Code)
 	}
@@ -204,7 +205,7 @@ func TestContactRendersForm(t *testing.T) {
 		"<title>Contact</title>",
 		`name="if_community_id"`,
 		`name="message"`,
-		`action="/contact"`,
+		`action="` + routes.Contact + `"`,
 		`class="public-footer"`,
 	} {
 		if !strings.Contains(body, want) {
@@ -216,7 +217,7 @@ func TestContactRendersForm(t *testing.T) {
 func TestContactSentQueryShowsSuccess(t *testing.T) {
 	handler := newContactUIHandler(t, &contactSubmitterStub{})
 	recorder := httptest.NewRecorder()
-	handler.Contact(recorder, httptest.NewRequest(http.MethodGet, "/contact?sent=1", nil))
+	handler.Contact(recorder, httptest.NewRequest(http.MethodGet, routes.Contact+"?sent=1", nil))
 	body := recorder.Body.String()
 	if !strings.Contains(body, "Thanks — your message was received.") {
 		t.Fatalf("missing success copy: %s", body)
@@ -226,14 +227,14 @@ func TestContactSentQueryShowsSuccess(t *testing.T) {
 func TestSubmitContactValidRedirects(t *testing.T) {
 	submitter := &contactSubmitterStub{}
 	handler := newContactUIHandler(t, submitter)
-	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("if_community_id=PilotOne&message=Hello+there"))
+	req := httptest.NewRequest(http.MethodPost, routes.Contact, strings.NewReader("if_community_id=PilotOne&message=Hello+there"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	handler.SubmitContact(recorder, req)
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d, want 303", recorder.Code)
 	}
-	if loc := recorder.Header().Get("Location"); loc != "/contact?sent=1" {
+	if loc := recorder.Header().Get("Location"); loc != routes.Contact+"?sent=1" {
 		t.Fatalf("location = %q", loc)
 	}
 	if submitter.calls != 1 || submitter.ifc != "PilotOne" || submitter.msg != "Hello there" {
@@ -244,7 +245,7 @@ func TestSubmitContactValidRedirects(t *testing.T) {
 func TestSubmitContactEmptyFieldsShowsError(t *testing.T) {
 	submitter := &contactSubmitterStub{}
 	handler := newContactUIHandler(t, submitter)
-	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("if_community_id=&message="))
+	req := httptest.NewRequest(http.MethodPost, routes.Contact, strings.NewReader("if_community_id=&message="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	handler.SubmitContact(recorder, req)
@@ -272,14 +273,14 @@ func TestNotFoundRendersHTML(t *testing.T) {
 	if !strings.Contains(body, "Page not found") || !strings.Contains(body, "This page does not exist.") {
 		t.Fatalf("missing not-found copy: %s", body)
 	}
-	if !strings.Contains(body, `href="/dashboard"`) || !strings.Contains(body, "https://github.com/sanketpandia/comrade-bot/issues/new") {
+	if !strings.Contains(body, `href="`+routes.Dashboard+`"`) || !strings.Contains(body, "https://github.com/sanketpandia/comrade-bot/issues/new") {
 		t.Fatalf("missing not-found actions: %s", body)
 	}
 }
 
 func TestNotFoundMachinePathsStayJSON(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
-	for _, path := range []string{"/api/v1/missing", "/health/nope", "/metrics/extra"} {
+	for _, path := range []string{routes.APIV1Prefix + "missing", routes.HealthPrefix + "nope", routes.MetricsPrefix + "extra"} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		recorder := httptest.NewRecorder()
 		handler.NotFound(recorder, req)
@@ -296,7 +297,7 @@ func TestNotFoundMachinePathsStayJSON(t *testing.T) {
 }
 
 func TestBrandCacheControl(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/static/brand/logo.png", nil)
+	req := httptest.NewRequest(http.MethodGet, routes.StaticBrandPrefix+"logo.png", nil)
 	recorder := httptest.NewRecorder()
 	Brand().ServeHTTP(recorder, req)
 	if recorder.Code != http.StatusOK {
@@ -312,7 +313,7 @@ func TestBrandCacheControl(t *testing.T) {
 
 func TestDashboardRendersShell(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
-	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+	req := httptest.NewRequest(http.MethodGet, routes.Dashboard, nil)
 	recorder := httptest.NewRecorder()
 	handler.Dashboard(recorder, req)
 	if recorder.Code != http.StatusOK {
@@ -321,39 +322,40 @@ func TestDashboardRendersShell(t *testing.T) {
 	body := recorder.Body.String()
 	for _, want := range []string{
 		`aria-label="Profile"`,
-		`href="/dashboard"`,
+		`href="` + routes.Dashboard + `"`,
 		`aria-current="page"`,
 		"Live flights",
-		`href="/maps/flights/active?serverId=expert"`,
-		`href="/maps/flights/active?serverId=casual"`,
-		`href="/maps/flights/active?serverId=training"`,
-		"/static/css/base.css",
+		`href="` + routes.MapsFlightsActive + `?serverId=expert"`,
+		`href="` + routes.MapsFlightsActive + `?serverId=casual"`,
+		`href="` + routes.MapsFlightsActive + `?serverId=training"`,
+		routes.StaticPrefix + "css/tokens.css",
+		routes.StaticPrefix + "css/base.css",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %q in %s", want, body)
 		}
 	}
-	if strings.Index(body, `href="/dashboard"`) > strings.Index(body, `aria-label="Profile"`) {
+	if strings.Index(body, `href="`+routes.Dashboard+`"`) > strings.Index(body, `aria-label="Profile"`) {
 		t.Fatalf("nav order = profile then dashboard, want dashboard then profile")
 	}
-	if strings.Contains(body, `href="/admin/general"`) {
+	if strings.Contains(body, `href="`+routes.AdminGeneral+`"`) {
 		t.Fatalf("admin link should not show without administrator role")
 	}
 }
 
 func TestDashboardShowsAdminNavForAdministrator(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/dashboard", nil), auth.Claims{Role: "administrator"})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.Dashboard, nil), auth.Claims{Role: "administrator"})
 	recorder := httptest.NewRecorder()
 	handler.Dashboard(recorder, req)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", recorder.Code)
 	}
 	body := recorder.Body.String()
-	if !strings.Contains(body, `href="/admin/general"`) {
+	if !strings.Contains(body, `href="`+routes.AdminGeneral+`"`) {
 		t.Fatalf("missing admin nav link: %s", body)
 	}
-	if strings.Index(body, `href="/dashboard"`) > strings.Index(body, `href="/admin/general"`) {
+	if strings.Index(body, `href="`+routes.Dashboard+`"`) > strings.Index(body, `href="`+routes.AdminGeneral+`"`) {
 		t.Fatalf("nav order = admin before dashboard, want dashboard then admin")
 	}
 }
@@ -361,18 +363,18 @@ func TestDashboardShowsAdminNavForAdministrator(t *testing.T) {
 func TestAdminRedirect(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
 	recorder := httptest.NewRecorder()
-	handler.AdminRedirect(recorder, httptest.NewRequest(http.MethodGet, "/admin", nil))
+	handler.AdminRedirect(recorder, httptest.NewRequest(http.MethodGet, routes.Admin, nil))
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d, want 303", recorder.Code)
 	}
-	if loc := recorder.Header().Get("Location"); loc != "/admin/general" {
+	if loc := recorder.Header().Get("Location"); loc != routes.AdminGeneral {
 		t.Fatalf("location = %q, want /admin/general", loc)
 	}
 }
 
 func TestAdminRendersShell(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/admin/general", nil), auth.Claims{Role: "administrator"})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminGeneral, nil), auth.Claims{Role: "administrator"})
 	recorder := httptest.NewRecorder()
 	handler.Admin(recorder, req)
 	if recorder.Code != http.StatusOK {
@@ -387,20 +389,20 @@ func TestAdminRendersShell(t *testing.T) {
 		`readonly`,
 		`/static/js/admin/general.mjs`,
 		`app-main--wide`,
-		`href="/admin/general"`,
+		`href="` + routes.AdminGeneral + `"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %q in %s", want, body)
 		}
 	}
-	if !strings.Contains(body, `href="/admin/general" aria-current="page"`) {
+	if !strings.Contains(body, `href="`+routes.AdminGeneral+`" aria-current="page"`) {
 		t.Fatalf("admin tab should be current page: %s", body)
 	}
 }
 
 func TestAdminForbiddenForNonAdmin(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/admin/general", nil), auth.Claims{Role: "proletariat"})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminGeneral, nil), auth.Claims{Role: "proletariat"})
 	recorder := httptest.NewRecorder()
 	handler.Admin(recorder, req)
 	if recorder.Code != http.StatusForbidden {
@@ -410,7 +412,7 @@ func TestAdminForbiddenForNonAdmin(t *testing.T) {
 
 func TestActiveFlightsMapRenders(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
-	req := httptest.NewRequest(http.MethodGet, "/maps/flights/active", nil)
+	req := httptest.NewRequest(http.MethodGet, routes.MapsFlightsActive, nil)
 	recorder := httptest.NewRecorder()
 	handler.ActiveFlightsMap(recorder, req)
 	if recorder.Code != http.StatusOK {
@@ -431,14 +433,38 @@ func TestActiveFlightsMapRenders(t *testing.T) {
 	if !strings.Contains(body, `aria-label="Primary"`) || !strings.Contains(body, `maps-page`) {
 		t.Fatalf("map is outside the app shell: %s", body)
 	}
-	if !strings.Contains(body, `hx-get="/maps/flights/active/flights"`) {
+	if !strings.Contains(body, `hx-get="`+routes.MapsFlightsActiveFlights+`"`) {
 		t.Fatalf("missing flights partial request: %s", body)
+	}
+	if !strings.Contains(body, `id="maps-server"`) {
+		t.Fatalf("missing server select: %s", body)
+	}
+	if !strings.Contains(body, `hx-get="`+routes.MapsFlightsActiveServers) {
+		t.Fatalf("server select must load options via HTMX: %s", body)
+	}
+	if !strings.Contains(body, `hx-target="this"`) {
+		t.Fatalf("server select must swap into itself, not inherit form hx-target: %s", body)
+	}
+	if !strings.Contains(body, `id="maps-pilot-state"`) || !strings.Contains(body, `multiselect__trigger`) {
+		t.Fatalf("pilot state should use the custom multi-select dropdown: %s", body)
+	}
+	if !strings.Contains(body, `id="maps-filters-apply"`) {
+		t.Fatalf("missing apply filters control: %s", body)
+	}
+	if !strings.Contains(body, `id="maps-filters-toggle"`) || !strings.Contains(body, `maps-filters__icon-toggle`) {
+		t.Fatalf("missing filters icon toggle: %s", body)
+	}
+	if !strings.Contains(body, `id="maps-filters-collapse"`) || !strings.Contains(body, `maps-filters__header`) {
+		t.Fatalf("missing expanded filters header row: %s", body)
+	}
+	if strings.Contains(body, `keyup changed delay:300ms`) {
+		t.Fatalf("filters should not search on keystroke: %s", body)
 	}
 }
 
 func TestActiveFlightsMapEmbedHidesHeader(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
-	req := httptest.NewRequest(http.MethodGet, "/maps/flights/active?mode=embed", nil)
+	req := httptest.NewRequest(http.MethodGet, routes.MapsFlightsActive+"?mode=embed", nil)
 	recorder := httptest.NewRecorder()
 	handler.ActiveFlightsMap(recorder, req)
 	body := recorder.Body.String()
@@ -452,7 +478,7 @@ func TestActiveFlightsMapEmbedHidesHeader(t *testing.T) {
 
 func TestMapServerOptionsFallback(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
-	req := httptest.NewRequest(http.MethodGet, "/maps/flights/active/servers?serverId=training", nil)
+	req := httptest.NewRequest(http.MethodGet, routes.MapsFlightsActiveServers+"?serverId=training", nil)
 	recorder := httptest.NewRecorder()
 	handler.MapServerOptions(recorder, req)
 	if recorder.Code != http.StatusOK {
@@ -473,7 +499,7 @@ func TestMapServerOptionsFallback(t *testing.T) {
 func TestLogoutDeletesSessionAndCookie(t *testing.T) {
 	sessions := &sessionManagerStub{}
 	handler := newUIHandler(t, sessions, &ticketConsumerStub{})
-	req := httptest.NewRequest(http.MethodGet, "/auth/logout", nil)
+	req := httptest.NewRequest(http.MethodGet, routes.AuthLogout, nil)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: "sess-abc"})
 	recorder := httptest.NewRecorder()
 	handler.Logout(recorder, req)
@@ -496,7 +522,7 @@ func TestDashboardShowsConnectWhenOAuthConfigured(t *testing.T) {
 	}
 	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true)
 	recorder := httptest.NewRecorder()
-	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
 	body := recorder.Body.String()
 	if !strings.Contains(body, "Connect Infinite Flight") || !strings.Contains(body, `id="if-oauth-connect"`) {
 		t.Fatalf("missing oauth tile: %s", body)
@@ -506,7 +532,7 @@ func TestDashboardShowsConnectWhenOAuthConfigured(t *testing.T) {
 func TestDashboardOmitsConnectWhenOAuthDisabled(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
 	recorder := httptest.NewRecorder()
-	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
 	if strings.Contains(recorder.Body.String(), "Connect Infinite Flight") {
 		t.Fatal("oauth tile should be hidden when client is not configured")
 	}

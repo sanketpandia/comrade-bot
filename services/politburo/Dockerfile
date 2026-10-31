@@ -24,6 +24,7 @@ RUN go mod download
 COPY services/politburo/cmd ./cmd
 COPY services/politburo/internal ./internal
 COPY --from=generate /repo/services/politburo/internal/api/generated ./internal/api/generated
+COPY --from=generate /repo/openapi /repo/openapi
 
 RUN go test ./...
 RUN CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -trimpath -ldflags="-s -w" -o /out/politburo ./cmd/politburo

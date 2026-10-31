@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"infinite-experiment/politburo/internal/routes"
 )
 
 type Config struct {
@@ -71,7 +73,7 @@ type InfiniteFlight struct {
 
 // OAuthRedirectURI is the registered callback for Infinite Flight OAuth clients.
 func (c Config) OAuthRedirectURI() string {
-	return c.Auth.UIBaseURL + "/oauth/callback"
+	return c.Auth.UIBaseURL + routes.OAuthCallback
 }
 
 func Load() (Config, error) {

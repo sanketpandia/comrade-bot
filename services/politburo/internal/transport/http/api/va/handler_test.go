@@ -10,6 +10,7 @@ import (
 
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/community/virtualairlines"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 type vaRepoStub struct {
@@ -36,7 +37,7 @@ func TestGetVAReturnsDetails(t *testing.T) {
 		ID: "va-1", Name: "Test VA", Code: "TST", IsActive: true,
 	}}}
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/api/v1/va", nil), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.VA, nil), auth.Claims{
 		PbServerID: "va-1",
 		Role:       "administrator",
 	})
@@ -58,7 +59,7 @@ func TestGetVAReturnsDetails(t *testing.T) {
 func TestGetVAMissingVAContext(t *testing.T) {
 	handler := &Handler{vas: vaRepoStub{}}
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/api/v1/va", nil), auth.Claims{Role: "administrator"})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.VA, nil), auth.Claims{Role: "administrator"})
 	handler.GetVA(recorder, req)
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", recorder.Code)
@@ -68,7 +69,7 @@ func TestGetVAMissingVAContext(t *testing.T) {
 func TestGetVANotFound(t *testing.T) {
 	handler := &Handler{vas: vaRepoStub{}}
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/api/v1/va", nil), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.VA, nil), auth.Claims{
 		PbServerID: "missing",
 		Role:       "administrator",
 	})
@@ -81,7 +82,7 @@ func TestGetVANotFound(t *testing.T) {
 func TestGetVALoadError(t *testing.T) {
 	handler := &Handler{vas: vaRepoStub{err: errors.New("db down")}}
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/api/v1/va", nil), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.VA, nil), auth.Claims{
 		PbServerID: "va-1",
 		Role:       "administrator",
 	})

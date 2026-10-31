@@ -9,6 +9,7 @@ import (
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 func getActiveFlightsWithVA(t *testing.T, store cacheStub, vaCode string, states ...politburoapi.PilotStateName) *httptest.ResponseRecorder {
@@ -18,7 +19,7 @@ func getActiveFlightsWithVA(t *testing.T, store cacheStub, vaCode string, states
 		params.PilotState = &states
 	}
 	recorder := httptest.NewRecorder()
-	testHandler(store).GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil), "casual", params)
+	testHandler(store).GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightsActive)+"casual", nil), "casual", params)
 	return recorder
 }
 

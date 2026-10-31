@@ -7,12 +7,14 @@
   <title>{{if .Title}}{{.Title}}{{else}}Politburo{{end}}</title>
   <link rel="icon" href="/static/brand/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="/static/brand/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/tokens.css">
   <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/components.css">
   {{if eq .Content "maps-active-flights-content"}}
-  <link rel="stylesheet" href="/static/css/maps.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
         crossorigin="">
+  <link rel="stylesheet" href="/static/css/maps.css">
   {{end}}
 </head>
 <body{{if eq .Content "maps-active-flights-content"}} class="maps-page{{with .Maps}} {{.Chrome.BodyExtraClass}}{{end}}"{{end}}>
@@ -32,6 +34,7 @@
   <script type="module" src="/static/js/admin/general.mjs"></script>
   {{end}}
   {{if eq .Content "maps-active-flights-content"}}
+  <script type="module" src="/static/js/ui/copy.mjs"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
           crossorigin=""></script>
