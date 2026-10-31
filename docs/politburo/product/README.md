@@ -15,7 +15,9 @@ It is not an architecture spec and not a production-migration guide.
 | [airtable-datasource.md](airtable-datasource.md) | Airtable wizard, field maps, links, per-module sync |
 | [feature-catalog.md](feature-catalog.md) | Feature board: live, inherited, leftover, and open for planning |
 | [live-mode.md](live-mode.md) | Live organizations: IF connections, linked orgs, fleet board, claims, joins, upkeep |
+| [encryption-at-rest.md](encryption-at-rest.md) | Disk encryption vs sealing credentials in Postgres JSON and Redis |
 | [active-flights-map.md](active-flights-map.md) | Plan: public live map, HTMX chrome, three-tab detail panel |
+| [log-parity/](log-parity/README.md) | `/log` parity: one doc per workstream from flight modes through the rest of the bot |
 
 Related docs:
 
