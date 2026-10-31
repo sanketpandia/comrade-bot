@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"infinite-experiment/politburo/internal/access/auth"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 type sessionLookupFunc func(*http.Request) (auth.Claims, bool, error)
@@ -22,7 +23,7 @@ func TestUISessionAuthPassThroughWhenNil(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
 	if !called || recorder.Code != http.StatusNoContent {
 		t.Fatalf("pass-through failed: called=%v status=%d", called, recorder.Code)
 	}
@@ -35,8 +36,8 @@ func TestUISessionAuthRedirectsWhenMissing(t *testing.T) {
 		t.Fatal("next should not run")
 	}))
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
-	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != "/auth/login" {
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
+	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != routes.AuthLogin {
 		t.Fatalf("status=%d location=%q", recorder.Code, recorder.Header().Get("Location"))
 	}
 }
@@ -52,7 +53,7 @@ func TestUISessionAuthSetsClaims(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("status = %d", recorder.Code)
 	}
@@ -65,7 +66,7 @@ func TestUISessionAuthLookupError(t *testing.T) {
 		t.Fatal("next should not run")
 	}))
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d", recorder.Code)
 	}

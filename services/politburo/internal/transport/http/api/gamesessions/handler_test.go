@@ -13,6 +13,7 @@ import (
 	"infinite-experiment/politburo/internal/cache"
 	domainsessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 type cacheStub struct {
@@ -43,7 +44,7 @@ func TestGetActiveSessionsReturnsCachedResponse(t *testing.T) {
 		LastCached: lastCached,
 	}}))
 	recorder := httptest.NewRecorder()
-	handler.GetActiveSessions(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/sessions/active", nil))
+	handler.GetActiveSessions(recorder, httptest.NewRequest(http.MethodGet, routes.GameSessionsActive, nil))
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body = %s", recorder.Code, recorder.Body)
@@ -78,7 +79,7 @@ func TestGetActiveSessionsReturnsCachedResponse(t *testing.T) {
 func TestGetActiveSessionsReturnsServiceUnavailableOnCacheMiss(t *testing.T) {
 	handler := NewHandler(domainsessions.NewReader(cacheStub{err: cache.ErrMiss}))
 	recorder := httptest.NewRecorder()
-	handler.GetActiveSessions(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/sessions/active", nil))
+	handler.GetActiveSessions(recorder, httptest.NewRequest(http.MethodGet, routes.GameSessionsActive, nil))
 
 	if recorder.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", recorder.Code)
@@ -88,7 +89,7 @@ func TestGetActiveSessionsReturnsServiceUnavailableOnCacheMiss(t *testing.T) {
 func TestGetActiveSessionsRejectsSnapshotWithoutTimestamp(t *testing.T) {
 	handler := NewHandler(domainsessions.NewReader(cacheStub{snapshot: domainsessions.Snapshot{}}))
 	recorder := httptest.NewRecorder()
-	handler.GetActiveSessions(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/sessions/active", nil))
+	handler.GetActiveSessions(recorder, httptest.NewRequest(http.MethodGet, routes.GameSessionsActive, nil))
 
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", recorder.Code)

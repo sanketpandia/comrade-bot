@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 type memCache struct {
@@ -56,7 +57,7 @@ func testSecret() []byte {
 func TestTicketIssueAndConsumeOnce(t *testing.T) {
 	tickets := NewTickets(newMemCache(), testSecret())
 	token, err := tickets.Issue(context.Background(), LoginTicket{
-		UserID: "user-1", DiscordUserID: "ds-1", DiscordServerID: "guild-1", RedirectTo: "/dashboard",
+		UserID: "user-1", DiscordUserID: "ds-1", DiscordServerID: "guild-1", RedirectTo: routes.Dashboard,
 	})
 	if err != nil || token == "" {
 		t.Fatalf("Issue() token=%q err=%v", token, err)
@@ -78,7 +79,7 @@ func TestTicketRejectsGarbageAndWrongKey(t *testing.T) {
 	if _, err := tickets.Consume(context.Background(), "not-a-token"); !errors.Is(err, ErrInvalidTicket) {
 		t.Fatalf("garbage Consume() error = %v", err)
 	}
-	token, err := tickets.Issue(context.Background(), LoginTicket{UserID: "user-1", DiscordUserID: "ds-1", RedirectTo: "/dashboard"})
+	token, err := tickets.Issue(context.Background(), LoginTicket{UserID: "user-1", DiscordUserID: "ds-1", RedirectTo: routes.Dashboard})
 	if err != nil {
 		t.Fatalf("Issue() error = %v", err)
 	}
@@ -93,8 +94,8 @@ func TestNormalizeRedirect(t *testing.T) {
 	if err != nil || got != DefaultRedirect {
 		t.Fatalf("empty = %q err=%v", got, err)
 	}
-	got, err = NormalizeRedirect("/maps/flights/active")
-	if err != nil || got != "/maps/flights/active" {
+	got, err = NormalizeRedirect(routes.MapsFlightsActive)
+	if err != nil || got != routes.MapsFlightsActive {
 		t.Fatalf("relative = %q err=%v", got, err)
 	}
 	for _, bad := range []string{"https://evil.example", "//evil.example", "dashboard"} {
@@ -106,7 +107,7 @@ func TestNormalizeRedirect(t *testing.T) {
 
 func TestFormatLoginURL(t *testing.T) {
 	url := FormatLoginURL("https://ui.example", "abc+def")
-	if url != "https://ui.example/auth/login?token=abc%2Bdef" {
+	if url != "https://ui.example"+routes.AuthLogin+"?token=abc%2Bdef" {
 		t.Fatalf("url = %q", url)
 	}
 }

@@ -12,6 +12,7 @@ import (
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
 
 	"github.com/google/uuid"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 var testFlightUUID = uuid.MustParse("c34118e7-cbdd-4e22-8751-0cda93e41d75")
@@ -25,7 +26,7 @@ func TestGetActiveFlightReturnsRecord(t *testing.T) {
 	handler := testHandler(cacheStub{records: records})
 
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlight(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flight/active/"+testFlightUUID.String(), nil), testFlightUUID)
+	handler.GetActiveFlight(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightActive) + testFlightUUID.String(), nil), testFlightUUID)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", recorder.Code)
 	}
@@ -42,7 +43,7 @@ func TestGetActiveFlightReturnsNotFoundOnCacheMiss(t *testing.T) {
 	handler := testHandler(cacheStub{})
 
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlight(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flight/active/"+testFlightUUID.String(), nil), testFlightUUID)
+	handler.GetActiveFlight(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightActive) + testFlightUUID.String(), nil), testFlightUUID)
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", recorder.Code)
 	}
@@ -55,7 +56,7 @@ func TestGetActiveFlightReturnsInternalErrorOnCacheReadFailure(t *testing.T) {
 	})
 
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlight(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flight/active/"+testFlightUUID.String(), nil), testFlightUUID)
+	handler.GetActiveFlight(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightActive) + testFlightUUID.String(), nil), testFlightUUID)
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", recorder.Code)
 	}

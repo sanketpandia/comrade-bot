@@ -9,6 +9,7 @@ import (
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 func TestGetActiveFlightsFiltersByPilotState(t *testing.T) {
@@ -24,7 +25,7 @@ func TestGetActiveFlightsFiltersByPilotState(t *testing.T) {
 	})
 	states := []politburoapi.PilotStateName{"active"}
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual?pilotState=active", nil), "casual", politburoapi.GetActiveFlightsParams{
+	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightsActive)+"casual?pilotState=active", nil), "casual", politburoapi.GetActiveFlightsParams{
 		PilotState: &states,
 	})
 	if recorder.Code != http.StatusOK {

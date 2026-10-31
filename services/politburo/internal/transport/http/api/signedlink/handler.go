@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"infinite-experiment/politburo/internal/access/auth"
-	"infinite-experiment/politburo/internal/transport/http/response"
 	"infinite-experiment/politburo/internal/community/users"
+	"infinite-experiment/politburo/internal/transport/http/response"
 )
 
 type userLookup interface {
@@ -30,11 +30,11 @@ type vaByDiscordServer interface {
 }
 
 type Handler struct {
-	users       userLookup
-	tickets     ticketIssuer
-	membership  membershipResolver
-	vaLookup    vaByDiscordServer
-	uiBaseURL   string
+	users      userLookup
+	tickets    ticketIssuer
+	membership membershipResolver
+	vaLookup   vaByDiscordServer
+	uiBaseURL  string
 }
 
 func NewHandler(users userLookup, tickets ticketIssuer, membership membershipResolver, vaLookup vaByDiscordServer, uiBaseURL string) *Handler {
@@ -73,7 +73,7 @@ func (h *Handler) GenerateSignedLink(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.users.GetByDiscordID(r.Context(), claims.DsUserID)
 	if err != nil {
-		slog.Error("lookup user for signed link", "error", err)
+		slog.Error("lookup user for signed link", "error", err, "discord_user_id", claims.DsUserID, "redirect_to", redirectTo)
 		response.WriteError(w, http.StatusInternalServerError, "USER_LOOKUP_FAILED", "user lookup failed")
 		return
 	}
@@ -86,14 +86,14 @@ func (h *Handler) GenerateSignedLink(w http.ResponseWriter, r *http.Request) {
 	if claims.DsServerID != "" && h.vaLookup != nil {
 		configured, err := h.vaLookup.IsConfiguredVA(r.Context(), claims.DsServerID)
 		if err != nil {
-			slog.Error("lookup va for signed link", "error", err)
+			slog.Error("lookup va for signed link", "error", err, "discord_user_id", claims.DsUserID, "redirect_to", redirectTo)
 			response.WriteError(w, http.StatusInternalServerError, "VA_LOOKUP_FAILED", "va lookup failed")
 			return
 		}
 		if configured && h.membership != nil {
 			resolvedVA, resolvedRole, ok, err := h.membership.ResolveMembership(r.Context(), claims.DsUserID, claims.DsServerID)
 			if err != nil {
-				slog.Error("resolve membership for signed link", "error", err)
+				slog.Error("resolve membership for signed link", "error", err, "discord_user_id", claims.DsUserID, "redirect_to", redirectTo)
 				response.WriteError(w, http.StatusInternalServerError, "MEMBERSHIP_LOOKUP_FAILED", "membership lookup failed")
 				return
 			}
@@ -115,10 +115,18 @@ func (h *Handler) GenerateSignedLink(w http.ResponseWriter, r *http.Request) {
 		RedirectTo:      redirectTo,
 	})
 	if err != nil {
-		slog.Error("issue signed link ticket", "error", err)
+		slog.Error("issue signed link ticket", "error", err, "discord_user_id", claims.DsUserID, "redirect_to", redirectTo)
 		response.WriteError(w, http.StatusInternalServerError, "GENERATION_FAILED", "failed to generate signed link")
 		return
 	}
+
+	slog.Info("signed link issued",
+		"discord_user_id", claims.DsUserID,
+		"user_id", user.ID,
+		"redirect_to", redirectTo,
+		"discord_server_id", claims.DsServerID,
+		"va_id", vaID,
+	)
 
 	response.WriteJSON(w, http.StatusOK, map[string]any{
 		"data": map[string]any{

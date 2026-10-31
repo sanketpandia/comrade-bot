@@ -10,6 +10,7 @@ import (
 
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/community/users"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 type userRepoStub struct {
@@ -50,7 +51,7 @@ func TestGetMeReturnsProfileWithRole(t *testing.T) {
 		Username: &username, IFCommunityID: &ifc,
 	}}}
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/api/v1/user/me", nil), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.UserMe, nil), auth.Claims{
 		PbUserID:   "user-1",
 		DsUserID:   "discord-1",
 		DsServerID: "guild-1",
@@ -80,7 +81,7 @@ func TestGetMeNullRoleWhenAbsent(t *testing.T) {
 		ID: "user-1", DiscordID: "discord-1", IsActive: true,
 	}}}
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/api/v1/user/me", nil), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.UserMe, nil), auth.Claims{
 		PbUserID: "user-1",
 	})
 	handler.GetMe(recorder, req)
@@ -102,7 +103,7 @@ func TestGetMeByDiscordID(t *testing.T) {
 		ID: "user-2", DiscordID: "discord-2", IsActive: true,
 	}}}
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/api/v1/user/me", nil), auth.Claims{
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.UserMe, nil), auth.Claims{
 		DsUserID: "discord-2",
 		Role:     "administrator",
 		APIKeyPresent: true,
@@ -116,7 +117,7 @@ func TestGetMeByDiscordID(t *testing.T) {
 func TestGetMeUnauthorizedWithoutIdentity(t *testing.T) {
 	handler := &Handler{users: userRepoStub{}}
 	recorder := httptest.NewRecorder()
-	handler.GetMe(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/user/me", nil))
+	handler.GetMe(recorder, httptest.NewRequest(http.MethodGet, routes.UserMe, nil))
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", recorder.Code)
 	}
@@ -125,7 +126,7 @@ func TestGetMeUnauthorizedWithoutIdentity(t *testing.T) {
 func TestGetMeNotFound(t *testing.T) {
 	handler := &Handler{users: userRepoStub{}}
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/api/v1/user/me", nil), auth.Claims{PbUserID: "missing"})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.UserMe, nil), auth.Claims{PbUserID: "missing"})
 	handler.GetMe(recorder, req)
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", recorder.Code)
@@ -135,7 +136,7 @@ func TestGetMeNotFound(t *testing.T) {
 func TestGetMeLoadError(t *testing.T) {
 	handler := &Handler{users: userRepoStub{err: errors.New("db down")}}
 	recorder := httptest.NewRecorder()
-	req := withClaims(httptest.NewRequest(http.MethodGet, "/api/v1/user/me", nil), auth.Claims{PbUserID: "user-1"})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.UserMe, nil), auth.Claims{PbUserID: "user-1"})
 	handler.GetMe(recorder, req)
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", recorder.Code)

@@ -13,6 +13,7 @@ import (
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	"infinite-experiment/politburo/internal/app"
+	"infinite-experiment/politburo/internal/routes"
 
 	"infinite-experiment/politburo/internal/transport/http/api/gameflights"
 	"infinite-experiment/politburo/internal/transport/http/api/gamesessions"
@@ -122,49 +123,49 @@ func (s *Server) router() stdhttp.Handler {
 		BaseRouter:       router,
 		ErrorHandlerFunc: writeParameterError,
 	})
-	router.Handle("/metrics", promhttp.HandlerFor(s.app.Metrics.Prometheus, promhttp.HandlerOpts{}))
+	router.Handle(routes.Metrics, promhttp.HandlerFor(s.app.Metrics.Prometheus, promhttp.HandlerOpts{}))
 
-	router.Get("/auth/login", uiHandler.Login)
-	router.Get("/auth/logout", uiHandler.Logout)
+	router.Get(routes.AuthLogin, uiHandler.Login)
+	router.Get(routes.AuthLogout, uiHandler.Logout)
 	router.Group(func(bot chi.Router) {
 		bot.Use(
 			appmiddleware.RequireDiscordBotContext(),
 			appmiddleware.EnrichDiscordMembership(s.app.Resolver),
 			appmiddleware.RateLimit(s.app.Cache, appmiddleware.RateLimitGroupRegistration, appmiddleware.RateLimitRegistration),
 		)
-		bot.Get("/api/v1/user/status", identityHandler.Status)
-		bot.Post("/api/v1/memberships/join", identityHandler.Join)
-		bot.Post("/api/v1/reports/occupied-ifc", identityHandler.ReportOccupiedIFC)
+		bot.Get(routes.UserStatus, identityHandler.Status)
+		bot.Post(routes.MembershipsJoin, identityHandler.Join)
+		bot.Post(routes.ReportsOccupiedIFC, identityHandler.ReportOccupiedIFC)
 	})
 
 	router.Group(func(op chi.Router) {
 		op.Use(appmiddleware.RequirePlatformOperator(s.app.Config.PlatformOperatorDiscordIDs))
-		op.Get("/api/v1/operator/reports", identityHandler.ListOperatorReports)
-		op.Post("/api/v1/operator/reports/{reportID}/resolve", identityHandler.ResolveOperatorReport)
+		op.Get(routes.APIOperatorReports, identityHandler.ListOperatorReports)
+		op.Post(routes.APIOperatorReportsResolve, identityHandler.ResolveOperatorReport)
 	})
 
 	router.Group(func(ui chi.Router) {
 		ui.Use(appmiddleware.UISessionAuth(s.app.Sessions))
-		ui.Get("/dashboard", uiHandler.Dashboard)
-		ui.Get("/dashboard/", uiHandler.Dashboard)
-		ui.Get("/admin", uiHandler.AdminRedirect)
-		ui.Get("/admin/", uiHandler.AdminRedirect)
-		ui.Get("/admin/general", uiHandler.Admin)
-		ui.Get("/admin/general/", uiHandler.Admin)
-		ui.Get("/operator/reports", uiHandler.OperatorReports)
-		ui.Post("/operator/reports/{reportID}/resolve", uiHandler.ResolveOperatorReport)
+		ui.Get(routes.Dashboard, uiHandler.Dashboard)
+		ui.Get(routes.Dashboard+"/", uiHandler.Dashboard)
+		ui.Get(routes.Admin, uiHandler.AdminRedirect)
+		ui.Get(routes.Admin+"/", uiHandler.AdminRedirect)
+		ui.Get(routes.AdminGeneral, uiHandler.Admin)
+		ui.Get(routes.AdminGeneral+"/", uiHandler.Admin)
+		ui.Get(routes.OperatorReports, uiHandler.OperatorReports)
+		ui.Post(routes.OperatorReportsResolve, uiHandler.ResolveOperatorReport)
 	})
-	router.Get("/maps/flights/active", uiHandler.ActiveFlightsMap)
-	router.Get("/maps/flights/active/servers", uiHandler.MapServerOptions)
-	router.Get("/maps/flights/active/flights", uiHandler.MapActiveFlightsPartial)
-	router.Get("/maps/flights/active/flights/{flightID}", uiHandler.MapFlightDetailPartial)
-	router.Get("/", uiHandler.Home)
-	router.Get("/terms-conditions", uiHandler.TermsConditions)
-	router.Get("/privacy", uiHandler.PrivacyPolicy)
-	router.Get("/contact", uiHandler.Contact)
-	router.Post("/contact", uiHandler.SubmitContact)
-	router.Handle("/static/brand/*", uihttp.Brand())
-	router.Handle("/static/*", uihttp.Static())
+	router.Get(routes.MapsFlightsActive, uiHandler.ActiveFlightsMap)
+	router.Get(routes.MapsFlightsActiveServers, uiHandler.MapServerOptions)
+	router.Get(routes.MapsFlightsActiveFlights, uiHandler.MapActiveFlightsPartial)
+	router.Get(routes.MapsFlightsActiveFlightDetail, uiHandler.MapFlightDetailPartial)
+	router.Get(routes.Home, uiHandler.Home)
+	router.Get(routes.TermsConditions, uiHandler.TermsConditions)
+	router.Get(routes.Privacy, uiHandler.PrivacyPolicy)
+	router.Get(routes.Contact, uiHandler.Contact)
+	router.Post(routes.Contact, uiHandler.SubmitContact)
+	router.Handle(routes.StaticBrandPrefix+"*", uihttp.Brand())
+	router.Handle(routes.StaticPrefix+"*", uihttp.Static())
 	router.NotFound(uiHandler.NotFound)
 
 	return router

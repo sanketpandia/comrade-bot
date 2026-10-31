@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-)
 
-const mapsActivePagePath = "/maps/flights/active"
+	"infinite-experiment/politburo/internal/routes"
+)
 
 // mapsActivePageURL builds the shareable map page URL from an HTMX partial request query.
 func mapsActivePageURL(r *http.Request) string {
@@ -49,7 +49,7 @@ func mapsActivePageURL(r *http.Request) string {
 
 	encoded := params.Encode()
 	if encoded == "" {
-		return mapsActivePagePath
+		return routes.MapsFlightsActive
 	}
-	return mapsActivePagePath + "?" + encoded
+	return routes.MapsFlightsActive + "?" + encoded
 }

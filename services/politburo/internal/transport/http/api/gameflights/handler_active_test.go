@@ -12,6 +12,7 @@ import (
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	"infinite-experiment/politburo/internal/cache"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
+	"infinite-experiment/politburo/internal/routes"
 )
 
 func motionSnapshot(lastCached time.Time, ids ...string) domainflights.Snapshot {
@@ -34,7 +35,7 @@ func TestGetActiveFlightsReturnsTracks(t *testing.T) {
 		flights: motionSnapshot(lastCached, "flight-bg", "flight-active"),
 	})
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil), "casual", politburoapi.GetActiveFlightsParams{})
+	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightsActive) + "casual", nil), "casual", politburoapi.GetActiveFlightsParams{})
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
 	}
@@ -72,7 +73,7 @@ func TestGetActiveFlightsReturnsTracks(t *testing.T) {
 func TestGetActiveFlightsRejectsUnknownServer(t *testing.T) {
 	handler := testHandler(cacheStub{names: []string{"casual"}})
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/expert", nil), "expert", politburoapi.GetActiveFlightsParams{})
+	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightsActive) + "expert", nil), "expert", politburoapi.GetActiveFlightsParams{})
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d", recorder.Code)
 	}
@@ -81,7 +82,7 @@ func TestGetActiveFlightsRejectsUnknownServer(t *testing.T) {
 func TestGetActiveFlightsReturnsServiceUnavailableOnCacheMiss(t *testing.T) {
 	handler := testHandler(cacheStub{names: []string{"casual"}, err: cache.ErrMiss})
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil), "casual", politburoapi.GetActiveFlightsParams{})
+	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightsActive) + "casual", nil), "casual", politburoapi.GetActiveFlightsParams{})
 	if recorder.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d", recorder.Code)
 	}
@@ -90,7 +91,7 @@ func TestGetActiveFlightsReturnsServiceUnavailableOnCacheMiss(t *testing.T) {
 func TestGetActiveFlightsRejectsSnapshotWithoutTimestamp(t *testing.T) {
 	handler := testHandler(cacheStub{names: []string{"casual"}, flights: domainflights.Snapshot{}})
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil), "casual", politburoapi.GetActiveFlightsParams{})
+	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightsActive) + "casual", nil), "casual", politburoapi.GetActiveFlightsParams{})
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d", recorder.Code)
 	}
@@ -99,7 +100,7 @@ func TestGetActiveFlightsRejectsSnapshotWithoutTimestamp(t *testing.T) {
 func TestGetActiveFlightsTreatsNamesReadError(t *testing.T) {
 	handler := testHandler(cacheStub{namesErr: errors.New("redis down")})
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil), "casual", politburoapi.GetActiveFlightsParams{})
+	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightsActive) + "casual", nil), "casual", politburoapi.GetActiveFlightsParams{})
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d", recorder.Code)
 	}
@@ -134,7 +135,7 @@ func TestGetActiveFlightsDefaultsToPageSizeFifty(t *testing.T) {
 		flights: motionSnapshot(lastCached, ids...),
 	})
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual", nil), "casual", politburoapi.GetActiveFlightsParams{})
+	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightsActive) + "casual", nil), "casual", politburoapi.GetActiveFlightsParams{})
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
 	}
@@ -155,7 +156,7 @@ func TestGetActiveFlightsPaginatesResults(t *testing.T) {
 		flights: motionSnapshot(lastCached, ids...),
 	})
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual?pageNumber=2&pageLength=10", nil), "casual", politburoapi.GetActiveFlightsParams{})
+	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightsActive) + "casual?pageNumber=2&pageLength=10", nil), "casual", politburoapi.GetActiveFlightsParams{})
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
 	}
@@ -171,7 +172,7 @@ func TestGetActiveFlightsReturnsEmptyPagePastEnd(t *testing.T) {
 		flights: motionSnapshot(time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC), "flight-1"),
 	})
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual?pageNumber=3&pageLength=50", nil), "casual", politburoapi.GetActiveFlightsParams{})
+	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightsActive) + "casual?pageNumber=3&pageLength=50", nil), "casual", politburoapi.GetActiveFlightsParams{})
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d body = %s", recorder.Code, recorder.Body)
 	}
@@ -184,7 +185,7 @@ func TestGetActiveFlightsReturnsEmptyPagePastEnd(t *testing.T) {
 func TestGetActiveFlightsRejectsInvalidPage(t *testing.T) {
 	handler := testHandler(cacheStub{names: []string{"casual"}})
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual?pageNumber=0", nil), "casual", politburoapi.GetActiveFlightsParams{})
+	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightsActive) + "casual?pageNumber=0", nil), "casual", politburoapi.GetActiveFlightsParams{})
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d", recorder.Code)
 	}
@@ -193,7 +194,7 @@ func TestGetActiveFlightsRejectsInvalidPage(t *testing.T) {
 func TestGetActiveFlightsRejectsInvalidPageLength(t *testing.T) {
 	handler := testHandler(cacheStub{names: []string{"casual"}})
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual?pageLength=0", nil), "casual", politburoapi.GetActiveFlightsParams{})
+	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightsActive) + "casual?pageLength=0", nil), "casual", politburoapi.GetActiveFlightsParams{})
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d", recorder.Code)
 	}
@@ -202,7 +203,7 @@ func TestGetActiveFlightsRejectsInvalidPageLength(t *testing.T) {
 func TestGetActiveFlightsRejectsPageLengthAboveMax(t *testing.T) {
 	handler := testHandler(cacheStub{names: []string{"casual"}})
 	recorder := httptest.NewRecorder()
-	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/game/flights/active/casual?pageLength=5001", nil), "casual", politburoapi.GetActiveFlightsParams{})
+	handler.GetActiveFlights(recorder, httptest.NewRequest(http.MethodGet, routes.Prefix(routes.GameFlightsActive) + "casual?pageLength=5001", nil), "casual", politburoapi.GetActiveFlightsParams{})
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d", recorder.Code)
 	}

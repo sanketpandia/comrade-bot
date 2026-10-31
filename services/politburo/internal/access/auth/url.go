@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"infinite-experiment/politburo/internal/routes"
 )
 
-const DefaultRedirect = "/dashboard"
+const DefaultRedirect = routes.Dashboard
 
 func NormalizeRedirect(path string) (string, error) {
 	path = strings.TrimSpace(path)
@@ -20,5 +22,5 @@ func NormalizeRedirect(path string) (string, error) {
 }
 
 func FormatLoginURL(baseURL, token string) string {
-	return strings.TrimRight(baseURL, "/") + "/auth/login?token=" + url.QueryEscape(token)
+	return strings.TrimRight(baseURL, "/") + routes.AuthLogin + "?token=" + url.QueryEscape(token)
 }
