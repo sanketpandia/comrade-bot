@@ -195,7 +195,7 @@ func TestCompleteCallbackStoresTokenSession(t *testing.T) {
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d, want 303", recorder.Code)
 	}
-	if loc := recorder.Header().Get("Location"); loc != routes.Dashboard+"?oauth=connected" {
+	if loc := recorder.Header().Get("Location"); loc != routes.AdminLive+"?oauth=connected" {
 		t.Fatalf("location = %q", loc)
 	}
 	var stored infiniteflight.OAuthTokenSession
@@ -227,7 +227,7 @@ func TestCompleteCallbackStoresTokenSessionWithoutCookie(t *testing.T) {
 	handler := NewHandler(oauthClient, "http://localhost:8082"+routes.OAuthCallback, cacheStub, nil)
 	recorder := httptest.NewRecorder()
 	handler.CompleteCallback(recorder, httptest.NewRequest(http.MethodGet, routes.OAuthCallback, nil), "auth-code", state)
-	if loc := recorder.Header().Get("Location"); loc != routes.Dashboard+"?oauth=connected" {
+	if loc := recorder.Header().Get("Location"); loc != routes.AdminLive+"?oauth=connected" {
 		t.Fatalf("location = %q", loc)
 	}
 }

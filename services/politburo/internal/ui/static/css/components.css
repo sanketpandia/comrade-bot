@@ -60,6 +60,35 @@
   white-space: nowrap;
 }
 
+.card--link {
+  color: var(--text-primary);
+  text-decoration: none;
+  background: var(--bg-surface-elevated);
+  border-color: var(--glass-border);
+  box-shadow: var(--shadow-highlight), var(--shadow-2);
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
+}
+
+.card--link:hover {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent-primary) 45%, var(--glass-border));
+  box-shadow: var(--shadow-highlight), var(--shadow-3);
+}
+
+.card--link .card__value {
+  font-weight: 600;
+}
+
+.card__stat {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.card__stat--muted {
+  color: var(--text-muted);
+}
+
 /* Key-value table */
 .kv-table {
   width: 100%;
@@ -298,7 +327,6 @@
 }
 
 .btn--primary {
-  width: 100%;
   min-height: 2.35rem;
   padding: 0.45rem 0.85rem;
   border-color: color-mix(in srgb, var(--accent-primary) 55%, var(--border-color));
@@ -777,17 +805,19 @@ textarea.input {
   font-size: var(--text-lg);
 }
 
+.panel__header .panel-heading {
+  margin: 0;
+}
+
 .panel-lead {
-  margin: 0 0 1rem;
+  margin: 0 0 0.9rem;
   color: var(--text-secondary);
+  font-size: var(--text-sm);
 }
 
-.status-ok {
-  color: var(--status-active);
-}
-
-.status-error {
-  color: var(--status-error);
+.stack > .panel-lead,
+.stack > .panel-message {
+  margin: 0;
 }
 
 .link-row {

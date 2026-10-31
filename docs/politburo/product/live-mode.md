@@ -36,7 +36,7 @@ with a few portal views for staff. Day-to-day pilot work stays in Discord.
   below.
 - **VA membership** with roles proletariat / bourgeoisie / administrator,
   exactly one administrator, one Discord guild per VA.
-- **Connect Infinite Flight** tile on the portal dashboard. It runs the
+- **Link your in-game organisations** on Admin → Live Mode. It runs the
   official Infinite Flight sign-in with read-only access. Today the result
   lasts only as long as the browser session, isn't kept up to date in the
   background, and can't write anything.

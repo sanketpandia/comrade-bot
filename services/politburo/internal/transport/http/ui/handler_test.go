@@ -2,13 +2,18 @@ package ui
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/access/session"
+	"infinite-experiment/politburo/internal/cache"
+	domainflights "infinite-experiment/politburo/internal/livegame/flights"
+	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/operations/contact"
 	"infinite-experiment/politburo/internal/routes"
 	appui "infinite-experiment/politburo/internal/ui"
@@ -325,6 +330,11 @@ func TestDashboardRendersShell(t *testing.T) {
 		`href="` + routes.Dashboard + `"`,
 		`aria-current="page"`,
 		"Live flights",
+		`class="panel panel--glass panel--spaced stack"`,
+		`class="card card--link"`,
+		` flights</span>`,
+		` pilots</span>`,
+		`class="count-primary">—</span>`,
 		`href="` + routes.MapsFlightsActive + `?serverId=expert"`,
 		`href="` + routes.MapsFlightsActive + `?serverId=casual"`,
 		`href="` + routes.MapsFlightsActive + `?serverId=training"`,
@@ -340,6 +350,71 @@ func TestDashboardRendersShell(t *testing.T) {
 	}
 	if strings.Contains(body, `href="`+routes.AdminGeneral+`"`) {
 		t.Fatalf("admin link should not show without administrator role")
+	}
+}
+
+type sessionListStub struct {
+	result gamesessions.ListActiveResult
+	err    error
+}
+
+func (s sessionListStub) ListActive(context.Context) (gamesessions.ListActiveResult, error) {
+	return s.result, s.err
+}
+
+type jsonCache struct {
+	values map[string][]byte
+}
+
+func (c jsonCache) GetJSON(_ context.Context, key string, destination any) error {
+	raw, ok := c.values[key]
+	if !ok {
+		return cache.ErrMiss
+	}
+	return json.Unmarshal(raw, destination)
+}
+
+func (c jsonCache) SetJSON(context.Context, string, any, time.Duration) error {
+	return nil
+}
+
+func TestDashboardShowsServerCounts(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	raw, err := json.Marshal(domainflights.Snapshot{
+		Tracks:     map[string]domainflights.FlightMotion{"a": {}, "b": {}},
+		LastCached: time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("marshal snapshot: %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil,
+		sessionListStub{result: gamesessions.ListActiveResult{Sessions: []gamesessions.ActiveSession{
+			{NormalizedName: "expert", UserCount: 41},
+			{NormalizedName: "training", UserCount: 0},
+		}}},
+		domainflights.NewReader(jsonCache{values: map[string][]byte{
+			cache.KeyActiveFlights("expert"): raw,
+		}}),
+		false,
+	)
+	recorder := httptest.NewRecorder()
+	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
+	body := recorder.Body.String()
+	for _, want := range []string{
+		`serverId=expert"`,
+		`<span class="count-primary">2</span> flights`,
+		`<span class="count-primary">41</span> pilots`,
+		`<span class="count-primary">0</span> pilots`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q in %s", want, body)
+		}
+	}
+	if strings.Count(body, `<span class="count-primary">—</span>`) != 3 {
+		t.Fatalf("missing counts = %d, want 3 dashes (casual flights and pilots, training flights)\n%s", strings.Count(body, `<span class="count-primary">—</span>`), body)
 	}
 }
 
@@ -385,18 +460,75 @@ func TestAdminRendersShell(t *testing.T) {
 		`<h1>Admin</h1>`,
 		`aria-label="Admin sections"`,
 		`>General</a>`,
+		`>Live Mode</a>`,
+		`class="section__title"`,
 		`id="va-code"`,
 		`readonly`,
 		`/static/js/admin/general.mjs`,
 		`app-main--wide`,
 		`href="` + routes.AdminGeneral + `"`,
+		`href="` + routes.AdminLive + `"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %q in %s", want, body)
 		}
 	}
 	if !strings.Contains(body, `href="`+routes.AdminGeneral+`" aria-current="page"`) {
-		t.Fatalf("admin tab should be current page: %s", body)
+		t.Fatalf("general tab should be current page: %s", body)
+	}
+	if strings.Contains(body, `href="`+routes.AdminLive+`" aria-current="page"`) {
+		t.Fatalf("live tab should not be current on general: %s", body)
+	}
+	if strings.Contains(body, "Link your in-game organisations") {
+		t.Fatalf("live mode action should not render on general: %s", body)
+	}
+}
+
+func TestAdminLiveShowsOrganisationLink(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminLive+"?oauth=connected", nil), auth.Claims{Role: "administrator"})
+	recorder := httptest.NewRecorder()
+	handler.Admin(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		`href="` + routes.AdminLive + `" aria-current="page"`,
+		`id="admin-live-heading"`,
+		`Link your in-game organisations`,
+		`id="if-oauth-connect"`,
+		`class="btn btn--primary"`,
+		`badge badge--success`,
+		`/static/js/admin/oauth.mjs`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q in %s", want, body)
+		}
+	}
+	if strings.Contains(body, `/static/js/admin/general.mjs`) {
+		t.Fatalf("general script should not load on live mode: %s", body)
+	}
+	if strings.Contains(body, `id="va-code"`) {
+		t.Fatalf("general fields should not render on live mode: %s", body)
+	}
+}
+
+func TestAdminLiveOmitsLinkWhenOAuthDisabled(t *testing.T) {
+	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminLive, nil), auth.Claims{Role: "administrator"})
+	recorder := httptest.NewRecorder()
+	handler.Admin(recorder, req)
+	body := recorder.Body.String()
+	if strings.Contains(body, "Link your in-game organisations") || strings.Contains(body, `id="if-oauth-connect"`) {
+		t.Fatal("organisation link should be hidden when oauth is not configured")
+	}
+	if !strings.Contains(body, "not configured") {
+		t.Fatalf("missing unconfigured message: %s", body)
 	}
 }
 
@@ -515,7 +647,7 @@ func TestLogoutDeletesSessionAndCookie(t *testing.T) {
 	}
 }
 
-func TestDashboardShowsConnectWhenOAuthConfigured(t *testing.T) {
+func TestDashboardOmitsOrganisationLink(t *testing.T) {
 	renderer, err := appui.NewRenderer()
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
@@ -524,16 +656,7 @@ func TestDashboardShowsConnectWhenOAuthConfigured(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
 	body := recorder.Body.String()
-	if !strings.Contains(body, "Connect Infinite Flight") || !strings.Contains(body, `id="if-oauth-connect"`) {
-		t.Fatalf("missing oauth tile: %s", body)
-	}
-}
-
-func TestDashboardOmitsConnectWhenOAuthDisabled(t *testing.T) {
-	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
-	recorder := httptest.NewRecorder()
-	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
-	if strings.Contains(recorder.Body.String(), "Connect Infinite Flight") {
-		t.Fatal("oauth tile should be hidden when client is not configured")
+	if strings.Contains(body, "Link your in-game organisations") || strings.Contains(body, `id="if-oauth-connect"`) || strings.Contains(body, "/static/js/admin/oauth.mjs") {
+		t.Fatalf("organisation link should live on admin, not the dashboard: %s", body)
 	}
 }

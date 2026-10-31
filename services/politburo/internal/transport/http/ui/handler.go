@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -53,8 +54,10 @@ type sessionLister interface {
 }
 
 type mapServer struct {
-	ID    string
-	Label string
+	ID      string
+	Label   string
+	Flights string
+	Pilots  string
 }
 
 // liveMapServers are the three Infinite Flight servers the live map accepts as serverId.
@@ -64,6 +67,55 @@ func liveMapServers() []mapServer {
 		{ID: "casual", Label: "Casual"},
 		{ID: "training", Label: "Training"},
 	}
+}
+
+func (h *Handler) dashboardServers(ctx context.Context) []mapServer {
+	servers := liveMapServers()
+	pilots := map[string]int{}
+	if h.lister != nil {
+		result, err := h.lister.ListActive(ctx)
+		if err != nil {
+			slog.Warn("list active sessions for dashboard", "error", err)
+		} else {
+			for _, session := range result.Sessions {
+				id := strings.TrimSpace(session.NormalizedName)
+				if id == "" {
+					continue
+				}
+				pilots[id] = session.UserCount
+			}
+		}
+	}
+	for i, server := range servers {
+		servers[i].Flights = countText(h.flightCount(ctx, server.ID))
+		if count, ok := pilots[server.ID]; ok {
+			servers[i].Pilots = strconv.Itoa(count)
+		} else {
+			servers[i].Pilots = "—"
+		}
+	}
+	return servers
+}
+
+func (h *Handler) flightCount(ctx context.Context, serverID string) (int, bool) {
+	if h.flights == nil {
+		return 0, false
+	}
+	count, err := h.flights.CountActive(ctx, serverID)
+	if err != nil {
+		if !errors.Is(err, domainflights.ErrCacheMiss) && !errors.Is(err, domainflights.ErrCacheCorrupt) {
+			slog.Warn("count active flights for dashboard", "server", serverID, "error", err)
+		}
+		return 0, false
+	}
+	return count, true
+}
+
+func countText(value int, ok bool) string {
+	if !ok {
+		return "—"
+	}
+	return strconv.Itoa(value)
 }
 
 func serverLabel(id string) string {
@@ -294,10 +346,8 @@ func basePageData(r *http.Request, title, content string, extra map[string]any) 
 func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	claims, _ := auth.ClaimsFromContext(r.Context())
 	data := basePageData(r, "Dashboard", "dashboard-content", map[string]any{
-		"Username":       claims.DsUserID,
-		"Servers":        liveMapServers(),
-		"IFOAuthEnabled": h.ifOAuthEnabled,
-		"OAuthStatus":    strings.TrimSpace(r.URL.Query().Get("oauth")),
+		"Username": claims.DsUserID,
+		"Servers":  h.dashboardServers(r.Context()),
 	})
 	if err := h.renderer.Render(w, "base", data); err != nil {
 		http.Error(w, "template render failed", http.StatusInternalServerError)
@@ -309,6 +359,15 @@ func (h *Handler) AdminRedirect(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, routes.AdminGeneral, http.StatusSeeOther)
 }
 
+func adminTab(path string) string {
+	switch strings.TrimSuffix(path, "/") {
+	case routes.AdminLive:
+		return "live"
+	default:
+		return "general"
+	}
+}
+
 // Admin is the VA administrator settings area.
 func (h *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.ClaimsFromContext(r.Context())
@@ -317,7 +376,9 @@ func (h *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := basePageData(r, "Admin", "admin-content", map[string]any{
-		"AdminTab": "general",
+		"AdminTab":       adminTab(r.URL.Path),
+		"IFOAuthEnabled": h.ifOAuthEnabled,
+		"OAuthStatus":    strings.TrimSpace(r.URL.Query().Get("oauth")),
 	})
 	if err := h.renderer.Render(w, "base", data); err != nil {
 		http.Error(w, "template render failed", http.StatusInternalServerError)

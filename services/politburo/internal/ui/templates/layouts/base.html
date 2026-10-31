@@ -27,11 +27,11 @@
     {{else if eq .Content "admin-content"}}{{template "admin-content" .}}
     {{end}}
   </main>
-  {{if eq .Content "dashboard-content"}}
-  <script type="module" src="/static/js/dashboard/oauth.mjs"></script>
-  {{end}}
-  {{if eq .Content "admin-content"}}
+  {{if and (eq .Content "admin-content") (eq .AdminTab "general")}}
   <script type="module" src="/static/js/admin/general.mjs"></script>
+  {{end}}
+  {{if and (eq .Content "admin-content") (eq .AdminTab "live")}}
+  <script type="module" src="/static/js/admin/oauth.mjs"></script>
   {{end}}
   {{if eq .Content "maps-active-flights-content"}}
   <script type="module" src="/static/js/ui/copy.mjs"></script>
