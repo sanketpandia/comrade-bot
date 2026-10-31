@@ -13,8 +13,10 @@ import (
 
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/cache"
+	"infinite-experiment/politburo/internal/community/users"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	"infinite-experiment/politburo/internal/routes"
+	userapi "infinite-experiment/politburo/internal/transport/http/api/user"
 )
 
 type oauthCacheStub struct {
@@ -54,13 +56,29 @@ func withClaims(r *http.Request, claims auth.Claims) *http.Request {
 	return r.WithContext(auth.SetClaims(r.Context(), claims))
 }
 
+type currentUserStub struct {
+	user *users.User
+	err  error
+}
+
+func (s currentUserStub) Current(context.Context, auth.Claims) (*users.User, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.user, nil
+}
+
+func userStub(id string) currentUserStub {
+	return currentUserStub{user: &users.User{ID: id}}
+}
+
 func TestGetAuthorizeURLReturnsAuthorizeLinkAndPendingSession(t *testing.T) {
 	oauthClient, err := infiniteflight.NewOAuthClient("https://auth.example/v2", "ifc_test", "secret", time.Second)
 	if err != nil {
 		t.Fatalf("NewOAuthClient() error = %v", err)
 	}
 	cacheStub := newOAuthCacheStub()
-	handler := NewHandler(oauthClient, "http://localhost:8082"+routes.OAuthCallback, cacheStub)
+	handler := NewHandler(oauthClient, "http://localhost:8082"+routes.OAuthCallback, cacheStub, userStub("user-1"))
 
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.OAuthInfiniteFlight, nil), auth.Claims{PbUserID: "user-1"})
 	recorder := httptest.NewRecorder()
@@ -92,19 +110,60 @@ func TestGetAuthorizeURLReturnsAuthorizeLinkAndPendingSession(t *testing.T) {
 	}
 }
 
-func TestGetAuthorizeURLRequiresSessionUser(t *testing.T) {
+func TestGetAuthorizeURLUsesCurrentUserID(t *testing.T) {
+	cacheStub := newOAuthCacheStub()
 	handler := NewHandler(
 		mustOAuthClient(t, "https://auth.example/v2", "ifc_test", "secret"),
 		"http://localhost:8082"+routes.OAuthCallback,
-		newOAuthCacheStub(),
+		cacheStub,
+		userStub("user-from-discord"),
 	)
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.OAuthInfiniteFlight, nil), auth.Claims{
 		DsUserID: "ds-1", APIKeyPresent: true,
 	})
 	recorder := httptest.NewRecorder()
 	handler.GetAuthorizeURL(recorder, req)
-	if recorder.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want 401", recorder.Code)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	var body map[string]map[string]string
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	authorizeURL, err := url.Parse(body["data"]["url"])
+	if err != nil {
+		t.Fatalf("parse authorize url: %v", err)
+	}
+	var pending infiniteflight.OAuthPending
+	if err := json.Unmarshal(cacheStub.store[cache.KeyIFOAuthPending(authorizeURL.Query().Get("state"))], &pending); err != nil {
+		t.Fatalf("decode pending: %v", err)
+	}
+	if pending.UserID != "user-from-discord" {
+		t.Fatalf("pending user = %q", pending.UserID)
+	}
+}
+
+func TestGetAuthorizeURLCurrentUserErrors(t *testing.T) {
+	client := mustOAuthClient(t, "https://auth.example/v2", "ifc_test", "secret")
+	redirect := "http://localhost:8082" + routes.OAuthCallback
+	cases := []struct {
+		name   string
+		err    error
+		status int
+	}{
+		{"unauthorized", userapi.ErrUnauthorized, http.StatusUnauthorized},
+		{"not found", userapi.ErrNotFound, http.StatusNotFound},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			handler := NewHandler(client, redirect, newOAuthCacheStub(), currentUserStub{err: tc.err})
+			req := withClaims(httptest.NewRequest(http.MethodGet, routes.OAuthInfiniteFlight, nil), auth.Claims{DsUserID: "ds-1"})
+			recorder := httptest.NewRecorder()
+			handler.GetAuthorizeURL(recorder, req)
+			if recorder.Code != tc.status {
+				t.Fatalf("status = %d, want %d", recorder.Code, tc.status)
+			}
+		})
 	}
 }
 
@@ -129,7 +188,7 @@ func TestCompleteCallbackStoresTokenSession(t *testing.T) {
 		UserID: "user-1", CodeVerifier: "verifier-xyz",
 	}, infiniteflight.OAuthPendingTTL)
 
-	handler := NewHandler(oauthClient, "http://localhost:8082"+routes.OAuthCallback, cacheStub)
+	handler := NewHandler(oauthClient, "http://localhost:8082"+routes.OAuthCallback, cacheStub, nil)
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.OAuthCallback+"?code=auth-code&state="+state, nil), auth.Claims{PbUserID: "user-1"})
 	recorder := httptest.NewRecorder()
 	handler.CompleteCallback(recorder, req, "auth-code", state)
@@ -165,7 +224,7 @@ func TestCompleteCallbackStoresTokenSessionWithoutCookie(t *testing.T) {
 		UserID: "user-1", CodeVerifier: "verifier-xyz",
 	}, infiniteflight.OAuthPendingTTL)
 
-	handler := NewHandler(oauthClient, "http://localhost:8082"+routes.OAuthCallback, cacheStub)
+	handler := NewHandler(oauthClient, "http://localhost:8082"+routes.OAuthCallback, cacheStub, nil)
 	recorder := httptest.NewRecorder()
 	handler.CompleteCallback(recorder, httptest.NewRequest(http.MethodGet, routes.OAuthCallback, nil), "auth-code", state)
 	if loc := recorder.Header().Get("Location"); loc != routes.Dashboard+"?oauth=connected" {
@@ -183,7 +242,7 @@ func TestCompleteCallbackRejectsMissingPendingState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOAuthClient() error = %v", err)
 	}
-	handler := NewHandler(oauthClient, "http://localhost:8082/oauth/callback", newOAuthCacheStub())
+	handler := NewHandler(oauthClient, "http://localhost:8082/oauth/callback", newOAuthCacheStub(), nil)
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.OAuthCallback+"?code=auth-code&state=missing", nil), auth.Claims{PbUserID: "user-1"})
 	recorder := httptest.NewRecorder()
 	handler.CompleteCallback(recorder, req, "auth-code", "missing")

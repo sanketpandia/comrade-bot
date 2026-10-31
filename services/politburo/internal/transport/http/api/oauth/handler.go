@@ -11,8 +11,10 @@ import (
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/access/session"
 	"infinite-experiment/politburo/internal/cache"
+	"infinite-experiment/politburo/internal/community/users"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	"infinite-experiment/politburo/internal/routes"
+	userapi "infinite-experiment/politburo/internal/transport/http/api/user"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
 
@@ -21,30 +23,36 @@ type tokenCache interface {
 	GetDelJSON(context.Context, string, any) error
 }
 
+type currentUser interface {
+	Current(context.Context, auth.Claims) (*users.User, error)
+}
+
 // Handler serves Politburo Infinite Flight OAuth start and callback routes.
 type Handler struct {
 	client      *infiniteflight.OAuthClient
 	redirectURI string
 	cache       tokenCache
+	users       currentUser
 }
 
-func NewHandler(client *infiniteflight.OAuthClient, redirectURI string, cache tokenCache) *Handler {
-	return &Handler{client: client, redirectURI: redirectURI, cache: cache}
+func NewHandler(client *infiniteflight.OAuthClient, redirectURI string, cache tokenCache, users currentUser) *Handler {
+	return &Handler{client: client, redirectURI: redirectURI, cache: cache, users: users}
 }
 
-// GetAuthorizeURL returns the Infinite Flight authorize URL for the signed-in user.
+// GetAuthorizeURL returns the Infinite Flight authorize URL for the current user.
 // Caller auth is handled by AuthenticateAPI (session cookie or API key on /api/v1).
 func (h *Handler) GetAuthorizeURL(w http.ResponseWriter, r *http.Request) {
 	if h.client == nil {
 		response.WriteError(w, http.StatusServiceUnavailable, "OAUTH_DISABLED", "Infinite Flight OAuth is not configured")
 		return
 	}
-	claims, ok := auth.ClaimsFromContext(r.Context())
-	if !ok || strings.TrimSpace(claims.PbUserID) == "" {
-		response.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "sign in required")
+	claims, _ := auth.ClaimsFromContext(r.Context())
+	current, err := h.users.Current(r.Context(), claims)
+	if err != nil {
+		userapi.WriteCurrentError(w, err)
 		return
 	}
-	userID := strings.TrimSpace(claims.PbUserID)
+	userID := current.ID
 	state, err := infiniteflight.NewOAuthState()
 	if err != nil {
 		slog.Error("generate oauth state", "error", err)
