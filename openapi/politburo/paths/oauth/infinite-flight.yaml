@@ -1,13 +1,11 @@
 get:
   operationId: getInfiniteFlightOAuthAuthorize
-  summary: Start Infinite Flight OAuth for the signed-in user
+  summary: Start Infinite Flight OAuth for the current user
   description: |
-    Returns the Infinite Flight authorization URL for the current browser session.
-    Politburo stores short-lived PKCE state in Redis; the user completes consent at
-    Infinite Flight and returns via `GET /oauth/callback` (tokens bind to pending state).
-
-    Auth matches other session-backed `/api/v1` routes: `session_id` cookie after
-    signed-link login, or API key on paths that accept it (see `AuthenticateAPI`).
+    Returns the Infinite Flight authorization URL for the current user. The Politburo
+    user id is resolved the same way as `GET /api/v1/user/me` (session cookie, or API
+    key plus `X-Discord-User-Id`). Politburo stores short-lived PKCE state in Redis;
+    the user completes consent at Infinite Flight and returns via `GET /oauth/callback`.
 
     Requires Infinite Flight OAuth client credentials on the server.
   tags: [Auth]
@@ -22,7 +20,13 @@ get:
           schema:
             $ref: "../../components/schemas/InfiniteFlightOAuthAuthorizeResponse.yaml"
     "401":
-      description: Missing or invalid session (Politburo user id required)
+      description: Missing session or Discord user id
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: User record not found
       content:
         application/json:
           schema:

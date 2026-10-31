@@ -34,6 +34,18 @@ type ListActiveTracksResult struct {
 	PageLength       int
 }
 
+// CountActive returns how many flights are in the server snapshot.
+func (r *Reader) CountActive(ctx context.Context, server string) (int, error) {
+	if strings.TrimSpace(server) == "" {
+		return 0, ErrInvalidFilter
+	}
+	snapshot, err := r.loadSnapshot(ctx, server)
+	if err != nil {
+		return 0, err
+	}
+	return len(snapshot.Tracks), nil
+}
+
 // ListActiveTracks reads the per-server snapshot, applies filters, and paginates stable track rows.
 func (r *Reader) ListActiveTracks(ctx context.Context, input ListActiveTracksInput) (ListActiveTracksResult, error) {
 	if input.Server == "" {

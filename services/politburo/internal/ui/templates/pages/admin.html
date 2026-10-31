@@ -3,17 +3,49 @@
 <div class="admin-layout">
   <nav class="tabs tabs--nav" aria-label="Admin sections">
     <a class="tabs__tab" href="/admin/general"{{if eq .AdminTab "general"}} aria-current="page"{{end}}>General</a>
+    <a class="tabs__tab" href="/admin/live"{{if eq .AdminTab "live"}} aria-current="page"{{end}}>Live Mode</a>
   </nav>
-  <section class="panel" aria-labelledby="admin-general-heading">
-    <h2 class="panel-heading" id="admin-general-heading">General</h2>
+  {{if eq .AdminTab "live"}}
+  <section class="panel stack" aria-labelledby="admin-live-heading">
+    <header class="panel__header">
+      <h2 class="panel-heading" id="admin-live-heading">Live Mode</h2>
+    </header>
+    <p class="panel-lead">Link the in-game organisations this virtual airline flies.</p>
+    <section class="section">
+      <h3 class="section__title">Organisations</h3>
+      {{if eq .OAuthStatus "connected"}}
+      <p class="panel-message"><span class="badge badge--success">Connected</span></p>
+      {{else if eq .OAuthStatus "error"}}
+      <p class="panel-message panel-message--error" role="status">Connection failed. Try again.</p>
+      {{else if not .IFOAuthEnabled}}
+      <p class="panel-message">Infinite Flight sign-in is not configured on this server.</p>
+      {{else}}
+      <p class="panel-message">Sign in with Infinite Flight to choose organisations you administer.</p>
+      {{end}}
+      {{if .IFOAuthEnabled}}
+      <div class="link-row">
+        <button type="button" class="btn btn--primary" id="if-oauth-connect">Link your in-game organisations</button>
+      </div>
+      {{end}}
+    </section>
+  </section>
+  {{else}}
+  <section class="panel stack" aria-labelledby="admin-general-heading">
+    <header class="panel__header">
+      <h2 class="panel-heading" id="admin-general-heading">General</h2>
+    </header>
     <p class="panel-lead">Virtual airline settings for this server.</p>
     <p id="admin-general-status" class="panel-message" role="status" hidden></p>
-    <form class="form-stack" id="admin-general-form">
-      <div class="field">
-        <label class="field__label" for="va-code">VA code</label>
-        <input class="input" id="va-code" name="code" type="text" readonly autocomplete="off" placeholder="Loading…">
-      </div>
-    </form>
+    <section class="section">
+      <h3 class="section__title">Virtual airline</h3>
+      <form class="form-stack" id="admin-general-form">
+        <div class="field">
+          <label class="field__label" for="va-code">VA code</label>
+          <input class="input" id="va-code" name="code" type="text" readonly autocomplete="off" placeholder="Loading…">
+        </div>
+      </form>
+    </section>
   </section>
+  {{end}}
 </div>
 {{end}}

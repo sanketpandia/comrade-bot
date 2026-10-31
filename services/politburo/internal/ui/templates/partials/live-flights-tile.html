@@ -1,10 +1,16 @@
 {{define "live-flights-tile"}}
-<section class="panel panel--spaced">
-  <h2 class="panel-heading">Live flights</h2>
+<section class="panel panel--glass panel--spaced stack">
+  <header class="panel__header">
+    <h2 class="panel-heading">Live flights</h2>
+  </header>
   <p class="panel-lead">Open the map for an Infinite Flight server.</p>
-  <div class="link-row">
+  <div class="server-links">
     {{range .Servers}}
-    <a class="btn" href="/maps/flights/active?serverId={{.ID}}">{{.Label}}</a>
+    <a class="card card--link" href="/maps/flights/active?serverId={{.ID}}">
+      <span class="card__value">{{.Label}}</span>
+      <span class="card__stat"><span class="count-primary">{{.Flights}}</span> flights</span>
+      <span class="card__stat card__stat--muted"><span class="count-primary">{{.Pilots}}</span> pilots</span>
+    </a>
     {{end}}
   </div>
 </section>

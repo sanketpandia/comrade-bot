@@ -27,10 +27,11 @@ type handlers struct {
 }
 
 func newHandlers(application *app.App) handlers {
+	userHandler := userapi.NewHandler(application.Users)
 	return handlers{
-		health:     health.NewHandler(application.DB, application.Cache, application.Config.Jobs.Enabled, application.StartedAt),
-		sessions:   gamesessions.NewHandler(application.SessionsReader),
-		flights:    gameflights.NewHandler(application.FlightsReader, application.Metrics),
+		health:   health.NewHandler(application.DB, application.Cache, application.Config.Jobs.Enabled, application.StartedAt),
+		sessions: gamesessions.NewHandler(application.SessionsReader),
+		flights:  gameflights.NewHandler(application.FlightsReader, application.Metrics),
 		signedLink: signedlink.NewHandler(
 			application.Users,
 			application.Tickets,
@@ -43,9 +44,9 @@ func newHandlers(application *app.App) handlers {
 			application.Registration, application.Membership, application.VAInit, application.Status,
 			application.Reports, application.Operator, application.VirtualAirlines,
 		),
-		va:   vaapi.NewHandler(application.VirtualAirlines, application.VAConfigs, application.Users, application.VAWebhookJob),
-		user: userapi.NewHandler(application.Users),
-		oauth: oauthapi.NewHandler(application.IFOAuth, application.Config.OAuthRedirectURI(), application.Cache),
+		va:    vaapi.NewHandler(application.VirtualAirlines, application.VAConfigs, application.Users, application.VAWebhookJob),
+		user:  userHandler,
+		oauth: oauthapi.NewHandler(application.IFOAuth, application.Config.OAuthRedirectURI(), application.Cache, userHandler),
 		ui: uihttp.NewHandler(
 			application.UI, application.Sessions, application.Tickets, application.Reports, application.Contact, application.Cache,
 			application.Operator, application.Config.PlatformOperatorDiscordIDs, application.SessionsReader,
