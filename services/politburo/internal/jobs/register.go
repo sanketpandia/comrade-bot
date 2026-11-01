@@ -8,9 +8,11 @@ import (
 	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	flightsjob "infinite-experiment/politburo/internal/livegame/jobs/flights"
+	livev3tokenjob "infinite-experiment/politburo/internal/livegame/jobs/livev3token"
 	liveriesjob "infinite-experiment/politburo/internal/livegame/jobs/liveries"
 	sessionsjob "infinite-experiment/politburo/internal/livegame/jobs/sessions"
 	vaflightindexjob "infinite-experiment/politburo/internal/livegame/jobs/vaflightindex"
+	"infinite-experiment/politburo/internal/livegame/valive"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	"infinite-experiment/politburo/internal/metrics"
 	"infinite-experiment/politburo/internal/scheduler"
@@ -25,6 +27,8 @@ func Register(
 	db *sql.DB,
 	lookup *gameliveries.Lookup,
 	metricsRegistry *metrics.Registry,
+	vaLiveGrants *valive.GrantsRepository,
+	vaLiveTokens *valive.TokenProvider,
 ) error {
 	liveryRepo := gameliveries.NewRepository(db)
 	if err := jobScheduler.Register(sessionsjob.New(client, cacheStore), cache.ScheduleSessionsSync); err != nil {
@@ -40,6 +44,11 @@ func Register(
 	indexJob := vaflightindexjob.New(cacheStore, virtualairlines.NewRepository(db), metricsRegistry)
 	if err := jobScheduler.Register(indexJob, cache.ScheduleVAFlightIndexSync); err != nil {
 		return err
+	}
+	if vaLiveGrants != nil && vaLiveTokens != nil {
+		if err := jobScheduler.Register(livev3tokenjob.New(vaLiveGrants, vaLiveTokens), cache.ScheduleVALiveTokenRefresh); err != nil {
+			return err
+		}
 	}
 	return jobScheduler.Register(webhooks.NewJob(cacheStore, db, metricsRegistry), cache.ScheduleWebhooksSync)
 }

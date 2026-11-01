@@ -1,0 +1,25 @@
+{{define "live-content"}}
+<div class="live-page-header">
+  <h1>Live Mode</h1>
+  <div class="field live-page-header__org">
+    <label class="field__label" for="live-org-select">Organisation</label>
+    <select class="select" id="live-org-select" name="organizationId" disabled>
+      <option value="">Loading…</option>
+    </select>
+  </div>
+</div>
+<p id="live-org-status" class="panel-message" role="status" hidden></p>
+<div class="admin-layout">
+  <nav class="tabs tabs--nav" aria-label="Live Mode sections">
+    <a class="tabs__tab" href="/live/aircraft"{{if eq .LiveTab "aircraft"}} aria-current="page"{{end}}>Aircrafts</a>
+  </nav>
+  {{if eq .LiveTab "aircraft"}}
+  <section class="panel stack" aria-labelledby="live-aircraft-heading">
+    <header class="panel__header">
+      <h2 class="panel-heading" id="live-aircraft-heading">Aircrafts</h2>
+    </header>
+    <p class="panel-lead">Fleet list for the selected organisation will appear here.</p>
+  </section>
+  {{end}}
+</div>
+{{end}}

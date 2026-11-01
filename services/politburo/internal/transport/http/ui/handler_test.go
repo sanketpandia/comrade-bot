@@ -500,6 +500,7 @@ func TestAdminLiveShowsOrganisationLink(t *testing.T) {
 	for _, want := range []string{
 		`href="` + routes.AdminLive + `" aria-current="page"`,
 		`id="admin-live-heading"`,
+		`Each in-game organisation can be linked to one Discord server only`,
 		`Link your in-game organisations`,
 		`id="if-oauth-connect"`,
 		`class="btn btn--primary"`,
@@ -537,6 +538,43 @@ func TestAdminForbiddenForNonAdmin(t *testing.T) {
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminGeneral, nil), auth.Claims{Role: "proletariat"})
 	recorder := httptest.NewRecorder()
 	handler.Admin(recorder, req)
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", recorder.Code)
+	}
+}
+
+func TestLiveModeRendersAircraftTabAndOrgSelect(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, false)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveAircraft, nil), auth.Claims{Role: "administrator"})
+	recorder := httptest.NewRecorder()
+	handler.LiveMode(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		`id="live-org-select"`,
+		`class="select"`,
+		`href="` + routes.LiveAircraft + `" aria-current="page"`,
+		`id="live-aircraft-heading"`,
+		`/static/js/live/organizations.mjs`,
+		`Live Mode`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q in %s", want, body)
+		}
+	}
+}
+
+func TestLiveModeForbiddenForNonAdmin(t *testing.T) {
+	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveAircraft, nil), auth.Claims{Role: "proletariat"})
+	recorder := httptest.NewRecorder()
+	handler.LiveMode(recorder, req)
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403", recorder.Code)
 	}

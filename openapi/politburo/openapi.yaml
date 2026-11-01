@@ -8,7 +8,7 @@ info:
     **Authentication**
     - `X-API-Key` — UUID API key for `/api/v1/*` machine clients (Discord bot, integrations).
     - `X-Discord-User-Id` and `X-Discord-Server-Id` — Discord context on bot-originated requests.
-    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/oauth/infinite-flight`, `/oauth/callback`, `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger`, and related routes).
+    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/oauth/infinite-flight`, `/api/v1/live/organizations`, `/oauth/callback`, `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger`, and related routes).
 
     **Documentation** — https://sanketpandia.github.io/comrade-bot/api/reference/
 tags:
@@ -24,6 +24,8 @@ tags:
     description: Platform operator (god mode) actions.
   - name: VirtualAirline
     description: VA administrator settings and metadata.
+  - name: Live
+    description: Infinite Flight Live API proxies for dashboard Live Mode.
 servers:
   - url: https://comradebot.cc
     description: Production
@@ -42,6 +44,8 @@ paths:
     $ref: "./paths/game/flight-active-by-id.yaml"
   /api/v1/signed-link:
     $ref: "./paths/auth/signed-link.yaml"
+  /api/v1/live/organizations:
+    $ref: "./paths/live/organizations.yaml"
   /api/v1/oauth/infinite-flight:
     $ref: "./paths/oauth/infinite-flight.yaml"
   /oauth/callback:
@@ -62,6 +66,12 @@ paths:
     $ref: "./paths/va/config.yaml"
   /api/v1/va/webhook/trigger:
     $ref: "./paths/va/webhook-trigger.yaml"
+  /api/v1/va/live/connections:
+    $ref: "./paths/va/live-connections.yaml"
+  /api/v1/va/live/connections/{organizationId}:
+    $ref: "./paths/va/live-connection-by-id.yaml"
+  /api/v1/va/live/connections/{organizationId}/ping:
+    $ref: "./paths/va/live-connection-ping.yaml"
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -175,3 +185,13 @@ components:
       $ref: "./components/schemas/InfiniteFlightOAuthAuthorizeData.yaml"
     InfiniteFlightOAuthAuthorizeResponse:
       $ref: "./components/schemas/InfiniteFlightOAuthAuthorizeResponse.yaml"
+    LiveOrganizationListItem:
+      $ref: "./components/schemas/LiveOrganizationListItem.yaml"
+    LiveOrganizationsResponse:
+      $ref: "./components/schemas/LiveOrganizationsResponse.yaml"
+    VALiveConnection:
+      $ref: "./components/schemas/VALiveConnection.yaml"
+    VALiveConnectionsResponse:
+      $ref: "./components/schemas/VALiveConnectionsResponse.yaml"
+    VALiveConnectionPingResponse:
+      $ref: "./components/schemas/VALiveConnectionPingResponse.yaml"

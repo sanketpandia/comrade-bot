@@ -27,6 +27,7 @@ import (
 	gameflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
+	"infinite-experiment/politburo/internal/livegame/valive"
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/logging"
 	"infinite-experiment/politburo/internal/metrics"
@@ -69,6 +70,10 @@ type App struct {
 	SessionsReader  *gamesessions.Reader
 	VAWebhookJob    *webhookjobs.Job
 	IFOAuth         *infiniteflight.OAuthClient
+	IFLive          *infiniteflight.LiveClient
+	VALiveGrants    *valive.GrantsRepository
+	VALiveConnections *valive.ConnectionsRepository
+	VALiveTokens    *valive.TokenProvider
 	closeOnce       sync.Once
 }
 
@@ -110,7 +115,37 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	if err := liveryLookup.Reload(ctx); err != nil {
 		slog.Warn("initial livery lookup reload failed; catalog may be empty until first sync", "error", err)
 	}
-	if err := jobs.Register(jobScheduler, infiniteFlightClient, cacheStore, db, liveryLookup, metricsRegistry); err != nil {
+
+	var ifOAuth *infiniteflight.OAuthClient
+	if cfg.InfiniteFlight.ClientID != "" {
+		ifOAuth, err = infiniteflight.NewOAuthClient(
+			cfg.InfiniteFlight.AuthBaseURL,
+			cfg.InfiniteFlight.ClientID,
+			cfg.InfiniteFlight.ClientSecret,
+			cfg.InfiniteFlight.RequestTimeout,
+		)
+		if err != nil {
+			_ = cacheStore.Close()
+			_ = db.Close()
+			return nil, err
+		}
+	}
+
+	ifLive, err := infiniteflight.NewLiveClient(cfg.InfiniteFlight.LiveAPIBaseURL, cfg.InfiniteFlight.RequestTimeout)
+	if err != nil {
+		_ = cacheStore.Close()
+		_ = db.Close()
+		return nil, fmt.Errorf("initialize Infinite Flight Live client: %w", err)
+	}
+
+	vaLiveGrants := valive.NewGrantsRepository(db)
+	vaLiveConnections := valive.NewConnectionsRepository(db)
+	vaLiveActions := valive.NewActionHistoryRepository(db)
+	var vaLiveTokens *valive.TokenProvider
+	if ifOAuth != nil {
+		vaLiveTokens = valive.NewTokenProvider(ifOAuth, cacheStore, vaLiveGrants, vaLiveActions)
+	}
+	if err := jobs.Register(jobScheduler, infiniteFlightClient, cacheStore, db, liveryLookup, metricsRegistry, vaLiveGrants, vaLiveTokens); err != nil {
 		_ = cacheStore.Close()
 		_ = db.Close()
 		return nil, fmt.Errorf("register jobs: %w", err)
@@ -127,21 +162,6 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	var ifUsers infiniteflight.UsersClient
 	if cfg.InfiniteFlight.APIKey != "" {
 		ifUsers = infiniteFlightClient
-	}
-
-	var ifOAuth *infiniteflight.OAuthClient
-	if cfg.InfiniteFlight.ClientID != "" {
-		ifOAuth, err = infiniteflight.NewOAuthClient(
-			cfg.InfiniteFlight.AuthBaseURL,
-			cfg.InfiniteFlight.ClientID,
-			cfg.InfiniteFlight.ClientSecret,
-			cfg.InfiniteFlight.RequestTimeout,
-		)
-		if err != nil {
-			_ = cacheStore.Close()
-			_ = db.Close()
-			return nil, err
-		}
 	}
 
 	application := &App{
@@ -166,7 +186,11 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		FlightsReader:   gameflights.NewReader(cacheStore),
 		SessionsReader:  gamesessions.NewReader(cacheStore),
 		VAWebhookJob:    vaWebhookDispatch,
-		IFOAuth:         ifOAuth,
+		IFOAuth:           ifOAuth,
+		IFLive:            ifLive,
+		VALiveGrants:      vaLiveGrants,
+		VALiveConnections: vaLiveConnections,
+		VALiveTokens:      vaLiveTokens,
 	}
 	slog.Info("application initialized", "environment", cfg.Environment, "jobs_enabled", cfg.Jobs.Enabled)
 	return application, nil

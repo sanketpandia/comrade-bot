@@ -1,0 +1,14 @@
+type: object
+required: [data]
+properties:
+  data:
+    type: object
+    required: [id, name, role]
+    properties:
+      id:
+        type: string
+        format: uuid
+      name:
+        type: string
+      role:
+        type: integer

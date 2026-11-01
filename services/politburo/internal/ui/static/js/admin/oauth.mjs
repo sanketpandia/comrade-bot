@@ -3,7 +3,7 @@ if (button) {
   button.addEventListener("click", async () => {
     button.disabled = true;
     try {
-      const response = await fetch("/api/v1/oauth/infinite-flight", { credentials: "same-origin" });
+      const response = await fetch("/api/v1/oauth/infinite-flight?scope_set=admin_scopes", { credentials: "same-origin" });
       if (!response.ok) {
         throw new Error(`auth url request failed: ${response.status}`);
       }

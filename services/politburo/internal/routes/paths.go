@@ -33,6 +33,9 @@ const (
 	AdminGeneral = "/admin/general"
 	AdminLive    = "/admin/live"
 
+	Live         = "/live"
+	LiveAircraft = "/live/aircraft"
+
 	OperatorReports              = "/operator/reports"
 	OperatorReportsResolve       = "/operator/reports/{reportID}/resolve"
 	OperatorReportsResolvePrefix = "/operator/reports/"
@@ -59,6 +62,7 @@ const (
 	GameFlightsActive   = "/api/v1/game/flights/active/{normalizedServerName}"
 	GameFlightActive    = "/api/v1/game/flight/active/{flightId}"
 	SignedLink          = "/api/v1/signed-link"
+	LiveOrganizations   = "/api/v1/live/organizations"
 	OAuthInfiniteFlight = "/api/v1/oauth/infinite-flight"
 	UserMe              = "/api/v1/user/me"
 	UsersCreate         = "/api/v1/users"
@@ -68,6 +72,9 @@ const (
 	VA                  = "/api/v1/va"
 	VAConfig            = "/api/v1/va/config"
 	VAWebhookTrigger    = "/api/v1/va/webhook/trigger"
+	VALiveConnections   = "/api/v1/va/live/connections"
+	VALiveConnection    = "/api/v1/va/live/connections/{organizationId}"
+	VALiveConnectionPing = "/api/v1/va/live/connections/{organizationId}/ping"
 
 	UserStatus                = "/api/v1/user/status"
 	MembershipsJoin           = "/api/v1/memberships/join"
@@ -83,6 +90,7 @@ var OpenAPIPaths = []string{
 	GameFlightsActive,
 	GameFlightActive,
 	SignedLink,
+	LiveOrganizations,
 	OAuthInfiniteFlight,
 	OAuthCallback,
 	UserMe,
@@ -93,4 +101,7 @@ var OpenAPIPaths = []string{
 	VA,
 	VAConfig,
 	VAWebhookTrigger,
+	VALiveConnections,
+	VALiveConnection,
+	VALiveConnectionPing,
 }

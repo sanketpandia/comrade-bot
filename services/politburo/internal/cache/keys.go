@@ -47,6 +47,9 @@ const (
 	// PrefixIFOAuthUser namespaces stored Infinite Flight OAuth tokens per user.
 	PrefixIFOAuthUser = PrefixAuth + "if_oauth_user:"
 
+	// PrefixIFOAuthVA namespaces stored Infinite Flight OAuth tokens per VA (admin grant).
+	PrefixIFOAuthVA = PrefixAuth + "if_oauth_va:"
+
 	// PrefixSession namespaces browser session objects.
 	PrefixSession = "session:"
 )
@@ -65,6 +68,10 @@ func KeyIFOAuthPending(state string) string {
 
 func KeyIFOAuthUser(userID string) string {
 	return PrefixIFOAuthUser + userID
+}
+
+func KeyIFOAuthVA(vaID string) string {
+	return PrefixIFOAuthVA + vaID
 }
 
 func KeySession(sessionID string) string {

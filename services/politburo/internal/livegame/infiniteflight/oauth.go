@@ -17,6 +17,11 @@ import (
 // DefaultOAuthScopes are the read scopes used for dashboard connect.
 const DefaultOAuthScopes = "openid profile live:organizations.read live:members.read live:aircraft.read live:schedules.read"
 
+// AdminOAuthScopes are the staff scopes for VA-wide Live API v3 access (includes refresh and schedule write).
+const AdminOAuthScopes = "openid profile offline_access live:organizations.read live:members.read live:aircraft.read live:schedules.read live:schedules.write"
+
+const ScopeSetAdmin = "admin_scopes"
+
 // OAuthClient talks to the Infinite Flight authorization server (not /public/v2).
 type OAuthClient struct {
 	authBaseURL  string
@@ -144,6 +149,59 @@ func (c *OAuthClient) ExchangeCode(ctx context.Context, redirectURI, code, codeV
 	}
 	if parsed.AccessToken == "" {
 		return OAuthTokens{}, fmt.Errorf("token response missing access_token")
+	}
+	return OAuthTokens{
+		AccessToken:  parsed.AccessToken,
+		RefreshToken: parsed.RefreshToken,
+		TokenType:    parsed.TokenType,
+		Scope:        parsed.Scope,
+		ExpiresIn:    parsed.ExpiresIn,
+	}, nil
+}
+
+// Refresh exchanges a refresh token for a new token pair (refresh tokens rotate).
+func (c *OAuthClient) Refresh(ctx context.Context, refreshToken string) (OAuthTokens, error) {
+	refreshToken = strings.TrimSpace(refreshToken)
+	if refreshToken == "" {
+		return OAuthTokens{}, fmt.Errorf("refresh token is required")
+	}
+	body := url.Values{
+		"grant_type":    {"refresh_token"},
+		"client_id":     {c.clientID},
+		"client_secret": {c.clientSecret},
+		"refresh_token": {refreshToken},
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.authBaseURL+"/connect/token", strings.NewReader(body.Encode()))
+	if err != nil {
+		return OAuthTokens{}, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return OAuthTokens{}, fmt.Errorf("refresh token request: %w", err)
+	}
+	defer resp.Body.Close()
+	payload, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return OAuthTokens{}, fmt.Errorf("read refresh token response: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return OAuthTokens{}, fmt.Errorf("refresh token endpoint returned %d", resp.StatusCode)
+	}
+	var parsed struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+		TokenType    string `json:"token_type"`
+		Scope        string `json:"scope"`
+		ExpiresIn    int    `json:"expires_in"`
+	}
+	if err := json.Unmarshal(payload, &parsed); err != nil {
+		return OAuthTokens{}, fmt.Errorf("decode refresh token response: %w", err)
+	}
+	if parsed.AccessToken == "" {
+		return OAuthTokens{}, fmt.Errorf("refresh token response missing access_token")
 	}
 	return OAuthTokens{
 		AccessToken:  parsed.AccessToken,

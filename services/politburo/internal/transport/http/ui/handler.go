@@ -385,6 +385,35 @@ func (h *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// LiveRedirect sends /live to the default Aircrafts tab.
+func (h *Handler) LiveRedirect(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, routes.LiveAircraft, http.StatusSeeOther)
+}
+
+func liveTab(path string) string {
+	switch strings.TrimSuffix(path, "/") {
+	case routes.LiveAircraft:
+		return "aircraft"
+	default:
+		return "aircraft"
+	}
+}
+
+// LiveMode is the Infinite Flight Live dashboard for VA administrators.
+func (h *Handler) LiveMode(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok || !claims.IsAdmin() {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	data := basePageData(r, "Live Mode", "live-content", map[string]any{
+		"LiveTab": liveTab(r.URL.Path),
+	})
+	if err := h.renderer.Render(w, "base", data); err != nil {
+		http.Error(w, "template render failed", http.StatusInternalServerError)
+	}
+}
+
 // ActiveFlightsMap is the full-screen live flights map.
 func (h *Handler) ActiveFlightsMap(w http.ResponseWriter, r *http.Request) {
 	view := mapsPageViewFromRequest(r)

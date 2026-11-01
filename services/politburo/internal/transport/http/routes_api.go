@@ -119,14 +119,42 @@ func (h apiHandler) GetCurrentUser(w stdhttp.ResponseWriter, r *stdhttp.Request)
 	})).ServeHTTP(w, r)
 }
 
-func (h apiHandler) GetInfiniteFlightOAuthAuthorize(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+func (h apiHandler) GetInfiniteFlightOAuthAuthorize(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.GetInfiniteFlightOAuthAuthorizeParams) {
 	h.stacks.currentUser.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
-		h.handlers.oauth.GetAuthorizeURL(w, r)
+		scopeSet := ""
+		if params.ScopeSet != nil {
+			scopeSet = string(*params.ScopeSet)
+		}
+		h.handlers.oauth.GetAuthorizeURL(w, r, scopeSet)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) ListLiveOrganizations(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.live.ListOrganizations(w, r)
 	})).ServeHTTP(w, r)
 }
 
 func (h apiHandler) CompleteInfiniteFlightOAuthCallback(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.CompleteInfiniteFlightOAuthCallbackParams) {
 	h.handlers.oauth.CompleteCallback(w, r, params.Code, params.State)
+}
+
+func (h apiHandler) ListVALiveConnections(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.ListConnections(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) DeleteVALiveConnection(w stdhttp.ResponseWriter, r *stdhttp.Request, organizationID openapi_types.UUID) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.DeleteConnection(w, r, organizationID.String())
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) PingVALiveConnection(w stdhttp.ResponseWriter, r *stdhttp.Request, organizationID openapi_types.UUID) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.PingConnection(w, r, organizationID.String())
+	})).ServeHTTP(w, r)
 }
 
 func writeParameterError(w stdhttp.ResponseWriter, _ *stdhttp.Request, err error) {
