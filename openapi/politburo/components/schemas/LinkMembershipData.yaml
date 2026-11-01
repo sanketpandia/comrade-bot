@@ -1,0 +1,14 @@
+type: object
+required: [success, role, va_id]
+properties:
+  success:
+    type: boolean
+    example: true
+  role:
+    type: string
+    description: VA membership role assigned on link.
+    example: proletariat
+  va_id:
+    type: string
+    format: uuid
+    description: Virtual airline id for the current Discord guild.

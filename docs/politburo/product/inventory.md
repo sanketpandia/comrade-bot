@@ -61,7 +61,7 @@ Deployed commands (`src/commands/registry.ts`):
 
 | Command | Intended job | Politburo endpoint it calls |
 |---|---|---|
-| `/register` | Global account + optional VA callsign link | `POST /api/v1/users`, `GET /api/v1/user/status` |
+| `/register` | Global account + optional VA link | `POST /api/v1/users`, `POST /api/v1/memberships/link`, `GET /api/v1/user/status` |
 | `/status` | Account + current-server membership | `GET /api/v1/user/status` |
 | `/botstatus` | Ops health | `GET /health/status` |
 | `/log` | File a PIREP for the current flight | `GET /api/v1/pireps/config`, `POST /api/v1/pireps/submit` |
@@ -83,13 +83,10 @@ and response envelopes still differ (old `{status,result}` vs rewrite
 
 | Artifact | Why leftover |
 |---|---|
-| `membership.ts` + join button/modal handlers | `/membership` is **not** in the registry. Join was folded into `/register`. Handlers are not in `InteractionRouter`. |
-| `MEMBERSHIP_JOIN_*` constants | Dead IDs unless the command is re-registered. |
 | Select-menu router branch | Comment: "pilot role configuration removed." |
 | Dynamic modal router | Comment: `SyncUserModal` / `syncUserToVA` removed. |
 
-Keep these in mind when we re-plan membership: either revive a dedicated
-command or stay with `/register` as the only join path.
+VA link uses `POST /api/v1/memberships/link` (OpenAPI) from `/register`; no separate `/membership` command.
 
 ## Inherited schema (idle in the rewrite)
 

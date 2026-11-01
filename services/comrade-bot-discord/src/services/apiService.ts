@@ -15,7 +15,7 @@ import {
     PirepSubmitResponse, 
     PirepSubmitRequest, 
     RegistrationResult, 
-    MembershipJoinResult, 
+    MembershipLinkResult,
     InitServerResult,
     EventsResponse,
     EventResponse,
@@ -363,18 +363,14 @@ export class ApiService {
     }
 
     /**
-     * Join a virtual airline as a member with a callsign
-     * Requires the user to be registered first (will error with USER_NOT_FOUND if not)
+     * Link the caller to the current guild virtual airline (proletariat).
+     * Requires a registered Politburo user (USER_NOT_FOUND if not).
      */
-    static async joinMembership(meta: MetaInfo, callsign: string): Promise<MembershipJoinResult> {
+    static async linkMembership(meta: MetaInfo): Promise<MembershipLinkResult> {
         try {
-            const res = await fetch(`${getPolitburoApiUrl()}/api/v1/memberships/join`, {
+            const res = await fetch(`${getPolitburoApiUrl()}/api/v1/memberships/link`, {
                 method: "POST",
-                headers: {
-                    ...generateRegistrationMetaHeaders(meta),
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ callsign })
+                headers: generateRegistrationMetaHeaders(meta),
             });
 
             if (res.status === 401) {
@@ -387,15 +383,11 @@ export class ApiService {
                 throw new PermissionDeniedError(body.message || "Forbidden");
             }
 
-            // Handle specific error codes
             if (res.status === 409) {
                 const body = await res.json() as any;
                 const errorMsg = body.error?.message || body.message;
                 if (errorMsg?.includes("already a member") || errorMsg?.includes("ALREADY_MEMBER")) {
                     throw new Error("ALREADY_MEMBER: You are already a member of this VA");
-                }
-                if (errorMsg?.includes("callsign") || errorMsg?.includes("CALLSIGN_TAKEN")) {
-                    throw new Error("CALLSIGN_TAKEN: This callsign is already taken");
                 }
                 throw new Error(errorMsg || "Conflict error");
             }
@@ -413,18 +405,18 @@ export class ApiService {
             }
 
             if (!res.ok) {
-                throw new Error(`Failed to join membership: ${res.status} ${res.statusText}`);
+                throw new Error(`Failed to link membership: ${res.status} ${res.statusText}`);
             }
 
-            const response: ApiResponse<MembershipJoinResult> = await res.json() as ApiResponse<MembershipJoinResult>;
+            const response: ApiResponse<MembershipLinkResult> = await res.json() as ApiResponse<MembershipLinkResult>;
 
-            const result = unwrapApiData<MembershipJoinResult>(response as Record<string, unknown>);
+            const result = unwrapApiData<MembershipLinkResult>(response as Record<string, unknown>);
             if (!result) {
                 throw new Error("No data received in API response");
             }
             return result;
         } catch (err) {
-            console.error("[ApiService.joinMembership]", err);
+            console.error("[ApiService.linkMembership]", err);
             throw err;
         }
     }

@@ -56,6 +56,8 @@ paths:
     $ref: "./paths/users/create.yaml"
   /api/v1/servers:
     $ref: "./paths/servers/create.yaml"
+  /api/v1/memberships/link:
+    $ref: "./paths/memberships/link.yaml"
   /api/v1/admin/verify-god:
     $ref: "./paths/admin/verify-god.yaml"
   /api/v1/admin/users/ban:
@@ -145,6 +147,14 @@ components:
       $ref: "./components/schemas/CreateServerData.yaml"
     CreateServerResponse:
       $ref: "./components/schemas/CreateServerResponse.yaml"
+    LinkMembershipErrorCode:
+      $ref: "./components/schemas/LinkMembershipErrorCode.yaml"
+    LinkMembershipErrorResponse:
+      $ref: "./components/schemas/LinkMembershipErrorResponse.yaml"
+    LinkMembershipData:
+      $ref: "./components/schemas/LinkMembershipData.yaml"
+    LinkMembershipResponse:
+      $ref: "./components/schemas/LinkMembershipResponse.yaml"
     VerifyGodData:
       $ref: "./components/schemas/VerifyGodData.yaml"
     VerifyGodResponse:

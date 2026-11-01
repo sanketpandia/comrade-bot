@@ -1,0 +1,11 @@
+type: object
+required: [error]
+properties:
+  error:
+    type: object
+    required: [code, message]
+    properties:
+      code:
+        $ref: "./LinkMembershipErrorCode.yaml"
+      message:
+        type: string

@@ -723,6 +723,111 @@ paths:
                     error:
                       code: INIT_FAILED
                       message: initialization failed
+  /api/v1/memberships/link:
+    post:
+      operationId: linkMembership
+      summary: Link the caller to the current guild virtual airline
+      description: |
+        Creates a VA membership for the Discord member in X-Discord-User-Id on the virtual airline
+        bound to X-Discord-Server-Id. The caller must already be a registered Politburo user.
+        Assigns role proletariat with no callsign in the request body.
+
+        Error responses use `error.code` from the LinkMembershipErrorCode enum.
+      tags:
+        - Users
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: X-Discord-User-Id
+          in: header
+          required: true
+          description: Discord user id of the member linking to the VA.
+          schema:
+            type: string
+        - name: X-Discord-Server-Id
+          in: header
+          required: true
+          description: Discord guild id that must be registered as a VA.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Linked to virtual airline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkMembershipResponse'
+        '400':
+          description: Link failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkMembershipErrorResponse'
+              examples:
+                linkFailed:
+                  value:
+                    error:
+                      code: LINK_FAILED
+                      message: link failed
+        '401':
+          description: Missing or inactive API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkMembershipErrorResponse'
+              examples:
+                unauthorized:
+                  value:
+                    error:
+                      code: UNAUTHORIZED
+                      message: Unauthorized
+        '403':
+          description: Missing Discord context headers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkMembershipErrorResponse'
+              examples:
+                missingDiscordContext:
+                  value:
+                    error:
+                      code: MISSING_DISCORD_CONTEXT
+                      message: 'Missing required Discord context headers: X-Discord-User-Id and X-Discord-Server-Id'
+        '404':
+          description: User or VA not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkMembershipErrorResponse'
+              examples:
+                userNotFound:
+                  value:
+                    error:
+                      code: USER_NOT_FOUND
+                      message: User not found. Please register first
+                vaNotFound:
+                  value:
+                    error:
+                      code: VA_NOT_FOUND
+                      message: Virtual airline not found for this server
+        '409':
+          description: Already a member of this VA
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkMembershipErrorResponse'
+              examples:
+                alreadyMember:
+                  value:
+                    error:
+                      code: ALREADY_MEMBER
+                      message: You are already a member of this VA
+        '500':
+          description: Internal link failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkMembershipErrorResponse'
   /api/v1/admin/verify-god:
     get:
       operationId: verifyGodMode
@@ -1729,6 +1834,56 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/CreateServerData'
+    LinkMembershipErrorCode:
+      type: string
+      description: Machine-readable error code for POST /api/v1/memberships/link failures.
+      enum:
+        - UNAUTHORIZED
+        - MISSING_DISCORD_CONTEXT
+        - USER_NOT_FOUND
+        - VA_NOT_FOUND
+        - ALREADY_MEMBER
+        - LINK_FAILED
+    LinkMembershipErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              $ref: '#/components/schemas/LinkMembershipErrorCode'
+            message:
+              type: string
+    LinkMembershipData:
+      type: object
+      required:
+        - success
+        - role
+        - va_id
+      properties:
+        success:
+          type: boolean
+          example: true
+        role:
+          type: string
+          description: VA membership role assigned on link.
+          example: proletariat
+        va_id:
+          type: string
+          format: uuid
+          description: Virtual airline id for the current Discord guild.
+    LinkMembershipResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/LinkMembershipData'
     VerifyGodData:
       type: object
       required:

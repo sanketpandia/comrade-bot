@@ -26,9 +26,9 @@ request:
     - name: POLITBURO_BASE_URL
       value: "{{politburo-base-url}}"
     - name: IFC_ID
-      value: sanketpandia
+      value: John370
     - name: lastFlight
-      value: LFPG-DNAA
+      value: RCTP-RJFC
     - name: flight-id
       value: 90cdb286-d470-4dd1-9f45-688f1acf583c
     - name: oauth-authorization-code

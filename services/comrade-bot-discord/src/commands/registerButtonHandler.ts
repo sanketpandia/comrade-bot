@@ -6,16 +6,17 @@ import {
 } from "discord.js";
 import { CUSTOM_IDS } from "../configs/constants";
 import { DiscordInteraction } from "../types/DiscordInteraction";
+import { ApiService } from "../services/apiService";
+import { CommandErrorHandler } from "../helpers/commandErrorHandler";
 
 /**
  * Handles the "Proceed with Registration" button for new users
- * Shows modal with IFC ID, last flight, and optional callsign
+ * Shows modal with IFC ID and last flight.
  */
 export async function handleRegisterNew(interaction: DiscordInteraction) {
     const buttonInteraction = interaction.getButtonInteraction();
     if (!buttonInteraction) return;
 
-    // Build modal fields
     const ifcIdInput = new TextInputBuilder()
         .setCustomId("ifcId")
         .setLabel("IFC Username")
@@ -47,32 +48,29 @@ export async function handleRegisterNew(interaction: DiscordInteraction) {
 }
 
 /**
- * Handles the "Link to VA" button for registered users who want to link to a VA
- * Shows modal with only callsign field
+ * Links a registered user to the current guild VA (no callsign prompt).
  */
 export async function handleRegisterLink(interaction: DiscordInteraction) {
     const buttonInteraction = interaction.getButtonInteraction();
     if (!buttonInteraction) return;
 
-    // Build modal with only callsign field (same as membership join)
-    const callsignInput = new TextInputBuilder()
-        .setCustomId("callsign")
-        .setLabel("Your Callsign")
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder("Enter your callsign exactly as registered")
-        .setRequired(true)
-        .setMinLength(1)
-        .setMaxLength(50);
+    await buttonInteraction.deferReply({ ephemeral: true });
 
-    const modal = new ModalBuilder()
-        .setCustomId(CUSTOM_IDS.REGISTER_LINK_MODAL)
-        .setTitle("Link to Virtual Airline");
+    CommandErrorHandler.logExecution("VA Link", buttonInteraction.user.id, buttonInteraction.guildId, {});
 
-    modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(callsignInput)
-    );
+    try {
+        const response = await ApiService.linkMembership(interaction.getMetaInfo());
+        if (!response?.success) {
+            await CommandErrorHandler.handleEmptyResponse(interaction);
+            return;
+        }
 
-    await buttonInteraction.showModal(modal);
+        await interaction.editReply({
+            content: "✅ **Successfully Linked to Virtual Airline!**\n\nYou're now a member of this server's VA.\n\nUse `/help` to learn how to use Comrade Bot.",
+        });
+    } catch (error) {
+        await CommandErrorHandler.handleApiError(interaction, error, "VA Link");
+    }
 }
 
 export default {

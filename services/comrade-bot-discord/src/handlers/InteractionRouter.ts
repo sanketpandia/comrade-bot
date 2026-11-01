@@ -26,7 +26,6 @@ export class InteractionRouter {
     private static readonly modalHandlers: Record<string, WrappedHandler> = {
         [RegisterHandler.data.name]: RegisterHandler.execute,
         [InitServerHandler.data.name]: InitServerHandler.execute,
-        [CUSTOM_IDS.REGISTER_LINK_MODAL]: RegisterHandler.execute,
     };
 
     private static readonly buttonHandlers: Record<string, WrappedHandler> = {

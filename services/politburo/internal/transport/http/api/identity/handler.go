@@ -118,36 +118,25 @@ func (h *Handler) Status(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, map[string]any{"data": status})
 }
 
-func (h *Handler) Join(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) LinkMembership(w http.ResponseWriter, r *http.Request, _ politburoapi.LinkMembershipParams) {
 	claims, ok := auth.ClaimsFromContext(r.Context())
 	if !ok {
 		response.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
 		return
 	}
-	var body joinBody
-	if err := decodeJSON(r, &body); err != nil {
-		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
-		return
-	}
-	result, err := h.membership.JoinCurrentServer(r.Context(), membership.JoinCurrentServerInput{
+	result, err := h.membership.LinkCurrentServer(r.Context(), membership.LinkCurrentServerInput{
 		DiscordID:       claims.DsUserID,
 		DiscordServerID: claims.DsServerID,
-		Callsign:        body.Callsign,
 	})
 	if err != nil {
-		writeJoinError(w, err)
+		writeLinkError(w, err)
 		return
-	}
-	callsign := body.Callsign
-	if result.Membership.Callsign != nil {
-		callsign = *result.Membership.Callsign
 	}
 	response.WriteJSON(w, http.StatusOK, map[string]any{
 		"data": map[string]any{
-			"success":  true,
-			"callsign": callsign,
-			"role":     result.Membership.Role,
-			"va_id":    result.Membership.VAID,
+			"success": true,
+			"role":    result.Membership.Role,
+			"va_id":   result.Membership.VAID,
 		},
 	})
 }
@@ -288,10 +277,6 @@ func (h *Handler) BanUser(w http.ResponseWriter, r *http.Request, _ politburoapi
 	})
 }
 
-type joinBody struct {
-	Callsign string `json:"callsign"`
-}
-
 type occupiedIFCBody struct {
 	ClaimedIFC string `json:"claimedIfc"`
 	ClaimedIfc string `json:"claimed_ifc"`
@@ -339,7 +324,7 @@ func writeRegisterError(w http.ResponseWriter, err error) {
 	}
 }
 
-func writeJoinError(w http.ResponseWriter, err error) {
+func writeLinkError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, membership.ErrUserNotFound):
 		response.WriteError(w, http.StatusNotFound, "USER_NOT_FOUND", "User not found. Please register first")
@@ -347,10 +332,8 @@ func writeJoinError(w http.ResponseWriter, err error) {
 		response.WriteError(w, http.StatusNotFound, "VA_NOT_FOUND", "Virtual airline not found for this server")
 	case errors.Is(err, membership.ErrAlreadyMember):
 		response.WriteError(w, http.StatusConflict, "ALREADY_MEMBER", "You are already a member of this VA")
-	case errors.Is(err, membership.ErrCallsignRequired):
-		response.WriteError(w, http.StatusBadRequest, "CALLSIGN_REQUIRED", "Callsign cannot be empty")
 	default:
-		response.WriteError(w, http.StatusBadRequest, "JOIN_FAILED", err.Error())
+		response.WriteError(w, http.StatusBadRequest, "LINK_FAILED", err.Error())
 	}
 }
 
