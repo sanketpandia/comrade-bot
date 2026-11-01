@@ -224,7 +224,13 @@ body:has(.topbar) {
   align-items: start;
 }
 
-.section-layout .stack {
+.section-layout__main {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.section-layout .stack,
+.section-layout__main.stack {
   gap: 0.45rem;
 }
 
@@ -235,6 +241,10 @@ body:has(.topbar) {
 @media (max-width: 40rem) {
   .section-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .section-layout__main {
+    grid-column: 1;
   }
 }
 

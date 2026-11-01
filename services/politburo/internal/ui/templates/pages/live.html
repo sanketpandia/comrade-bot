@@ -16,8 +16,10 @@
     <a class="tabs__tab" href="/live/flights"{{if eq .LiveTab "flights"}} aria-current="page"{{end}}>Flights</a>
   </nav>
   {{if eq .LiveTab "aircraft"}}
-  <div id="live-aircraft-fleet" class="stack" aria-live="polite">
-    <p class="panel-lead">Select an organisation to load the fleet.</p>
+  <div class="section-layout__main stack">
+    <div id="live-aircraft-fleet" class="stack" aria-live="polite">
+      <p class="panel-lead">Select an organisation to load the fleet.</p>
+    </div>
   </div>
   <div id="live-aircraft-row-menu" class="row-menu" hidden role="menu" aria-label="Aircraft actions">
     <button type="button" class="row-menu__item" role="menuitem" data-action="copy-id">Copy Aircraft ID</button>
@@ -25,28 +27,32 @@
     <button type="button" class="row-menu__item" role="menuitem" data-action="flight-history">Show Flight History</button>
   </div>
   {{else if eq .LiveTab "schedules"}}
-  <div class="field panel__filter" id="live-schedules-aircraft-filter-wrap" hidden>
-    <label class="field__label" for="live-schedules-aircraft-filter">Aircraft</label>
-    <select class="select" id="live-schedules-aircraft-filter" name="aircraftId">
-      <option value="">All aircraft</option>
-    </select>
-  </div>
-  <div id="live-schedules" class="stack" aria-live="polite">
-    <p class="panel-lead">Select an organisation to load schedules.</p>
+  <div class="section-layout__main stack">
+    <div class="field panel__filter" id="live-schedules-aircraft-filter-wrap" hidden>
+      <label class="field__label" for="live-schedules-aircraft-filter">Aircraft</label>
+      <select class="select" id="live-schedules-aircraft-filter" name="aircraftId">
+        <option value="">All aircraft</option>
+      </select>
+    </div>
+    <div id="live-schedules" class="stack" aria-live="polite">
+      <p class="panel-lead">Select an organisation to load schedules.</p>
+    </div>
   </div>
   <div id="live-schedules-row-menu" class="row-menu" hidden role="menu" aria-label="Schedule actions">
     <button type="button" class="row-menu__item" role="menuitem" data-action="copy-aircraft-id">Copy Aircraft ID</button>
     <button type="button" class="row-menu__item" role="menuitem" data-action="copy-schedule-id">Copy Schedule ID</button>
   </div>
   {{else if eq .LiveTab "flights"}}
-  <div class="field panel__filter" id="live-flights-aircraft-filter-wrap" hidden>
-    <label class="field__label" for="live-flights-aircraft-filter">Aircraft</label>
-    <select class="select" id="live-flights-aircraft-filter" name="aircraftId" required>
-      <option value="">Select an aircraft</option>
-    </select>
-  </div>
-  <div id="live-flights" class="stack" aria-live="polite">
-    <p class="panel-lead">Select an organisation to load flight history.</p>
+  <div class="section-layout__main stack">
+    <div class="field panel__filter" id="live-flights-aircraft-filter-wrap" hidden>
+      <label class="field__label" for="live-flights-aircraft-filter">Aircraft</label>
+      <select class="select" id="live-flights-aircraft-filter" name="aircraftId" required>
+        <option value="">Select an aircraft</option>
+      </select>
+    </div>
+    <div id="live-flights" class="stack" aria-live="polite">
+      <p class="panel-lead">Select an organisation to load flight history.</p>
+    </div>
   </div>
   <div id="live-flights-row-menu" class="row-menu" hidden role="menu" aria-label="Flight actions">
     <button type="button" class="row-menu__item" role="menuitem" data-action="copy-aircraft-id">Copy Aircraft ID</button>
