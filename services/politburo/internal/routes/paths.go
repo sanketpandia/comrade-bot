@@ -34,7 +34,12 @@ const (
 	AdminLive    = "/admin/live"
 
 	Live         = "/live"
-	LiveAircraft = "/live/aircraft"
+	LiveAircraft      = "/live/aircraft"
+	LiveAircraftFleet = "/live/aircraft/fleet"
+	LiveSchedules     = "/live/schedules"
+	LiveSchedulesList = "/live/schedules/list"
+	LiveFlights       = "/live/flights"
+	LiveFlightsList   = "/live/flights/list"
 
 	OperatorReports              = "/operator/reports"
 	OperatorReportsResolve       = "/operator/reports/{reportID}/resolve"

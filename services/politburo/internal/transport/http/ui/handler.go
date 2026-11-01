@@ -17,7 +17,8 @@ import (
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/access/session"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
-	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
+	gamesessions 	"infinite-experiment/politburo/internal/livegame/sessions"
+	"infinite-experiment/politburo/internal/livegame/valive"
 	"infinite-experiment/politburo/internal/operations/contact"
 	"infinite-experiment/politburo/internal/operations/operator"
 	"infinite-experiment/politburo/internal/operations/reports"
@@ -129,6 +130,10 @@ func serverLabel(id string) string {
 	return strings.Join(parts, " ")
 }
 
+type vaLiveGrantReader interface {
+	GetByVAID(ctx context.Context, vaID string) (*valive.Grant, error)
+}
+
 type Handler struct {
 	renderer       *appui.Renderer
 	sessions       sessionManager
@@ -141,6 +146,8 @@ type Handler struct {
 	operator       *operator.Service
 	operators      []string
 	ifOAuthEnabled bool
+	vaLiveGrants   vaLiveGrantReader
+	liveFleet      *LiveFleetDeps
 }
 
 func NewHandler(
@@ -155,6 +162,8 @@ func NewHandler(
 	lister sessionLister,
 	flightsReader *domainflights.Reader,
 	ifOAuthEnabled bool,
+	vaLiveGrants vaLiveGrantReader,
+	liveFleet *LiveFleetDeps,
 ) *Handler {
 	return &Handler{
 		renderer: renderer, sessions: sessions, tickets: tickets, lister: lister,
@@ -162,6 +171,8 @@ func NewHandler(
 		reports: reportRepo, contact: contactRepo, contactLimiter: contactLimiter,
 		operator: operatorService, operators: platformOperators,
 		ifOAuthEnabled: ifOAuthEnabled,
+		vaLiveGrants:   vaLiveGrants,
+		liveFleet:      liveFleet,
 	}
 }
 
@@ -375,10 +386,25 @@ func (h *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
+	tab := adminTab(r.URL.Path)
+	oauthQuery := strings.TrimSpace(r.URL.Query().Get("oauth"))
+	liveGrantStatus := ""
+	if tab == "live" && h.vaLiveGrants != nil {
+		vaID := strings.TrimSpace(claims.PbServerID)
+		if vaID != "" {
+			grant, err := h.vaLiveGrants.GetByVAID(r.Context(), vaID)
+			if err != nil {
+				slog.Warn("load va live grant for admin ui", "va_id", vaID, "error", err)
+			} else if grant != nil {
+				liveGrantStatus = grant.Status
+			}
+		}
+	}
 	data := basePageData(r, "Admin", "admin-content", map[string]any{
-		"AdminTab":       adminTab(r.URL.Path),
-		"IFOAuthEnabled": h.ifOAuthEnabled,
-		"OAuthStatus":    strings.TrimSpace(r.URL.Query().Get("oauth")),
+		"AdminTab":          tab,
+		"IFOAuthEnabled":    h.ifOAuthEnabled,
+		"OAuthStatus":       oauthQuery,
+		"LiveGrantStatus":   liveGrantStatus,
 	})
 	if err := h.renderer.Render(w, "base", data); err != nil {
 		http.Error(w, "template render failed", http.StatusInternalServerError)
@@ -392,6 +418,10 @@ func (h *Handler) LiveRedirect(w http.ResponseWriter, r *http.Request) {
 
 func liveTab(path string) string {
 	switch strings.TrimSuffix(path, "/") {
+	case routes.LiveFlights:
+		return "flights"
+	case routes.LiveSchedules:
+		return "schedules"
 	case routes.LiveAircraft:
 		return "aircraft"
 	default:

@@ -70,6 +70,13 @@ func newHandlers(application *app.App) handlers {
 			application.Operator, application.Config.PlatformOperatorDiscordIDs, application.SessionsReader,
 			application.FlightsReader,
 			application.IFOAuth != nil,
+			application.VALiveGrants,
+			&uihttp.LiveFleetDeps{
+				Live:        application.IFLive,
+				Tokens:      application.VALiveTokens,
+				Connections: application.VALiveConnections,
+				Liveries:    application.LiveryLookup,
+			},
 		),
 	}
 }

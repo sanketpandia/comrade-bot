@@ -13,7 +13,8 @@ import (
 	"infinite-experiment/politburo/internal/access/session"
 	"infinite-experiment/politburo/internal/cache"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
-	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
+	gamesessions 	"infinite-experiment/politburo/internal/livegame/sessions"
+	"infinite-experiment/politburo/internal/livegame/valive"
 	"infinite-experiment/politburo/internal/operations/contact"
 	"infinite-experiment/politburo/internal/routes"
 	appui "infinite-experiment/politburo/internal/ui"
@@ -55,7 +56,7 @@ func newUIHandler(t *testing.T, sessions sessionManager, tickets ticketConsumer)
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	return NewHandler(renderer, sessions, tickets, nil, nil, nil, nil, nil, nil, nil, false)
+	return NewHandler(renderer, sessions, tickets, nil, nil, nil, nil, nil, nil, nil, false, nil, nil)
 }
 
 func TestLoginConsumesTicketThenSetsCookie(t *testing.T) {
@@ -195,7 +196,7 @@ func newContactUIHandler(t *testing.T, submitter contactSubmitter) *Handler {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	return NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, submitter, nil, nil, nil, nil, nil, false)
+	return NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, submitter, nil, nil, nil, nil, nil, false, nil, nil)
 }
 
 func TestContactRendersForm(t *testing.T) {
@@ -399,6 +400,8 @@ func TestDashboardShowsServerCounts(t *testing.T) {
 			cache.KeyActiveFlights("expert"): raw,
 		}}),
 		false,
+		nil,
+		nil,
 	)
 	recorder := httptest.NewRecorder()
 	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
@@ -489,7 +492,7 @@ func TestAdminLiveShowsOrganisationLink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true)
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true, nil, nil)
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminLive+"?oauth=connected", nil), auth.Claims{Role: "administrator"})
 	recorder := httptest.NewRecorder()
 	handler.Admin(recorder, req)
@@ -504,6 +507,7 @@ func TestAdminLiveShowsOrganisationLink(t *testing.T) {
 		`Link your in-game organisations`,
 		`id="if-oauth-connect"`,
 		`class="btn btn--primary"`,
+		` disabled aria-disabled="true"`,
 		`badge badge--success`,
 		`/static/js/admin/oauth.mjs`,
 	} {
@@ -516,6 +520,41 @@ func TestAdminLiveShowsOrganisationLink(t *testing.T) {
 	}
 	if strings.Contains(body, `id="va-code"`) {
 		t.Fatalf("general fields should not render on live mode: %s", body)
+	}
+}
+
+type vaLiveGrantStub struct {
+	grant *valive.Grant
+	err   error
+}
+
+func (s vaLiveGrantStub) GetByVAID(context.Context, string) (*valive.Grant, error) {
+	return s.grant, s.err
+}
+
+func TestAdminLiveShowsConnectedFromActiveGrantWithoutQuery(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true,
+		vaLiveGrantStub{grant: &valive.Grant{Status: valive.GrantStatusActive}}, nil,
+	)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminLive, nil), auth.Claims{
+		Role:       "administrator",
+		PbServerID: "va-1",
+	})
+	recorder := httptest.NewRecorder()
+	handler.Admin(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	if !strings.Contains(body, `badge badge--success`) {
+		t.Fatalf("expected connected badge from grant: %s", body)
+	}
+	if !strings.Contains(body, `id="if-oauth-connect"`) || !strings.Contains(body, ` disabled aria-disabled="true"`) {
+		t.Fatalf("connect button should be disabled when grant is active: %s", body)
 	}
 }
 
@@ -548,7 +587,7 @@ func TestLiveModeRendersAircraftTabAndOrgSelect(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, false)
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, false, nil, nil)
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveAircraft, nil), auth.Claims{Role: "administrator"})
 	recorder := httptest.NewRecorder()
 	handler.LiveMode(recorder, req)
@@ -560,7 +599,8 @@ func TestLiveModeRendersAircraftTabAndOrgSelect(t *testing.T) {
 		`id="live-org-select"`,
 		`class="select"`,
 		`href="` + routes.LiveAircraft + `" aria-current="page"`,
-		`id="live-aircraft-heading"`,
+		`id="live-aircraft-fleet"`,
+		`id="live-aircraft-row-menu"`,
 		`/static/js/live/organizations.mjs`,
 		`Live Mode`,
 	} {
@@ -690,7 +730,7 @@ func TestDashboardOmitsOrganisationLink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true)
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true, nil, nil)
 	recorder := httptest.NewRecorder()
 	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
 	body := recorder.Body.String()

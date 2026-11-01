@@ -14,8 +14,10 @@
     <p class="panel-message" role="note">Each in-game organisation can be linked to one Discord server only. This server may link several organisations.</p>
     <section class="section">
       <h3 class="section__title">Organisations</h3>
-      {{if eq .OAuthStatus "connected"}}
+      {{if or (eq .LiveGrantStatus "active") (eq .OAuthStatus "connected")}}
       <p class="panel-message"><span class="badge badge--success">Connected</span></p>
+      {{else if eq .LiveGrantStatus "needs_reconnect"}}
+      <p class="panel-message panel-message--error" role="status">Infinite Flight connection expired. Link again to restore Live Mode.</p>
       {{else if eq .OAuthStatus "error"}}
       <p class="panel-message panel-message--error" role="status">Connection failed. Try again.</p>
       {{else if not .IFOAuthEnabled}}
@@ -25,7 +27,7 @@
       {{end}}
       {{if .IFOAuthEnabled}}
       <div class="link-row">
-        <button type="button" class="btn btn--primary" id="if-oauth-connect">Link your in-game organisations</button>
+        <button type="button" class="btn btn--primary" id="if-oauth-connect"{{if or (eq .LiveGrantStatus "active") (eq .OAuthStatus "connected")}} disabled aria-disabled="true"{{end}}>Link your in-game organisations</button>
       </div>
       {{end}}
     </section>

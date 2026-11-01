@@ -77,6 +77,9 @@ func (h *Handler) GetAuthorizeURL(w http.ResponseWriter, r *http.Request, scopeS
 		response.WriteError(w, http.StatusBadRequest, "VA_CONTEXT_REQUIRED", "Virtual airline context is required for admin Live scopes")
 		return
 	}
+	if adminScopes {
+		slog.Info("start infinite flight oauth", "user_id", userID, "va_id", vaID, "admin_scopes", true)
+	}
 	scopes := infiniteflight.DefaultOAuthScopes
 	if adminScopes {
 		scopes = infiniteflight.AdminOAuthScopes
@@ -172,11 +175,18 @@ func (h *Handler) CompleteCallback(w http.ResponseWriter, r *http.Request, code,
 			http.Redirect(w, r, routes.AdminLive+"?oauth=error", http.StatusSeeOther)
 			return
 		}
-		if err := valive.LinkAdminOrganizations(r.Context(), h.connections, vaID, userID, orgs); err != nil {
+		linkResult, err := valive.LinkAdminOrganizations(r.Context(), h.connections, vaID, userID, orgs)
+		if err != nil {
 			slog.Error("link admin organizations", "error", err)
 			http.Redirect(w, r, routes.AdminLive+"?oauth=error", http.StatusSeeOther)
 			return
 		}
+		slog.Info("infinite flight va oauth connected",
+			"user_id", userID,
+			"va_id", vaID,
+			"orgs_linked", linkResult.Linked,
+			"orgs_skipped_occupied", linkResult.SkippedOccupied,
+		)
 		http.Redirect(w, r, routes.AdminLive+"?oauth=connected", http.StatusSeeOther)
 		return
 	}
@@ -194,5 +204,6 @@ func (h *Handler) CompleteCallback(w http.ResponseWriter, r *http.Request, code,
 		http.Redirect(w, r, routes.AdminLive+"?oauth=error", http.StatusSeeOther)
 		return
 	}
+	slog.Info("infinite flight user oauth connected", "user_id", userID, "token_store", "user")
 	http.Redirect(w, r, routes.AdminLive+"?oauth=connected", http.StatusSeeOther)
 }

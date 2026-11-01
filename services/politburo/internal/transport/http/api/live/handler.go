@@ -64,6 +64,7 @@ func (h *Handler) ListOrganizations(w http.ResponseWriter, r *http.Request) {
 	var token infiniteflight.OAuthTokenSession
 	if err := h.cache.GetJSON(r.Context(), cache.KeyIFOAuthUser(current.ID), &token); err != nil {
 		if errors.Is(err, cache.ErrMiss) {
+			slog.Info("infinite flight oauth user token missing", "user_id", current.ID, "token_store", "user")
 			response.WriteError(w, http.StatusConflict, "IF_OAUTH_REQUIRED", "Connect Infinite Flight in Admin Live Mode first")
 			return
 		}
@@ -72,6 +73,7 @@ func (h *Handler) ListOrganizations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if accessTokenExpired(token.AccessExpiresAt) {
+		slog.Info("infinite flight oauth user access token expired", "user_id", current.ID, "expired_at", token.AccessExpiresAt.UTC())
 		response.WriteError(w, http.StatusConflict, "IF_OAUTH_REQUIRED", "Infinite Flight access token expired; reconnect in Admin Live Mode")
 		return
 	}

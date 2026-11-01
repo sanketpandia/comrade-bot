@@ -1,0 +1,48 @@
+{{define "live-aircraft-fleet"}}
+{{if .ErrorMessage}}
+<p class="panel-message panel-message--error" role="status">{{.ErrorMessage}}</p>
+{{else}}
+<section class="panel stack" aria-labelledby="live-aircraft-fleet-heading">
+  <header class="panel__header">
+    <h2 class="panel-heading" id="live-aircraft-fleet-heading">{{.CountLabel}}</h2>
+  </header>
+  {{if .Rows}}
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">Registration</th>
+          <th scope="col">Aircraft</th>
+          <th scope="col">Status</th>
+          <th scope="col">Visibility</th>
+          <th scope="col">Slot</th>
+          <th scope="col">Rank</th>
+          <th scope="col">Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr class="data-table__row data-table__row--selectable" data-aircraft-id="{{.ID}}">
+          <th scope="row">{{.Registration}}</th>
+          <td>{{.AircraftName}}</td>
+          <td><span class="badge {{.StatusClass}}">{{.StatusLabel}}</span></td>
+          <td><span class="badge {{.VisibilityClass}}">{{.VisibilityLabel}}</span></td>
+          <td><span class="badge {{.SlotClass}}">{{.SlotLabel}}</span></td>
+          <td>{{.FleetRank}}</td>
+          <td>
+            {{if .CreatedISO}}
+            <time datetime="{{.CreatedISO}}" title="{{.CreatedISO}}">{{.CreatedDisplay}}</time>
+            <span class="text-subtle">{{.CreatedRelative}}</span>
+            {{else}}—{{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="panel-lead">No aircraft returned for this organisation.</p>
+  {{end}}
+</section>
+{{end}}
+{{end}}

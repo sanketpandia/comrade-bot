@@ -109,6 +109,27 @@ func TestListOrganizationsFiltersMemberRole(t *testing.T) {
 	}
 }
 
+func TestListOrganizationsOAuthRequiredWhenOnlyVATokenStored(t *testing.T) {
+	cacheStub := newLiveCacheStub()
+	vaToken := infiniteflight.OAuthTokenSession{
+		AccessToken:     "va-at",
+		AccessExpiresAt: time.Now().UTC().Add(time.Hour),
+	}
+	if err := cacheStub.SetJSON(context.Background(), cache.KeyIFOAuthVA("va-1"), vaToken, time.Hour); err != nil {
+		t.Fatalf("seed va token: %v", err)
+	}
+	handler := NewHandler(orgClientStub{}, cacheStub, currentUserStub{user: &users.User{ID: "user-1"}})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveOrganizations, nil), auth.Claims{
+		PbUserID:   "user-1",
+		PbServerID: "va-1",
+	})
+	recorder := httptest.NewRecorder()
+	handler.ListOrganizations(recorder, req)
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409 (admin oauth stores VA token, not user token)", recorder.Code)
+	}
+}
+
 func TestListOrganizationsOAuthRequiredWhenTokenMissing(t *testing.T) {
 	handler := NewHandler(orgClientStub{}, newLiveCacheStub(), currentUserStub{user: &users.User{ID: "user-1"}})
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveOrganizations, nil), auth.Claims{PbUserID: "user-1"})

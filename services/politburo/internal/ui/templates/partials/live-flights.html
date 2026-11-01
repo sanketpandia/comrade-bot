@@ -1,0 +1,75 @@
+{{define "live-flights"}}
+{{if .ErrorMessage}}
+<p class="panel-message panel-message--error" role="status">{{.ErrorMessage}}</p>
+{{else}}
+<section class="panel stack" aria-labelledby="live-flights-heading">
+  <header class="panel__header live-schedules-header">
+    {{if .CountLabel}}
+    <h2 class="panel-heading" id="live-flights-heading">{{.CountLabel}}</h2>
+    {{else}}
+    <h2 class="panel-heading" id="live-flights-heading">Flight history</h2>
+    {{end}}
+    <div class="field live-schedules-filter">
+      <label class="field__label" for="live-flights-aircraft-filter">Aircraft</label>
+      <select class="select" id="live-flights-aircraft-filter" name="aircraftId" required>
+        {{range .FilterOptions}}
+        <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
+        {{end}}
+      </select>
+    </div>
+  </header>
+  {{if .PromptMessage}}
+  <p class="panel-lead">{{.PromptMessage}}</p>
+  {{end}}
+  {{if .TruncatedNote}}
+  <p class="panel-message" role="status">{{.TruncatedNote}}</p>
+  {{end}}
+  {{if .Rows}}
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">Callsign</th>
+          <th scope="col">Route</th>
+          <th scope="col">Status</th>
+          <th scope="col">Departure</th>
+          <th scope="col">Arrival</th>
+          <th scope="col">Flight time</th>
+          <th scope="col">Crew</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr class="data-table__row data-table__row--selectable" data-flight-id="{{.FlightID}}" data-aircraft-id="{{.AircraftID}}">
+          <th scope="row">{{.Callsign}}</th>
+          <td>{{.Route}}</td>
+          <td><span class="badge {{.StatusClass}}">{{.StatusLabel}}</span></td>
+          <td>
+            {{if eq .DepartureDisplay "—"}}
+            —
+            {{else if .DepartureISO}}
+            <time datetime="{{.DepartureISO}}" title="{{.DepartureISO}}">{{.DepartureDisplay}}</time>
+            <span class="text-subtle">{{.DepartureRelative}}</span>
+            {{else}}{{.DepartureDisplay}}{{end}}
+          </td>
+          <td>
+            {{if eq .ArrivalDisplay "—"}}
+            —
+            {{else if .ArrivalISO}}
+            <time datetime="{{.ArrivalISO}}" title="{{.ArrivalISO}}">{{.ArrivalDisplay}}</time>
+            <span class="text-subtle">{{.ArrivalRelative}}</span>
+            {{else}}{{.ArrivalDisplay}}{{end}}
+          </td>
+          <td>{{.FlightTimeDisplay}}</td>
+          <td>{{.CrewDisplay}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else if and .FilterAircraftID (not .PromptMessage)}}
+  <p class="panel-lead">No flights in the log for this aircraft.</p>
+  {{end}}
+</section>
+{{end}}
+{{end}}

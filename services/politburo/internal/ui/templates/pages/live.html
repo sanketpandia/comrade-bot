@@ -12,14 +12,34 @@
 <div class="admin-layout">
   <nav class="tabs tabs--nav" aria-label="Live Mode sections">
     <a class="tabs__tab" href="/live/aircraft"{{if eq .LiveTab "aircraft"}} aria-current="page"{{end}}>Aircrafts</a>
+    <a class="tabs__tab" href="/live/schedules"{{if eq .LiveTab "schedules"}} aria-current="page"{{end}}>Schedules</a>
+    <a class="tabs__tab" href="/live/flights"{{if eq .LiveTab "flights"}} aria-current="page"{{end}}>Flights</a>
   </nav>
   {{if eq .LiveTab "aircraft"}}
-  <section class="panel stack" aria-labelledby="live-aircraft-heading">
-    <header class="panel__header">
-      <h2 class="panel-heading" id="live-aircraft-heading">Aircrafts</h2>
-    </header>
-    <p class="panel-lead">Fleet list for the selected organisation will appear here.</p>
-  </section>
+  <div id="live-aircraft-fleet" class="stack" aria-live="polite">
+    <p class="panel-lead">Select an organisation to load the fleet.</p>
+  </div>
+  <div id="live-aircraft-row-menu" class="row-menu" hidden role="menu" aria-label="Aircraft actions">
+    <button type="button" class="row-menu__item" role="menuitem" data-action="copy-id">Copy Aircraft ID</button>
+    <button type="button" class="row-menu__item" role="menuitem" data-action="schedules">Schedules</button>
+    <button type="button" class="row-menu__item" role="menuitem" data-action="flight-history">Show Flight History</button>
+  </div>
+  {{else if eq .LiveTab "schedules"}}
+  <div id="live-schedules" class="stack" aria-live="polite">
+    <p class="panel-lead">Select an organisation to load schedules.</p>
+  </div>
+  <div id="live-schedules-row-menu" class="row-menu" hidden role="menu" aria-label="Schedule actions">
+    <button type="button" class="row-menu__item" role="menuitem" data-action="copy-aircraft-id">Copy Aircraft ID</button>
+    <button type="button" class="row-menu__item" role="menuitem" data-action="copy-schedule-id">Copy Schedule ID</button>
+  </div>
+  {{else if eq .LiveTab "flights"}}
+  <div id="live-flights" class="stack" aria-live="polite">
+    <p class="panel-lead">Select an organisation to load flight history.</p>
+  </div>
+  <div id="live-flights-row-menu" class="row-menu" hidden role="menu" aria-label="Flight actions">
+    <button type="button" class="row-menu__item" role="menuitem" data-action="copy-aircraft-id">Copy Aircraft ID</button>
+    <button type="button" class="row-menu__item" role="menuitem" data-action="copy-flight-id">Copy Flight ID</button>
+  </div>
   {{end}}
 </div>
 {{end}}

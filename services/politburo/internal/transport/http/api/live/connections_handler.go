@@ -66,6 +66,9 @@ func (h *ConnectionsHandler) ListConnections(w http.ResponseWriter, r *http.Requ
 			"linkedAt": row.LinkedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
+	if len(out) == 0 {
+		slog.Debug("va live connections empty", "va_id", vaID, "count", 0)
+	}
 	response.WriteJSON(w, http.StatusOK, map[string]any{"data": out})
 }
 
@@ -116,6 +119,7 @@ func (h *ConnectionsHandler) PingConnection(w http.ResponseWriter, r *http.Reque
 	}
 	accessToken, err := h.tokens.AccessToken(r.Context(), vaID)
 	if errors.Is(err, valive.ErrOAuthRequired) {
+		slog.Info("va live oauth grant missing", "va_id", vaID)
 		response.WriteError(w, http.StatusConflict, "IF_OAUTH_REQUIRED", "Connect Infinite Flight in Admin Live Mode first")
 		return
 	}
