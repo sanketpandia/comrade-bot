@@ -1,11 +1,11 @@
 {{define "live-schedules"}}
 {{if .ErrorMessage}}
-<p class="panel-message panel-message--error" role="status">{{.ErrorMessage}}</p>
+<p class="notice notice--error" role="status">{{.ErrorMessage}}</p>
 {{else}}
 <section class="panel stack" aria-labelledby="live-schedules-heading">
-  <header class="panel__header live-schedules-header">
+  <header class="panel__header panel__header--wrap">
     <h2 class="panel-heading" id="live-schedules-heading">{{.CountLabel}}</h2>
-    <div class="field live-schedules-filter">
+    <div class="field panel__filter">
       <label class="field__label" for="live-schedules-aircraft-filter">Aircraft</label>
       <select class="select" id="live-schedules-aircraft-filter" name="aircraftId">
         {{range .FilterOptions}}

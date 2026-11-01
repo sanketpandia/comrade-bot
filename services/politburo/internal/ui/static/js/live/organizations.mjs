@@ -178,7 +178,7 @@ async function loadFleet(organizationId) {
   try {
     const response = await fetch(fleetURL(organizationId), { credentials: "same-origin" });
     if (response.status === 403) {
-      fleetTarget.innerHTML = '<p class="panel-message panel-message--error">Forbidden.</p>';
+      fleetTarget.innerHTML = '<p class="notice notice--error">Forbidden.</p>';
       return;
     }
     if (!response.ok) {
@@ -188,7 +188,7 @@ async function loadFleet(organizationId) {
   } catch (error) {
     console.error("load live aircraft fleet failed", error);
     fleetTarget.innerHTML =
-      '<p class="panel-message panel-message--error">Could not load aircraft.</p>';
+      '<p class="notice notice--error">Could not load aircraft.</p>';
   }
 }
 

@@ -213,6 +213,7 @@ func TestContactRendersForm(t *testing.T) {
 		`name="message"`,
 		`action="` + routes.Contact + `"`,
 		`class="public-footer"`,
+		`class="photo-credit"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %q in body", want)
@@ -331,7 +332,7 @@ func TestDashboardRendersShell(t *testing.T) {
 		`href="` + routes.Dashboard + `"`,
 		`aria-current="page"`,
 		"Live flights",
-		`class="panel panel--glass panel--spaced stack"`,
+		`class="panel panel--spaced stack"`,
 		`class="card card--link"`,
 		` flights</span>`,
 		` pilots</span>`,
@@ -341,6 +342,9 @@ func TestDashboardRendersShell(t *testing.T) {
 		`href="` + routes.MapsFlightsActive + `?serverId=training"`,
 		routes.StaticPrefix + "css/tokens.css",
 		routes.StaticPrefix + "css/base.css",
+		`class="photo-credit"`,
+		`href="https://unsplash.com/@yaubinghui?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText"`,
+		`href="https://unsplash.com/photos/white-airplane-in-mid-air-during-daytime-OOCH3KIlqFE?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %q in %s", want, body)
@@ -460,7 +464,7 @@ func TestAdminRendersShell(t *testing.T) {
 	}
 	body := recorder.Body.String()
 	for _, want := range []string{
-		`<h1>Admin</h1>`,
+		`class="page-header__title">Admin</`,
 		`aria-label="Admin sections"`,
 		`>General</a>`,
 		`>Live Mode</a>`,

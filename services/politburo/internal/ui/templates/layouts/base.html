@@ -28,6 +28,9 @@
     {{else if eq .Content "live-content"}}{{template "live-content" .}}
     {{end}}
   </main>
+  {{if ne .Content "maps-active-flights-content"}}
+  <footer class="app-footer">{{template "photo-credit" .}}</footer>
+  {{end}}
   {{if and (eq .Content "admin-content") (eq .AdminTab "general")}}
   <script type="module" src="/static/js/admin/general.mjs"></script>
   {{end}}

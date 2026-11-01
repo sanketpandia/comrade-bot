@@ -79,6 +79,7 @@ docker build -f services/comrade-bot-discord/Dockerfile .
 - Work from `services/politburo/`.
 - Hot reload: from `services/politburo`, `exec "$(cd ../../cicd/tools && go tool -n air)" -c .air.toml` (Air must run with cwd `services/politburo`; loads `.env` via `.air.toml`).
 - Tests: `go test ./...` or `make test` in service dir.
+- SSR UI styling: `docs/politburo/development/styling-guide.md`; run `go test ./internal/ui/...` after CSS/template changes.
 - Migrations: `services/politburo/migrations/` (default DB `politburo_next`).
 
 ## Discord bot

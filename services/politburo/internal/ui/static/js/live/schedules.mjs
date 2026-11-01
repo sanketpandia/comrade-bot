@@ -156,7 +156,7 @@ async function loadSchedules(organizationId) {
   try {
     const response = await fetch(schedulesURL(organizationId, aircraftId), { credentials: "same-origin" });
     if (response.status === 403) {
-      schedulesTarget.innerHTML = '<p class="panel-message panel-message--error">Forbidden.</p>';
+      schedulesTarget.innerHTML = '<p class="notice notice--error">Forbidden.</p>';
       return;
     }
     if (!response.ok) {
@@ -166,7 +166,7 @@ async function loadSchedules(organizationId) {
   } catch (error) {
     console.error("load live schedules failed", error);
     schedulesTarget.innerHTML =
-      '<p class="panel-message panel-message--error">Could not load schedules.</p>';
+      '<p class="notice notice--error">Could not load schedules.</p>';
   }
 }
 

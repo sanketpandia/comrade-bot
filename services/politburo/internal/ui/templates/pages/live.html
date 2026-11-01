@@ -1,15 +1,15 @@
 {{define "live-content"}}
-<div class="live-page-header">
-  <h1>Live Mode</h1>
-  <div class="field live-page-header__org">
+<header class="page-header">
+  <h1 class="page-header__title">Live Mode</h1>
+  <div class="field page-header__aside">
     <label class="field__label" for="live-org-select">Organisation</label>
     <select class="select" id="live-org-select" name="organizationId" disabled>
       <option value="">Loading…</option>
     </select>
   </div>
-</div>
+</header>
 <p id="live-org-status" class="panel-message" role="status" hidden></p>
-<div class="admin-layout">
+<div class="section-layout">
   <nav class="tabs tabs--nav" aria-label="Live Mode sections">
     <a class="tabs__tab" href="/live/aircraft"{{if eq .LiveTab "aircraft"}} aria-current="page"{{end}}>Aircrafts</a>
     <a class="tabs__tab" href="/live/schedules"{{if eq .LiveTab "schedules"}} aria-current="page"{{end}}>Schedules</a>

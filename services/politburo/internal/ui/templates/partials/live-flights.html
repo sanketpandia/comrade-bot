@@ -1,15 +1,15 @@
 {{define "live-flights"}}
 {{if .ErrorMessage}}
-<p class="panel-message panel-message--error" role="status">{{.ErrorMessage}}</p>
+<p class="notice notice--error" role="status">{{.ErrorMessage}}</p>
 {{else}}
 <section class="panel stack" aria-labelledby="live-flights-heading">
-  <header class="panel__header live-schedules-header">
+  <header class="panel__header panel__header--wrap">
     {{if .CountLabel}}
     <h2 class="panel-heading" id="live-flights-heading">{{.CountLabel}}</h2>
     {{else}}
     <h2 class="panel-heading" id="live-flights-heading">Flight history</h2>
     {{end}}
-    <div class="field live-schedules-filter">
+    <div class="field panel__filter">
       <label class="field__label" for="live-flights-aircraft-filter">Aircraft</label>
       <select class="select" id="live-flights-aircraft-filter" name="aircraftId" required>
         {{range .FilterOptions}}

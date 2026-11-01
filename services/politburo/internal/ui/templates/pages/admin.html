@@ -1,6 +1,8 @@
 {{define "admin-content"}}
-<h1>Admin</h1>
-<div class="admin-layout">
+<header class="page-header">
+  <h1 class="page-header__title">Admin</h1>
+</header>
+<div class="section-layout">
   <nav class="tabs tabs--nav" aria-label="Admin sections">
     <a class="tabs__tab" href="/admin/general"{{if eq .AdminTab "general"}} aria-current="page"{{end}}>General</a>
     <a class="tabs__tab" href="/admin/live"{{if eq .AdminTab "live"}} aria-current="page"{{end}}>Live Mode</a>
@@ -9,20 +11,21 @@
   <section class="panel stack" aria-labelledby="admin-live-heading">
     <header class="panel__header">
       <h2 class="panel-heading" id="admin-live-heading">Live Mode</h2>
+      {{if or (eq .LiveGrantStatus "active") (eq .OAuthStatus "connected")}}
+      <span class="badge badge--success">Connected</span>
+      {{end}}
     </header>
     <p class="panel-lead">Link the in-game organisations this virtual airline flies.</p>
     <p class="panel-message" role="note">Each in-game organisation can be linked to one Discord server only. This server may link several organisations.</p>
     <section class="section">
       <h3 class="section__title">Organisations</h3>
-      {{if or (eq .LiveGrantStatus "active") (eq .OAuthStatus "connected")}}
-      <p class="panel-message"><span class="badge badge--success">Connected</span></p>
-      {{else if eq .LiveGrantStatus "needs_reconnect"}}
-      <p class="panel-message panel-message--error" role="status">Infinite Flight connection expired. Link again to restore Live Mode.</p>
+      {{if eq .LiveGrantStatus "needs_reconnect"}}
+      <p class="notice notice--error" role="status">Infinite Flight connection expired. Link again to restore Live Mode.</p>
       {{else if eq .OAuthStatus "error"}}
-      <p class="panel-message panel-message--error" role="status">Connection failed. Try again.</p>
+      <p class="notice notice--error" role="status">Connection failed. Try again.</p>
       {{else if not .IFOAuthEnabled}}
       <p class="panel-message">Infinite Flight sign-in is not configured on this server.</p>
-      {{else}}
+      {{else if and (ne .LiveGrantStatus "active") (ne .OAuthStatus "connected")}}
       <p class="panel-message">Sign in with Infinite Flight to choose organisations you administer.</p>
       {{end}}
       {{if .IFOAuthEnabled}}
