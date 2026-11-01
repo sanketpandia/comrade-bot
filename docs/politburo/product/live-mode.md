@@ -198,8 +198,8 @@ not blocked.
 | View | Who | Contents |
 |---|---|---|
 | Live connections | Everyone | Your connection status, which orgs we see you in, reconnect |
-| Linked organizations | Administrator | Link/unlink orgs, labels, managing connection per org, toggles and settings |
-| Fleet board | Pilots and staff | Every aircraft across linked orgs on one table and a map: position, state, idle time, claim, next schedule. The map reuses the existing live map. |
+| Linked organizations | Administrator | Link/unlink orgs under Admin → Live Mode, labels, managing connection per org, toggles and settings |
+| Fleet board (`/live/*`) | Staff | Bourgeoisie and administrator: aircraft, schedules, and flights tabs across linked orgs (read upstream via the VA OAuth grant). Pilots use Discord for day-to-day fleet and claims. |
 | Claims | Staff | Open, expired, flown, and conflicts, with filters and an audit trail |
 | Members audit | Staff | Cross-check of the VA roster against org members: in the VA but not in any org, in an org but not registered with us, missing the lift rule, in-game role vs Politburo role |
 | Schedules (later) | Staff with a managing connection | Per-aircraft in-game schedule: add legs, reorder, delete, edit briefings and flight plans. Option to build legs from the VA's route list. |
@@ -212,7 +212,8 @@ the same as other admin settings.
 | Action | Proletariat | Bourgeoisie | Administrator |
 |---|---|---|---|
 | Connect own IF account | Yes | Yes | Yes |
-| View fleet, aircraft, claims | Yes | Yes | Yes |
+| View fleet, aircraft, claims | Yes (Discord) | Yes | Yes |
+| View `/live/*` portal (fleet tables, schedules, flights) | | Yes | Yes |
 | Claim / release own claim | Yes | Yes | Yes |
 | Release or reassign others' claims | | Yes | Yes |
 | Handle join requests, see members audit | | Yes | Yes |

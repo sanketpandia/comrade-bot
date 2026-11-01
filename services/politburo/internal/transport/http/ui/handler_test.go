@@ -614,13 +614,27 @@ func TestLiveModeRendersAircraftTabAndOrgSelect(t *testing.T) {
 	}
 }
 
-func TestLiveModeForbiddenForNonAdmin(t *testing.T) {
+func TestLiveModeForbiddenForProletariat(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveAircraft, nil), auth.Claims{Role: "proletariat"})
 	recorder := httptest.NewRecorder()
 	handler.LiveMode(recorder, req)
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403", recorder.Code)
+	}
+}
+
+func TestLiveModeAllowsBourgeoisie(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, false, nil, nil)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveAircraft, nil), auth.Claims{Role: "bourgeoisie"})
+	recorder := httptest.NewRecorder()
+	handler.LiveMode(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
 	}
 }
 

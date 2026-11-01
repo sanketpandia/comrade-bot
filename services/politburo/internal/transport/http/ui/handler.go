@@ -429,10 +429,10 @@ func liveTab(path string) string {
 	}
 }
 
-// LiveMode is the Infinite Flight Live dashboard for VA administrators.
+// LiveMode is the Infinite Flight Live dashboard for VA staff (bourgeoisie and administrator).
 func (h *Handler) LiveMode(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.ClaimsFromContext(r.Context())
-	if !ok || !claims.IsAdmin() {
+	if !ok || !claims.IsStaff() {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}

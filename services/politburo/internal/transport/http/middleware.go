@@ -31,6 +31,13 @@ func vaAdminStack(application *app.App) middlewareStack {
 	}
 }
 
+func vaStaffStack(application *app.App) middlewareStack {
+	return middlewareStack{
+		appmiddleware.EnrichDiscordMembership(application.Resolver),
+		appmiddleware.RequireStaff(),
+	}
+}
+
 func currentUserStack(application *app.App) middlewareStack {
 	return middlewareStack{
 		appmiddleware.EnrichDiscordMembership(application.Resolver),

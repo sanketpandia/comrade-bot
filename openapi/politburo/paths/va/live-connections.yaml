@@ -3,7 +3,7 @@ get:
   summary: List persisted Live organisation connections for this VA
   description: |
     Returns Infinite Flight Live organisations linked to the caller's virtual airline.
-    Requires VA administrator role (`administrator`).
+    Requires VA staff role (`bourgeoisie` or `administrator`).
   tags: [VirtualAirline]
   security:
     - ApiKeyAuth: []
@@ -22,7 +22,7 @@ get:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yaml"
     "403":
-      description: Caller is not a VA administrator
+      description: Caller is not VA staff (bourgeoisie or administrator)
       content:
         application/json:
           schema:

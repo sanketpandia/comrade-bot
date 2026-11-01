@@ -1151,7 +1151,7 @@ paths:
       summary: List persisted Live organisation connections for this VA
       description: |
         Returns Infinite Flight Live organisations linked to the caller's virtual airline.
-        Requires VA administrator role (`administrator`).
+        Requires VA staff role (`bourgeoisie` or `administrator`).
       tags:
         - VirtualAirline
       security:
@@ -1171,7 +1171,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Caller is not a VA administrator
+          description: Caller is not VA staff (bourgeoisie or administrator)
           content:
             application/json:
               schema:
@@ -1241,7 +1241,9 @@ paths:
       summary: Verify Live API access for a linked organisation
       description: |
         Calls Infinite Flight Live API for the linked organisation using this VA's OAuth grant.
-        Requires VA administrator role (`administrator`).
+        Requires VA staff role (`bourgeoisie` or `administrator`).
+
+        Staff access may be tightened once persistence supports per-org real-time access checks.
       tags:
         - VirtualAirline
       security:
@@ -1269,7 +1271,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Caller is not a VA administrator
+          description: Caller is not VA staff (bourgeoisie or administrator)
           content:
             application/json:
               schema:

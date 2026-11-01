@@ -98,6 +98,7 @@ func (h *ConnectionsHandler) DeleteConnection(w http.ResponseWriter, r *http.Req
 }
 
 func (h *ConnectionsHandler) PingConnection(w http.ResponseWriter, r *http.Request, organizationID string) {
+	// TODO: revisit staff access once persistence supports per-org real-time access checks.
 	vaID, ok := vaIDFromClaims(w, r)
 	if !ok {
 		return

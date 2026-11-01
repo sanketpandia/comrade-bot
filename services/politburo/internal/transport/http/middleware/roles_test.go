@@ -71,3 +71,36 @@ func TestUISessionAuthLookupError(t *testing.T) {
 		t.Fatalf("status = %d", recorder.Code)
 	}
 }
+
+func TestRequireStaffAllowsBourgeoisieAndAdministrator(t *testing.T) {
+	for _, role := range []string{"bourgeoisie", "administrator"} {
+		role := role
+		t.Run(role, func(t *testing.T) {
+			called := false
+			handler := RequireStaff()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req = req.WithContext(auth.SetClaims(req.Context(), auth.Claims{Role: role}))
+			handler.ServeHTTP(recorder, req)
+			if !called || recorder.Code != http.StatusNoContent {
+				t.Fatalf("role=%s called=%v status=%d", role, called, recorder.Code)
+			}
+		})
+	}
+}
+
+func TestRequireStaffForbidsProletariat(t *testing.T) {
+	handler := RequireStaff()(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("next should not run")
+	}))
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req = req.WithContext(auth.SetClaims(req.Context(), auth.Claims{Role: "proletariat"}))
+	handler.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("status = %d", recorder.Code)
+	}
+}
