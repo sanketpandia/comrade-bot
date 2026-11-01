@@ -31,7 +31,7 @@ async function showNewUserRegistration(chatInput: ChatInputCommandInteraction) {
         .setTitle("✈️ User Registration")
         .setDescription(
             "Create your global Comrade Bot account with your Infinite Flight Community identity. " +
-            "If this Discord server is a VA, you can link with a callsign after your account is created."
+            "If this Discord server is a VA, you can link to it after your account is created."
         )
         .addFields(
             {

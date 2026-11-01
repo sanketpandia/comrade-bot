@@ -3,19 +3,16 @@ package membership
 import (
 	"context"
 	"errors"
-	"strings"
 
-	"infinite-experiment/politburo/internal/community/users"
 	"infinite-experiment/politburo/internal/community/membership/roster"
+	"infinite-experiment/politburo/internal/community/users"
 	"infinite-experiment/politburo/internal/community/virtualairlines"
 )
 
 var (
-	ErrUserNotFound      = errors.New("user not found")
-	ErrVANotFound        = errors.New("va not found")
-	ErrAlreadyMember     = errors.New("already a member")
-	ErrNotOnRoster       = errors.New("not on roster")
-	ErrCallsignRequired  = errors.New("callsign required")
+	ErrUserNotFound  = errors.New("user not found")
+	ErrVANotFound    = errors.New("va not found")
+	ErrAlreadyMember = errors.New("already a member")
 )
 
 type Service struct {
@@ -32,22 +29,16 @@ func NewService(users *users.Repository, memberships *Repository, vas *virtualai
 	return &Service{users: users, memberships: memberships, vas: vas, roster: rosterChecker}
 }
 
-type JoinCurrentServerInput struct {
+type LinkCurrentServerInput struct {
 	DiscordID       string
 	DiscordServerID string
-	Callsign        string
 }
 
-type JoinResult struct {
+type LinkResult struct {
 	Membership Membership
 }
 
-func (s *Service) JoinCurrentServer(ctx context.Context, input JoinCurrentServerInput) (*JoinResult, error) {
-	callsign := strings.TrimSpace(input.Callsign)
-	if callsign == "" {
-		return nil, ErrCallsignRequired
-	}
-
+func (s *Service) LinkCurrentServer(ctx context.Context, input LinkCurrentServerInput) (*LinkResult, error) {
 	user, err := s.users.GetByDiscordID(ctx, input.DiscordID)
 	if err != nil {
 		return nil, err
@@ -87,11 +78,11 @@ func (s *Service) JoinCurrentServer(ctx context.Context, input JoinCurrentServer
 		UserID:          user.ID,
 		VAID:            va.ID,
 		Role:            RoleProletariat,
-		Callsign:        callsign,
+		Callsign:        "",
 		AirtablePilotID: airtablePilotID,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &JoinResult{Membership: *m}, nil
+	return &LinkResult{Membership: *m}, nil
 }

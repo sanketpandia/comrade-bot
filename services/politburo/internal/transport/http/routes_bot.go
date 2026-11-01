@@ -12,7 +12,6 @@ func mountBot(router chi.Router, h handlers, application *app.App) {
 	router.Group(func(bot chi.Router) {
 		bot.Use(botStack(application)...)
 		bot.Get(routes.UserStatus, h.identity.Status)
-		bot.Post(routes.MembershipsJoin, h.identity.Join)
 		bot.Post(routes.ReportsOccupiedIFC, h.identity.ReportOccupiedIFC)
 	})
 

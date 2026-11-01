@@ -14,50 +14,29 @@ export const data = {
     name: CUSTOM_IDS.REGISTER_MODAL
 }
 
-/**
- * Handles user registration modal submission
- * Supports two scenarios:
- * 1. Full registration (REGISTER_MODAL): IFC ID + Last Flight
- * 2. Link-only (register_link_modal): Callsign only
- */
+/** Handles full user registration modal (IFC username + last flight). */
 export async function execute(interaction: DiscordInteraction) {
     const _interaction = interaction.getModalInputInteraction();
     if (!_interaction) return;
 
-    const modalId = _interaction.customId;
-
-    // SCENARIO 1: Link-only modal (registered user linking to VA)
-    if (modalId === CUSTOM_IDS.REGISTER_LINK_MODAL) {
-        await handleLinkOnlyRegistration(interaction);
-        return;
-    }
-
-    // SCENARIO 2: Full registration modal (new user registration)
     await handleFullRegistration(interaction);
 }
 
-/**
- * Handles full user registration with IFC ID and last flight only.
- */
 async function handleFullRegistration(interaction: DiscordInteraction) {
     const _interaction = interaction.getModalInputInteraction();
     if (!_interaction) return;
 
-    // Extract inputs
     const ifcId = _interaction.fields.getTextInputValue('ifcId').trim();
     const lastFlight = _interaction.fields.getTextInputValue('lastFlight').trim().toUpperCase();
 
-    // Validate IFC ID
     if (!await CommandErrorHandler.validateInput(
         interaction, ifcId, "IFC ID", ValidationPatterns.IFC_USERNAME, 3, 30
     )) return;
 
-    // Validate flight route
     if (!await CommandErrorHandler.validateInput(
         interaction, lastFlight, "flight route", ValidationPatterns.FLIGHT_ROUTE
     )) return;
 
-    // Log execution
     CommandErrorHandler.logExecution("Registration", _interaction.user.id, _interaction.guildId, {});
 
     try {
@@ -67,19 +46,17 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
             lastFlight
         );
 
-        // Validate response
         if (!response) {
             console.error("[RegisterModal] Empty response received from API");
             await CommandErrorHandler.handleEmptyResponse(interaction);
             return;
         }
 
-        // Send success response
         if (response.success) {
             let message = `✅ **Registration Successful!**\n\n${response.message}\n\n`;
 
             if (response.is_va_registered) {
-                message += "📌 **Next Step:**\nYou're registered with Comrade Bot. Click the button below to link to **this server's VA** with your callsign.";
+                message += "📌 **Next Step:**\nClick the button below to link to **this server's VA**.";
 
                 const linkButton = new ButtonBuilder()
                     .setCustomId(CUSTOM_IDS.REGISTER_LINK_BUTTON)
@@ -96,7 +73,6 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
                     ephemeral: true
                 });
             } else {
-                // User registered to bot but not a VA member
                 message += "You are successfully setup for using this bot!";
 
                 await interaction.reply({
@@ -105,7 +81,6 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
                 });
             }
         } else {
-            // Registration failed
             await interaction.reply({
                 content: `❌ **Registration Failed**\n\n${response.message}`,
                 ephemeral: true
@@ -118,54 +93,6 @@ async function handleFullRegistration(interaction: DiscordInteraction) {
             return;
         }
         await CommandErrorHandler.handleApiError(interaction, error, "Registration");
-    }
-}
-
-/**
- * Handles link-only registration (registered user linking to VA with callsign)
- */
-async function handleLinkOnlyRegistration(interaction: DiscordInteraction) {
-    const _interaction = interaction.getModalInputInteraction();
-    if (!_interaction) return;
-
-    // Extract callsign
-    const callsign = _interaction.fields.getTextInputValue('callsign').trim();
-
-    // Basic validation - ensure not empty (same as membership join)
-    if (!callsign || callsign.length === 0) {
-        await interaction.reply({
-            content: "❌ **Validation Error**\nCallsign cannot be empty.",
-            ephemeral: true
-        });
-        return;
-    }
-
-    // Log execution
-    CommandErrorHandler.logExecution("VA Link", _interaction.user.id, _interaction.guildId, {
-        callsign
-    });
-
-    try {
-        // Call membership join API (same as /membership join) - validates callsign against Airtable
-        const response = await ApiService.joinMembership(
-            interaction.getMetaInfo(),
-            callsign
-        );
-
-        // Validate response
-        if (!response) {
-            await CommandErrorHandler.handleEmptyResponse(interaction);
-            return;
-        }
-
-        // Send success response
-        await interaction.reply({
-            content: `✅ **Successfully Linked to Virtual Airline!**\n\nYou're now linked with callsign **${response.callsign || callsign}**.\n\nUse \`/help\` to learn how to use Comrade Bot.`,
-            ephemeral: true
-        });
-
-    } catch (error) {
-        await CommandErrorHandler.handleApiError(interaction, error, "VA Link");
     }
 }
 

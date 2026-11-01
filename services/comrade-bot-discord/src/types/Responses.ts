@@ -258,16 +258,13 @@ export interface PirepSubmitData {
 
 export type PirepSubmitResponse = ApiResponse<PirepSubmitData>;
 
-export interface MembershipJoinResult {
+export interface MembershipLinkResult {
   success: boolean;
-  message: string;
-  user_id: string;
-  va_id: string;
-  callsign: string;
   role: string;
+  va_id: string;
 }
 
-export type MembershipJoinResponse = ApiResponse<MembershipJoinResult>;
+export type MembershipLinkResponse = ApiResponse<MembershipLinkResult>;
 
 // Event Response Types
 export interface TourLegResponse {

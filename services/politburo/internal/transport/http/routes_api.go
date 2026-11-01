@@ -73,6 +73,12 @@ func (h apiHandler) CreateServer(w stdhttp.ResponseWriter, r *stdhttp.Request, p
 	})).ServeHTTP(w, r)
 }
 
+func (h apiHandler) LinkMembership(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.LinkMembershipParams) {
+	h.stacks.bot.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.identity.LinkMembership(w, r, params)
+	})).ServeHTTP(w, r)
+}
+
 func (h apiHandler) VerifyGodMode(w stdhttp.ResponseWriter, r *stdhttp.Request, _ politburoapi.VerifyGodModeParams) {
 	h.stacks.god.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.handlers.identity.VerifyGod(w, r)

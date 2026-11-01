@@ -110,8 +110,8 @@ HTTP surfaces:
 | `/api/v1/game/**` | OpenAPI | session cookie **or** `X-API-Key` |
 | `/api/v1/signed-link` | OpenAPI | `X-API-Key` (+ `X-Discord-User-Id`) |
 | `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger` | OpenAPI | session or API key + VA context; config and trigger need `administrator` |
-| `POST /api/v1/users`, `POST /api/v1/servers` | OpenAPI | API key + `RequireDiscordBotContext` + `EnrichDiscordMembership` + registration rate limit |
-| `/api/v1/user/*`, `/memberships/join`, `/reports/occupied-ifc` | **hand-mounted, not in OpenAPI** | API key + `RequireDiscordBotContext` + `EnrichDiscordMembership` + registration rate limit |
+| `POST /api/v1/users`, `POST /api/v1/servers`, `POST /api/v1/memberships/link` | OpenAPI | API key + `RequireDiscordBotContext` + `EnrichDiscordMembership` + registration rate limit |
+| `/api/v1/user/*`, `/reports/occupied-ifc` | **hand-mounted, not in OpenAPI** | API key + `RequireDiscordBotContext` + `EnrichDiscordMembership` + registration rate limit |
 | `/api/v1/admin/verify-god`, `/api/v1/admin/users/ban` | OpenAPI **Admin** | API key + Discord context + `RequirePlatformOperator` (god mode) |
 | `/api/v1/operator/**` | **hand-mounted, not in OpenAPI** | session or API key + `RequirePlatformOperator` |
 | `/auth/login`, `/auth/logout`, `/dashboard`, `/maps/**`, `/operator/**`, `/static/*` | SSR, never OpenAPI | `UISessionAuth` for dashboard group |

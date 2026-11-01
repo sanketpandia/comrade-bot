@@ -26,7 +26,7 @@ Decided in [identity-membership.md](identity-membership.md). Old
 | Discord context headers | JSON | Rewrite (copied, unused except signed-link) | `RequireDiscordBotContext` not mounted |
 | Browser session from signed link | Discord → JSON → Portal | Rewrite | Must later carry current VA + role |
 | Global user: Discord ↔ IFC | Discord, JSON | Decided / Bot-only | `/register`; any of last 3 logbook flights as proof |
-| Link existing user to current VA | Discord | Decided / Bot-only | Same `/register` command; leftover `/membership` stays dropped |
+| Link existing user to current VA | Discord | Decided / Bot-only | `/register` → `POST /api/v1/memberships/link` (no body); `/membership` stays dropped |
 | Account / membership status | Discord | Bot-only | `GET /api/v1/user/status` |
 | Bind Discord guild to VA | Discord, then Portal | Decided / Bot-only | One guild per VA; creator becomes the sole administrator |
 | Guild migration | Report → operator | Decided | Operator rebinds `discord_server_id`; not self-service |

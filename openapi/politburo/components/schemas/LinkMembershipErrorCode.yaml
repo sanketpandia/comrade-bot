@@ -1,0 +1,9 @@
+type: string
+description: Machine-readable error code for POST /api/v1/memberships/link failures.
+enum:
+  - UNAUTHORIZED
+  - MISSING_DISCORD_CONTEXT
+  - USER_NOT_FOUND
+  - VA_NOT_FOUND
+  - ALREADY_MEMBER
+  - LINK_FAILED

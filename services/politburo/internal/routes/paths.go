@@ -81,9 +81,9 @@ const (
 	VALiveConnection    = "/api/v1/va/live/connections/{organizationId}"
 	VALiveConnectionPing = "/api/v1/va/live/connections/{organizationId}/ping"
 
-	UserStatus                = "/api/v1/user/status"
-	MembershipsJoin           = "/api/v1/memberships/join"
-	ReportsOccupiedIFC        = "/api/v1/reports/occupied-ifc"
+	UserStatus         = "/api/v1/user/status"
+	MembershipsLink    = "/api/v1/memberships/link"
+	ReportsOccupiedIFC = "/api/v1/reports/occupied-ifc"
 	APIOperatorReports        = "/api/v1/operator/reports"
 	APIOperatorReportsResolve = "/api/v1/operator/reports/{reportID}/resolve"
 )
@@ -101,6 +101,7 @@ var OpenAPIPaths = []string{
 	UserMe,
 	UsersCreate,
 	ServersCreate,
+	MembershipsLink,
 	AdminVerifyGod,
 	AdminBanUser,
 	VA,
