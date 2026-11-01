@@ -9,7 +9,7 @@ info:
     **Authentication**
     - `X-API-Key` — UUID API key for `/api/v1/*` machine clients (Discord bot, integrations).
     - `X-Discord-User-Id` and `X-Discord-Server-Id` — Discord context on bot-originated requests.
-    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/oauth/infinite-flight`, `/api/v1/live/organizations`, `/oauth/callback`, `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger`, and related routes).
+    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/oauth/infinite-flight`, `/api/v1/live/organizations`, `/oauth/callback`, `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger`, `/api/v1/va/live/*`, and related routes).
 
     **Documentation** — https://sanketpandia.github.io/comrade-bot/api/reference/
 servers:
@@ -1300,6 +1300,266 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va/live/organizations/{organizationId}/aircraft:
+    get:
+      operationId: listVALiveOrganizationAircraft
+      summary: List organisation aircraft for a linked Live org
+      description: |
+        Returns active aircraft for an Infinite Flight Live organisation linked to the caller's VA.
+        Uses the VA's Infinite Flight OAuth grant. Results are sorted by fleet rank.
+        Requires VA staff role (`bourgeoisie` or `administrator`).
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: Infinite Flight Live organisation id
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Organisation fleet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveOrganizationAircraftResponse'
+        '401':
+          description: Missing or inactive API key or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not VA staff (bourgeoisie or administrator)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: VA context or organisation link not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: VA Live OAuth grant missing or needs reconnect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Infinite Flight Live API request failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Infinite Flight Live API is not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va/live/organizations/{organizationId}/schedules:
+    get:
+      operationId: listVALiveOrganizationSchedules
+      summary: List open schedules for a linked Live org
+      description: |
+        Returns one page of **open** schedules (not Cancelled or Arrived) for a linked organisation.
+        Uses the VA's Infinite Flight OAuth grant. Requires VA staff role (`bourgeoisie` or `administrator`).
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: Infinite Flight Live organisation id
+          schema:
+            type: string
+            format: uuid
+        - name: aircraftId
+          in: query
+          required: false
+          description: |
+            Persistent organization aircraft id. Repeat for multiple aircraft
+            (`?aircraftId=<id_1>&aircraftId=<id_2>`). Maximum 100 values. Omit for all aircraft.
+          style: form
+          explode: true
+          schema:
+            type: array
+            maxItems: 100
+            items:
+              type: string
+              format: uuid
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+      responses:
+        '200':
+          description: Schedule page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveOrganizationSchedulesResponse'
+        '401':
+          description: Missing or inactive API key or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not VA staff (bourgeoisie or administrator)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: VA context or organisation link not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: VA Live OAuth grant missing or needs reconnect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Infinite Flight Live API request failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Infinite Flight Live API is not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va/live/organizations/{organizationId}/aircraft/{aircraftId}/flights:
+    get:
+      operationId: listVALiveAircraftFlights
+      summary: List flight history for an organisation aircraft
+      description: |
+        Returns one page of flight log entries for a persistent organisation aircraft id.
+        The aircraft must belong to the linked organisation's fleet. Uses the VA's Infinite Flight OAuth grant.
+        Requires VA staff role (`bourgeoisie` or `administrator`).
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: Infinite Flight Live organisation id
+          schema:
+            type: string
+            format: uuid
+        - name: aircraftId
+          in: path
+          required: true
+          description: Persistent organization aircraft id
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: Flight history page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveAircraftFlightsResponse'
+        '401':
+          description: Missing or inactive API key or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not VA staff (bourgeoisie or administrator)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: VA context, organisation link, or aircraft not found in fleet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: VA Live OAuth grant missing or needs reconnect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Infinite Flight Live API request failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Infinite Flight Live API is not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -2251,6 +2511,225 @@ components:
               type: string
             role:
               type: integer
+    LivePageMetadata:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalCount
+        - totalPages
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        totalCount:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+    LiveOrganizationAircraftItem:
+      type: object
+      required:
+        - id
+        - aircraftId
+        - organizationId
+        - registration
+        - status
+        - visibility
+        - fleetRank
+        - isFleetActiveSlot
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Persistent organization aircraft id
+        aircraftId:
+          type: string
+          description: Infinite Flight content aircraft identifier
+        organizationId:
+          type: string
+          format: uuid
+        registration:
+          type: string
+        status:
+          type: integer
+        visibility:
+          type: integer
+        fleetPriority:
+          type: integer
+          nullable: true
+        fleetRank:
+          type: integer
+        isFleetActiveSlot:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        aircraftName:
+          type: string
+          description: Resolved display name from the livery catalog when available
+    LiveOrganizationAircraftResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LiveOrganizationAircraftItem'
+    LiveScheduleItem:
+      type: object
+      required:
+        - id
+        - status
+        - callsign
+        - organizationId
+        - aircraftId
+        - flightType
+        - originIcao
+        - destinationIcao
+        - isTimeless
+        - scheduledDepartureUtc
+        - sequence
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: integer
+        callsign:
+          type: string
+        organizationId:
+          type: string
+          format: uuid
+        aircraftId:
+          type: string
+          format: uuid
+        flightType:
+          type: integer
+        originIcao:
+          type: string
+        destinationIcao:
+          type: string
+        isTimeless:
+          type: boolean
+        scheduledDepartureUtc:
+          type: string
+          format: date-time
+        sequence:
+          type: integer
+    LiveOrganizationSchedulesResponse:
+      type: object
+      required:
+        - data
+        - page
+        - pageSize
+        - totalCount
+        - totalPages
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LiveScheduleItem'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        totalCount:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+    LiveAircraftFlightCrewMember:
+      type: object
+      required:
+        - userId
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+          nullable: true
+    LiveAircraftFlightItem:
+      type: object
+      required:
+        - id
+        - aircraftId
+        - organizationId
+        - callsign
+        - status
+        - flightTimeMinutes
+        - airframeTimeMinutes
+        - crew
+      properties:
+        id:
+          type: string
+          format: uuid
+        aircraftId:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        callsign:
+          type: string
+        originIcao:
+          type: string
+          nullable: true
+        destinationIcao:
+          type: string
+          nullable: true
+        actualDepartureUtc:
+          type: string
+          format: date-time
+          nullable: true
+        actualArrivalUtc:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: integer
+        flightTimeMinutes:
+          type: number
+        airframeTimeMinutes:
+          type: number
+        crew:
+          type: array
+          items:
+            $ref: '#/components/schemas/LiveAircraftFlightCrewMember'
+    LiveAircraftFlightsResponse:
+      type: object
+      required:
+        - data
+        - page
+        - pageSize
+        - totalCount
+        - totalPages
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LiveAircraftFlightItem'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        totalCount:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
     ActiveFlightTrack:
       type: object
       required:

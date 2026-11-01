@@ -11,6 +11,7 @@ import (
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	"infinite-experiment/politburo/internal/livegame/valive"
+	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	userapi "infinite-experiment/politburo/internal/transport/http/api/user"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
@@ -29,12 +30,14 @@ type vaTokenProvider interface {
 	AccessToken(context.Context, string) (string, error)
 }
 
-// ConnectionsHandler serves persisted VA Live organisation connections.
+// ConnectionsHandler serves persisted VA Live organisation connections and staff list proxies.
 type ConnectionsHandler struct {
 	connections connectionsRepo
 	live        liveOrgClient
+	liveData    liveVADataClient
 	tokens      vaTokenProvider
 	users       currentUser
+	liveries    *gameliveries.Lookup
 }
 
 func NewConnectionsHandler(
@@ -42,8 +45,20 @@ func NewConnectionsHandler(
 	live *infiniteflight.LiveClient,
 	tokens *valive.TokenProvider,
 	users currentUser,
+	liveries *gameliveries.Lookup,
 ) *ConnectionsHandler {
-	return &ConnectionsHandler{connections: connections, live: live, tokens: tokens, users: users}
+	var data liveVADataClient
+	if live != nil {
+		data = live
+	}
+	return &ConnectionsHandler{
+		connections: connections,
+		live:        live,
+		liveData:    data,
+		tokens:      tokens,
+		users:       users,
+		liveries:    liveries,
+	}
 }
 
 func (h *ConnectionsHandler) ListConnections(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,19 @@
+type: object
+required: [data, page, pageSize, totalCount, totalPages]
+properties:
+  data:
+    type: array
+    items:
+      $ref: "./LiveAircraftFlightItem.yaml"
+  page:
+    type: integer
+    minimum: 1
+  pageSize:
+    type: integer
+    minimum: 1
+  totalCount:
+    type: integer
+    minimum: 0
+  totalPages:
+    type: integer
+    minimum: 0

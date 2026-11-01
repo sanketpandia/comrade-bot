@@ -147,7 +147,6 @@ type Handler struct {
 	operators      []string
 	ifOAuthEnabled bool
 	vaLiveGrants   vaLiveGrantReader
-	liveFleet      *LiveFleetDeps
 }
 
 func NewHandler(
@@ -163,7 +162,6 @@ func NewHandler(
 	flightsReader *domainflights.Reader,
 	ifOAuthEnabled bool,
 	vaLiveGrants vaLiveGrantReader,
-	liveFleet *LiveFleetDeps,
 ) *Handler {
 	return &Handler{
 		renderer: renderer, sessions: sessions, tickets: tickets, lister: lister,
@@ -172,7 +170,6 @@ func NewHandler(
 		operator: operatorService, operators: platformOperators,
 		ifOAuthEnabled: ifOAuthEnabled,
 		vaLiveGrants:   vaLiveGrants,
-		liveFleet:      liveFleet,
 	}
 }
 

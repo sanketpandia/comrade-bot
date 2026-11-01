@@ -43,9 +43,11 @@ re-adopt them as a warehouse. Routes sync gets an explicit summary (see
 [airtable-datasource.md](airtable-datasource.md)); pilots get a pointer on
 the membership; PIREPs are not copied.
 
-`aircraft_liveries` and `airports` also exist in the baseline. The rewrite
-already caches liveries in Redis from the live API. Airports are unused.
-Keep or drop is a catalog decision, not a data-source decision.
+`game_aircraft_liveries` is the aircraft catalog in Postgres. `airports`
+(`migrations/006_airports.sql`, seeded by `007_airports_seed.sql`) is our
+reference copy of the OurAirports airport-codes dataset: ident, ICAO, IATA,
+name, elevation, and `coordinates_lat` / `coordinates_long`. It is not a
+copy of a VA's Airtable.
 
 ## 3. In-cluster Redis
 

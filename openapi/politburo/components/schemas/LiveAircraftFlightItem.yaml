@@ -1,0 +1,46 @@
+type: object
+required:
+  - id
+  - aircraftId
+  - organizationId
+  - callsign
+  - status
+  - flightTimeMinutes
+  - airframeTimeMinutes
+  - crew
+properties:
+  id:
+    type: string
+    format: uuid
+  aircraftId:
+    type: string
+    format: uuid
+  organizationId:
+    type: string
+    format: uuid
+  callsign:
+    type: string
+  originIcao:
+    type: string
+    nullable: true
+  destinationIcao:
+    type: string
+    nullable: true
+  actualDepartureUtc:
+    type: string
+    format: date-time
+    nullable: true
+  actualArrivalUtc:
+    type: string
+    format: date-time
+    nullable: true
+  status:
+    type: integer
+  flightTimeMinutes:
+    type: number
+  airframeTimeMinutes:
+    type: number
+  crew:
+    type: array
+    items:
+      $ref: "./LiveAircraftFlightCrewMember.yaml"

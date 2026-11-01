@@ -118,7 +118,7 @@ sync flags. Links resolved inside Politburo.
 | Event coordination (planning, sign-up, who is flying the leg) | Portal, Discord | Open | Stated direction for the new portal; old product was admin CRUD + Discord list |
 | Career-mode as a PIREP mode | Discord | Parked | Fourth Airtable module later; not designed |
 | Search over our summaries | JSON, Portal | Open | Only if we define summaries |
-| Airports reference | Postgres | Leftover | Unused `airports` table |
+| Airports reference | Postgres | Seeded | `airports` loaded from OurAirports (`006` / `007`) |
 
 ---
 

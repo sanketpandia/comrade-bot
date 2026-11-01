@@ -64,6 +64,7 @@ func newHandlers(application *app.App) handlers {
 			application.IFLive,
 			application.VALiveTokens,
 			userHandler,
+			application.LiveryLookup,
 		),
 		ui: uihttp.NewHandler(
 			application.UI, application.Sessions, application.Tickets, application.Reports, application.Contact, application.Cache,
@@ -71,12 +72,6 @@ func newHandlers(application *app.App) handlers {
 			application.FlightsReader,
 			application.IFOAuth != nil,
 			application.VALiveGrants,
-			&uihttp.LiveFleetDeps{
-				Live:        application.IFLive,
-				Tokens:      application.VALiveTokens,
-				Connections: application.VALiveConnections,
-				Liveries:    application.LiveryLookup,
-			},
 		),
 	}
 }

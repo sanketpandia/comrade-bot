@@ -1,0 +1,27 @@
+info:
+  name: List Aircraft Flights
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: "{{politburo-base-url}}/api/v1/va/live/organizations/{{live-organization-id}}/aircraft/{{live-aircraft-id}}/flights?page=1&pageSize=100"
+  params:
+    - name: page
+      value: "1"
+      type: query
+      description: 1-based page number
+    - name: pageSize
+      value: "100"
+      type: query
+      description: Page size (max 100; upstream default 25)
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`listVALiveAircraftFlights` — one page of flight history for a persistent organisation aircraft id in that org's fleet."

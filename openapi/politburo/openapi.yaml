@@ -8,7 +8,7 @@ info:
     **Authentication**
     - `X-API-Key` — UUID API key for `/api/v1/*` machine clients (Discord bot, integrations).
     - `X-Discord-User-Id` and `X-Discord-Server-Id` — Discord context on bot-originated requests.
-    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/oauth/infinite-flight`, `/api/v1/live/organizations`, `/oauth/callback`, `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger`, and related routes).
+    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/oauth/infinite-flight`, `/api/v1/live/organizations`, `/oauth/callback`, `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger`, `/api/v1/va/live/*`, and related routes).
 
     **Documentation** — https://sanketpandia.github.io/comrade-bot/api/reference/
 tags:
@@ -74,6 +74,12 @@ paths:
     $ref: "./paths/va/live-connection-by-id.yaml"
   /api/v1/va/live/connections/{organizationId}/ping:
     $ref: "./paths/va/live-connection-ping.yaml"
+  /api/v1/va/live/organizations/{organizationId}/aircraft:
+    $ref: "./paths/va/live-organization-aircraft.yaml"
+  /api/v1/va/live/organizations/{organizationId}/schedules:
+    $ref: "./paths/va/live-organization-schedules.yaml"
+  /api/v1/va/live/organizations/{organizationId}/aircraft/{aircraftId}/flights:
+    $ref: "./paths/va/live-organization-aircraft-flights.yaml"
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -205,3 +211,19 @@ components:
       $ref: "./components/schemas/VALiveConnectionsResponse.yaml"
     VALiveConnectionPingResponse:
       $ref: "./components/schemas/VALiveConnectionPingResponse.yaml"
+    LivePageMetadata:
+      $ref: "./components/schemas/LivePageMetadata.yaml"
+    LiveOrganizationAircraftItem:
+      $ref: "./components/schemas/LiveOrganizationAircraftItem.yaml"
+    LiveOrganizationAircraftResponse:
+      $ref: "./components/schemas/LiveOrganizationAircraftResponse.yaml"
+    LiveScheduleItem:
+      $ref: "./components/schemas/LiveScheduleItem.yaml"
+    LiveOrganizationSchedulesResponse:
+      $ref: "./components/schemas/LiveOrganizationSchedulesResponse.yaml"
+    LiveAircraftFlightCrewMember:
+      $ref: "./components/schemas/LiveAircraftFlightCrewMember.yaml"
+    LiveAircraftFlightItem:
+      $ref: "./components/schemas/LiveAircraftFlightItem.yaml"
+    LiveAircraftFlightsResponse:
+      $ref: "./components/schemas/LiveAircraftFlightsResponse.yaml"

@@ -34,12 +34,9 @@ const (
 	AdminLive    = "/admin/live"
 
 	Live         = "/live"
-	LiveAircraft      = "/live/aircraft"
-	LiveAircraftFleet = "/live/aircraft/fleet"
-	LiveSchedules     = "/live/schedules"
-	LiveSchedulesList = "/live/schedules/list"
-	LiveFlights       = "/live/flights"
-	LiveFlightsList   = "/live/flights/list"
+	LiveAircraft = "/live/aircraft"
+	LiveSchedules = "/live/schedules"
+	LiveFlights   = "/live/flights"
 
 	OperatorReports              = "/operator/reports"
 	OperatorReportsResolve       = "/operator/reports/{reportID}/resolve"
@@ -80,6 +77,9 @@ const (
 	VALiveConnections   = "/api/v1/va/live/connections"
 	VALiveConnection    = "/api/v1/va/live/connections/{organizationId}"
 	VALiveConnectionPing = "/api/v1/va/live/connections/{organizationId}/ping"
+	VALiveOrganizationAircraft        = "/api/v1/va/live/organizations/{organizationId}/aircraft"
+	VALiveOrganizationSchedules       = "/api/v1/va/live/organizations/{organizationId}/schedules"
+	VALiveOrganizationAircraftFlights = "/api/v1/va/live/organizations/{organizationId}/aircraft/{aircraftId}/flights"
 
 	UserStatus         = "/api/v1/user/status"
 	MembershipsLink    = "/api/v1/memberships/link"
@@ -110,4 +110,7 @@ var OpenAPIPaths = []string{
 	VALiveConnections,
 	VALiveConnection,
 	VALiveConnectionPing,
+	VALiveOrganizationAircraft,
+	VALiveOrganizationSchedules,
+	VALiveOrganizationAircraftFlights,
 }

@@ -25,6 +25,12 @@
     <button type="button" class="row-menu__item" role="menuitem" data-action="flight-history">Show Flight History</button>
   </div>
   {{else if eq .LiveTab "schedules"}}
+  <div class="field panel__filter" id="live-schedules-aircraft-filter-wrap" hidden>
+    <label class="field__label" for="live-schedules-aircraft-filter">Aircraft</label>
+    <select class="select" id="live-schedules-aircraft-filter" name="aircraftId">
+      <option value="">All aircraft</option>
+    </select>
+  </div>
   <div id="live-schedules" class="stack" aria-live="polite">
     <p class="panel-lead">Select an organisation to load schedules.</p>
   </div>
@@ -33,6 +39,12 @@
     <button type="button" class="row-menu__item" role="menuitem" data-action="copy-schedule-id">Copy Schedule ID</button>
   </div>
   {{else if eq .LiveTab "flights"}}
+  <div class="field panel__filter" id="live-flights-aircraft-filter-wrap" hidden>
+    <label class="field__label" for="live-flights-aircraft-filter">Aircraft</label>
+    <select class="select" id="live-flights-aircraft-filter" name="aircraftId" required>
+      <option value="">Select an aircraft</option>
+    </select>
+  </div>
   <div id="live-flights" class="stack" aria-live="polite">
     <p class="panel-lead">Select an organisation to load flight history.</p>
   </div>

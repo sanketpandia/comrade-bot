@@ -1,0 +1,8 @@
+type: object
+required: [userId]
+properties:
+  userId:
+    type: string
+  username:
+    type: string
+    nullable: true

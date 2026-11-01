@@ -1,0 +1,40 @@
+type: object
+required:
+  - id
+  - status
+  - callsign
+  - organizationId
+  - aircraftId
+  - flightType
+  - originIcao
+  - destinationIcao
+  - isTimeless
+  - scheduledDepartureUtc
+  - sequence
+properties:
+  id:
+    type: string
+    format: uuid
+  status:
+    type: integer
+  callsign:
+    type: string
+  organizationId:
+    type: string
+    format: uuid
+  aircraftId:
+    type: string
+    format: uuid
+  flightType:
+    type: integer
+  originIcao:
+    type: string
+  destinationIcao:
+    type: string
+  isTimeless:
+    type: boolean
+  scheduledDepartureUtc:
+    type: string
+    format: date-time
+  sequence:
+    type: integer

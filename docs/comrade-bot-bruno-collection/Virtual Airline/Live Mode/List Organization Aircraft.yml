@@ -1,0 +1,18 @@
+info:
+  name: List Organization Aircraft
+  type: http
+  seq: 3
+
+http:
+  method: GET
+  url: "{{politburo-base-url}}/api/v1/va/live/organizations/{{live-organization-id}}/aircraft"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`listVALiveOrganizationAircraft` — full fleet for a linked org, sorted by fleet rank, with resolved `aircraftName`."

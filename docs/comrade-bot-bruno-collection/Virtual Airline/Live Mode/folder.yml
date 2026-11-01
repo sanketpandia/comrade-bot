@@ -1,0 +1,17 @@
+info:
+  name: Live Mode
+  type: folder
+  seq: 4
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    Infinite Flight Live organisation data for the caller's VA (`VirtualAirline` in OpenAPI).
+    Requires VA staff role (`bourgeoisie` or `administrator`) and a linked organisation.
+    List endpoints use the VA's Infinite Flight OAuth grant (`409 IF_OAUTH_REQUIRED` if missing).
+
+    Set `live-organization-id` to a linked org UUID from **List Live Connections**.
+    Set `live-aircraft-id` to a persistent organisation aircraft id from **List Organization Aircraft**.
+  type: text/markdown

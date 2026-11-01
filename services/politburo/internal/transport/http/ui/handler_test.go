@@ -56,7 +56,7 @@ func newUIHandler(t *testing.T, sessions sessionManager, tickets ticketConsumer)
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	return NewHandler(renderer, sessions, tickets, nil, nil, nil, nil, nil, nil, nil, false, nil, nil)
+	return NewHandler(renderer, sessions, tickets, nil, nil, nil, nil, nil, nil, nil, false, nil)
 }
 
 func TestLoginConsumesTicketThenSetsCookie(t *testing.T) {
@@ -196,7 +196,7 @@ func newContactUIHandler(t *testing.T, submitter contactSubmitter) *Handler {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	return NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, submitter, nil, nil, nil, nil, nil, false, nil, nil)
+	return NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, submitter, nil, nil, nil, nil, nil, false, nil)
 }
 
 func TestContactRendersForm(t *testing.T) {
@@ -405,7 +405,6 @@ func TestDashboardShowsServerCounts(t *testing.T) {
 		}}),
 		false,
 		nil,
-		nil,
 	)
 	recorder := httptest.NewRecorder()
 	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
@@ -496,7 +495,7 @@ func TestAdminLiveShowsOrganisationLink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true, nil, nil)
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true, nil)
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminLive+"?oauth=connected", nil), auth.Claims{Role: "administrator"})
 	recorder := httptest.NewRecorder()
 	handler.Admin(recorder, req)
@@ -542,7 +541,7 @@ func TestAdminLiveShowsConnectedFromActiveGrantWithoutQuery(t *testing.T) {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
 	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true,
-		vaLiveGrantStub{grant: &valive.Grant{Status: valive.GrantStatusActive}}, nil,
+		vaLiveGrantStub{grant: &valive.Grant{Status: valive.GrantStatusActive}},
 	)
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminLive, nil), auth.Claims{
 		Role:       "administrator",
@@ -591,7 +590,7 @@ func TestLiveModeRendersAircraftTabAndOrgSelect(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, false, nil, nil)
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, false, nil)
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveAircraft, nil), auth.Claims{Role: "administrator"})
 	recorder := httptest.NewRecorder()
 	handler.LiveMode(recorder, req)
@@ -614,6 +613,58 @@ func TestLiveModeRendersAircraftTabAndOrgSelect(t *testing.T) {
 	}
 }
 
+func TestLiveModeRendersSchedulesTabShell(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, false, nil)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveSchedules, nil), auth.Claims{Role: "administrator"})
+	recorder := httptest.NewRecorder()
+	handler.LiveMode(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		`href="/live/schedules" aria-current="page"`,
+		`id="live-schedules"`,
+		`id="live-schedules-row-menu"`,
+		`id="live-schedules-aircraft-filter"`,
+		`/static/js/live/schedules.mjs`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q in %s", want, body)
+		}
+	}
+}
+
+func TestLiveModeRendersFlightsTabShell(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, false, nil)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveFlights, nil), auth.Claims{Role: "administrator"})
+	recorder := httptest.NewRecorder()
+	handler.LiveMode(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		`href="/live/flights" aria-current="page"`,
+		`id="live-flights"`,
+		`id="live-flights-row-menu"`,
+		`id="live-flights-aircraft-filter"`,
+		`/static/js/live/flights.mjs`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q in %s", want, body)
+		}
+	}
+}
+
 func TestLiveModeForbiddenForProletariat(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveAircraft, nil), auth.Claims{Role: "proletariat"})
@@ -629,7 +680,7 @@ func TestLiveModeAllowsBourgeoisie(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, false, nil, nil)
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, false, nil)
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveAircraft, nil), auth.Claims{Role: "bourgeoisie"})
 	recorder := httptest.NewRecorder()
 	handler.LiveMode(recorder, req)
@@ -748,7 +799,7 @@ func TestDashboardOmitsOrganisationLink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true, nil, nil)
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true, nil)
 	recorder := httptest.NewRecorder()
 	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
 	body := recorder.Body.String()
