@@ -43,6 +43,7 @@ services/politburo/internal/app/app.go                     — composition root
 services/politburo/internal/transport/http/server.go       — routes, middleware groups, apiHandler adapter
 services/politburo/internal/livegame/jobs/register.go               — scheduled jobs
 docs/politburo/conventions.md                              — cache responses, keys, auth boundary, metrics policy
+docs/politburo/development/styling-guide.md               — SSR tokens, glass UI, page skeleton; guard tests in internal/ui/
 ```
 
 For any JSON endpoint change also read `.claude/commands/oapi-codegen.md`.

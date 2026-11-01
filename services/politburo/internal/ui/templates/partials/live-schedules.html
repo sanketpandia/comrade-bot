@@ -1,0 +1,59 @@
+{{define "live-schedules"}}
+{{if .ErrorMessage}}
+<p class="notice notice--error" role="status">{{.ErrorMessage}}</p>
+{{else}}
+<section class="panel stack" aria-labelledby="live-schedules-heading">
+  <header class="panel__header panel__header--wrap">
+    <h2 class="panel-heading" id="live-schedules-heading">{{.CountLabel}}</h2>
+    <div class="field panel__filter">
+      <label class="field__label" for="live-schedules-aircraft-filter">Aircraft</label>
+      <select class="select" id="live-schedules-aircraft-filter" name="aircraftId">
+        {{range .FilterOptions}}
+        <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
+        {{end}}
+      </select>
+    </div>
+  </header>
+  {{if .TruncatedNote}}
+  <p class="panel-message" role="status">{{.TruncatedNote}}</p>
+  {{end}}
+  {{if .Rows}}
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">Registration</th>
+          <th scope="col">Aircraft</th>
+          <th scope="col">Callsign</th>
+          <th scope="col">Route</th>
+          <th scope="col">Status</th>
+          <th scope="col">Departure</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr class="data-table__row data-table__row--selectable" data-schedule-id="{{.ScheduleID}}" data-aircraft-id="{{.AircraftID}}">
+          <th scope="row">{{.Registration}}</th>
+          <td>{{.AircraftName}}</td>
+          <td>{{.Callsign}}</td>
+          <td>{{.Route}}</td>
+          <td><span class="badge {{.StatusClass}}">{{.StatusLabel}}</span></td>
+          <td>
+            {{if .IsTimeless}}
+            Timeless
+            {{else if .DepartureISO}}
+            <time datetime="{{.DepartureISO}}" title="{{.DepartureISO}}">{{.DepartureDisplay}}</time>
+            <span class="text-subtle">{{.DepartureRelative}}</span>
+            {{else}}—{{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="panel-lead">No schedules returned for this organisation.</p>
+  {{end}}
+</section>
+{{end}}
+{{end}}

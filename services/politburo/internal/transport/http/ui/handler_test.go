@@ -13,7 +13,8 @@ import (
 	"infinite-experiment/politburo/internal/access/session"
 	"infinite-experiment/politburo/internal/cache"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
-	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
+	gamesessions 	"infinite-experiment/politburo/internal/livegame/sessions"
+	"infinite-experiment/politburo/internal/livegame/valive"
 	"infinite-experiment/politburo/internal/operations/contact"
 	"infinite-experiment/politburo/internal/routes"
 	appui "infinite-experiment/politburo/internal/ui"
@@ -55,7 +56,7 @@ func newUIHandler(t *testing.T, sessions sessionManager, tickets ticketConsumer)
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	return NewHandler(renderer, sessions, tickets, nil, nil, nil, nil, nil, nil, nil, false)
+	return NewHandler(renderer, sessions, tickets, nil, nil, nil, nil, nil, nil, nil, false, nil, nil)
 }
 
 func TestLoginConsumesTicketThenSetsCookie(t *testing.T) {
@@ -195,7 +196,7 @@ func newContactUIHandler(t *testing.T, submitter contactSubmitter) *Handler {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	return NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, submitter, nil, nil, nil, nil, nil, false)
+	return NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, submitter, nil, nil, nil, nil, nil, false, nil, nil)
 }
 
 func TestContactRendersForm(t *testing.T) {
@@ -212,6 +213,7 @@ func TestContactRendersForm(t *testing.T) {
 		`name="message"`,
 		`action="` + routes.Contact + `"`,
 		`class="public-footer"`,
+		`class="photo-credit"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %q in body", want)
@@ -330,7 +332,7 @@ func TestDashboardRendersShell(t *testing.T) {
 		`href="` + routes.Dashboard + `"`,
 		`aria-current="page"`,
 		"Live flights",
-		`class="panel panel--glass panel--spaced stack"`,
+		`class="panel panel--spaced stack"`,
 		`class="card card--link"`,
 		` flights</span>`,
 		` pilots</span>`,
@@ -340,6 +342,9 @@ func TestDashboardRendersShell(t *testing.T) {
 		`href="` + routes.MapsFlightsActive + `?serverId=training"`,
 		routes.StaticPrefix + "css/tokens.css",
 		routes.StaticPrefix + "css/base.css",
+		`class="photo-credit"`,
+		`href="https://unsplash.com/@yaubinghui?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText"`,
+		`href="https://unsplash.com/photos/white-airplane-in-mid-air-during-daytime-OOCH3KIlqFE?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %q in %s", want, body)
@@ -399,6 +404,8 @@ func TestDashboardShowsServerCounts(t *testing.T) {
 			cache.KeyActiveFlights("expert"): raw,
 		}}),
 		false,
+		nil,
+		nil,
 	)
 	recorder := httptest.NewRecorder()
 	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
@@ -457,7 +464,7 @@ func TestAdminRendersShell(t *testing.T) {
 	}
 	body := recorder.Body.String()
 	for _, want := range []string{
-		`<h1>Admin</h1>`,
+		`class="page-header__title">Admin</`,
 		`aria-label="Admin sections"`,
 		`>General</a>`,
 		`>Live Mode</a>`,
@@ -489,7 +496,7 @@ func TestAdminLiveShowsOrganisationLink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true)
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true, nil, nil)
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminLive+"?oauth=connected", nil), auth.Claims{Role: "administrator"})
 	recorder := httptest.NewRecorder()
 	handler.Admin(recorder, req)
@@ -500,9 +507,11 @@ func TestAdminLiveShowsOrganisationLink(t *testing.T) {
 	for _, want := range []string{
 		`href="` + routes.AdminLive + `" aria-current="page"`,
 		`id="admin-live-heading"`,
+		`Each in-game organisation can be linked to one Discord server only`,
 		`Link your in-game organisations`,
 		`id="if-oauth-connect"`,
 		`class="btn btn--primary"`,
+		` disabled aria-disabled="true"`,
 		`badge badge--success`,
 		`/static/js/admin/oauth.mjs`,
 	} {
@@ -515,6 +524,41 @@ func TestAdminLiveShowsOrganisationLink(t *testing.T) {
 	}
 	if strings.Contains(body, `id="va-code"`) {
 		t.Fatalf("general fields should not render on live mode: %s", body)
+	}
+}
+
+type vaLiveGrantStub struct {
+	grant *valive.Grant
+	err   error
+}
+
+func (s vaLiveGrantStub) GetByVAID(context.Context, string) (*valive.Grant, error) {
+	return s.grant, s.err
+}
+
+func TestAdminLiveShowsConnectedFromActiveGrantWithoutQuery(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true,
+		vaLiveGrantStub{grant: &valive.Grant{Status: valive.GrantStatusActive}}, nil,
+	)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminLive, nil), auth.Claims{
+		Role:       "administrator",
+		PbServerID: "va-1",
+	})
+	recorder := httptest.NewRecorder()
+	handler.Admin(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	if !strings.Contains(body, `badge badge--success`) {
+		t.Fatalf("expected connected badge from grant: %s", body)
+	}
+	if !strings.Contains(body, `id="if-oauth-connect"`) || !strings.Contains(body, ` disabled aria-disabled="true"`) {
+		t.Fatalf("connect button should be disabled when grant is active: %s", body)
 	}
 }
 
@@ -537,6 +581,44 @@ func TestAdminForbiddenForNonAdmin(t *testing.T) {
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminGeneral, nil), auth.Claims{Role: "proletariat"})
 	recorder := httptest.NewRecorder()
 	handler.Admin(recorder, req)
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", recorder.Code)
+	}
+}
+
+func TestLiveModeRendersAircraftTabAndOrgSelect(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, false, nil, nil)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveAircraft, nil), auth.Claims{Role: "administrator"})
+	recorder := httptest.NewRecorder()
+	handler.LiveMode(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		`id="live-org-select"`,
+		`class="select"`,
+		`href="` + routes.LiveAircraft + `" aria-current="page"`,
+		`id="live-aircraft-fleet"`,
+		`id="live-aircraft-row-menu"`,
+		`/static/js/live/organizations.mjs`,
+		`Live Mode`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q in %s", want, body)
+		}
+	}
+}
+
+func TestLiveModeForbiddenForNonAdmin(t *testing.T) {
+	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveAircraft, nil), auth.Claims{Role: "proletariat"})
+	recorder := httptest.NewRecorder()
+	handler.LiveMode(recorder, req)
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403", recorder.Code)
 	}
@@ -652,7 +734,7 @@ func TestDashboardOmitsOrganisationLink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRenderer() error = %v", err)
 	}
-	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true)
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, true, nil, nil)
 	recorder := httptest.NewRecorder()
 	handler.Dashboard(recorder, httptest.NewRequest(http.MethodGet, routes.Dashboard, nil))
 	body := recorder.Body.String()

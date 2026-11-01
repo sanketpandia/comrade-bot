@@ -7,6 +7,7 @@ import (
 	"infinite-experiment/politburo/internal/transport/http/api/gamesessions"
 	"infinite-experiment/politburo/internal/transport/http/api/health"
 	"infinite-experiment/politburo/internal/transport/http/api/identity"
+	liveapi "infinite-experiment/politburo/internal/transport/http/api/live"
 	oauthapi "infinite-experiment/politburo/internal/transport/http/api/oauth"
 	"infinite-experiment/politburo/internal/transport/http/api/signedlink"
 	userapi "infinite-experiment/politburo/internal/transport/http/api/user"
@@ -23,6 +24,8 @@ type handlers struct {
 	va         *vaapi.Handler
 	user       *userapi.Handler
 	oauth      *oauthapi.Handler
+	live       *liveapi.Handler
+	liveConn   *liveapi.ConnectionsHandler
 	ui         *uihttp.Handler
 }
 
@@ -46,12 +49,34 @@ func newHandlers(application *app.App) handlers {
 		),
 		va:    vaapi.NewHandler(application.VirtualAirlines, application.VAConfigs, application.Users, application.VAWebhookJob),
 		user:  userHandler,
-		oauth: oauthapi.NewHandler(application.IFOAuth, application.Config.OAuthRedirectURI(), application.Cache, userHandler),
+		oauth: oauthapi.NewHandler(
+			application.IFOAuth,
+			application.Config.OAuthRedirectURI(),
+			application.Cache,
+			userHandler,
+			application.IFLive,
+			application.VALiveTokens,
+			application.VALiveConnections,
+		),
+		live: liveapi.NewHandler(application.IFLive, application.Cache, userHandler),
+		liveConn: liveapi.NewConnectionsHandler(
+			application.VALiveConnections,
+			application.IFLive,
+			application.VALiveTokens,
+			userHandler,
+		),
 		ui: uihttp.NewHandler(
 			application.UI, application.Sessions, application.Tickets, application.Reports, application.Contact, application.Cache,
 			application.Operator, application.Config.PlatformOperatorDiscordIDs, application.SessionsReader,
 			application.FlightsReader,
 			application.IFOAuth != nil,
+			application.VALiveGrants,
+			&uihttp.LiveFleetDeps{
+				Live:        application.IFLive,
+				Tokens:      application.VALiveTokens,
+				Connections: application.VALiveConnections,
+				Liveries:    application.LiveryLookup,
+			},
 		),
 	}
 }

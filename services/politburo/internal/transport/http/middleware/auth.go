@@ -117,7 +117,8 @@ func isSessionAPIPath(path string) bool {
 		strings.HasPrefix(path, routes.APIV1OperatorPrefix) ||
 		isVAAdminAPIPath(path) ||
 		path == routes.UserMe ||
-		path == routes.OAuthInfiniteFlight
+		path == routes.OAuthInfiniteFlight ||
+		path == routes.LiveOrganizations
 }
 
 func isSessionOnlyPath(path string) bool {

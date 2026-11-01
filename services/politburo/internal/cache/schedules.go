@@ -9,4 +9,6 @@ const (
 	ScheduleLiveriesSync      = "0 */30 * * * *"
 	// ScheduleWebhooksSync fires at minute 0 and 30. Feature frequency gates use that UTC clock.
 	ScheduleWebhooksSync = "0 */30 * * * *"
+	// ScheduleVALiveTokenRefresh runs each minute; refreshes grants expiring within three minutes.
+	ScheduleVALiveTokenRefresh = "0 * * * * *"
 )

@@ -8,7 +8,7 @@
     <button type="button" class="maps-map-only" id="maps-map-only" aria-pressed="false">Map only</button>
     {{end}}
     <div class="maps-filters-wrap">
-      <form class="maps-filters panel panel--glass" id="maps-filters"
+      <form class="maps-filters panel" id="maps-filters"
             hx-get="/maps/flights/active/flights"
             hx-target="#maps-flights-swap"
             hx-swap="innerHTML transition:true"
@@ -102,7 +102,7 @@
       </button>
     </div>
   </div>
-  <aside id="maps-detail-panel" class="maps-detail-panel panel panel--glass" hidden aria-label="Flight details">
+  <aside id="maps-detail-panel" class="maps-detail-panel panel" hidden aria-label="Flight details">
     <header class="panel__header">
       <div class="tabs" role="tablist" id="maps-detail-tabs">
         <a class="tabs__tab tabs__tab--active" role="tab"

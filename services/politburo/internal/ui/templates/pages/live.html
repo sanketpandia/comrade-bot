@@ -1,0 +1,45 @@
+{{define "live-content"}}
+<header class="page-header">
+  <h1 class="page-header__title">Live Mode</h1>
+  <div class="field page-header__aside">
+    <label class="field__label" for="live-org-select">Organisation</label>
+    <select class="select" id="live-org-select" name="organizationId" disabled>
+      <option value="">Loading…</option>
+    </select>
+  </div>
+</header>
+<p id="live-org-status" class="panel-message" role="status" hidden></p>
+<div class="section-layout">
+  <nav class="tabs tabs--nav" aria-label="Live Mode sections">
+    <a class="tabs__tab" href="/live/aircraft"{{if eq .LiveTab "aircraft"}} aria-current="page"{{end}}>Aircrafts</a>
+    <a class="tabs__tab" href="/live/schedules"{{if eq .LiveTab "schedules"}} aria-current="page"{{end}}>Schedules</a>
+    <a class="tabs__tab" href="/live/flights"{{if eq .LiveTab "flights"}} aria-current="page"{{end}}>Flights</a>
+  </nav>
+  {{if eq .LiveTab "aircraft"}}
+  <div id="live-aircraft-fleet" class="stack" aria-live="polite">
+    <p class="panel-lead">Select an organisation to load the fleet.</p>
+  </div>
+  <div id="live-aircraft-row-menu" class="row-menu" hidden role="menu" aria-label="Aircraft actions">
+    <button type="button" class="row-menu__item" role="menuitem" data-action="copy-id">Copy Aircraft ID</button>
+    <button type="button" class="row-menu__item" role="menuitem" data-action="schedules">Schedules</button>
+    <button type="button" class="row-menu__item" role="menuitem" data-action="flight-history">Show Flight History</button>
+  </div>
+  {{else if eq .LiveTab "schedules"}}
+  <div id="live-schedules" class="stack" aria-live="polite">
+    <p class="panel-lead">Select an organisation to load schedules.</p>
+  </div>
+  <div id="live-schedules-row-menu" class="row-menu" hidden role="menu" aria-label="Schedule actions">
+    <button type="button" class="row-menu__item" role="menuitem" data-action="copy-aircraft-id">Copy Aircraft ID</button>
+    <button type="button" class="row-menu__item" role="menuitem" data-action="copy-schedule-id">Copy Schedule ID</button>
+  </div>
+  {{else if eq .LiveTab "flights"}}
+  <div id="live-flights" class="stack" aria-live="polite">
+    <p class="panel-lead">Select an organisation to load flight history.</p>
+  </div>
+  <div id="live-flights-row-menu" class="row-menu" hidden role="menu" aria-label="Flight actions">
+    <button type="button" class="row-menu__item" role="menuitem" data-action="copy-aircraft-id">Copy Aircraft ID</button>
+    <button type="button" class="row-menu__item" role="menuitem" data-action="copy-flight-id">Copy Flight ID</button>
+  </div>
+  {{end}}
+</div>
+{{end}}

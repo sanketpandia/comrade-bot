@@ -1,0 +1,15 @@
+type: object
+required: [id, name, role, linkedAt]
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Infinite Flight Live organisation id
+  name:
+    type: string
+  role:
+    type: integer
+    description: Caller's in-game role in the organisation (Admin or Owner when linked)
+  linkedAt:
+    type: string
+    format: date-time

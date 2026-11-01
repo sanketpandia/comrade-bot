@@ -1,0 +1,50 @@
+get:
+  operationId: listLiveOrganizations
+  summary: List Infinite Flight Live organizations for the current user
+  description: |
+    Proxies Infinite Flight Public API v3 `GET /live/organizations` using the caller's
+    stored Infinite Flight OAuth access token (from Admin Live Mode connect). Returns
+    organizations where the caller is Admin or Owner only.
+
+    Requires VA administrator role (`administrator`). Does not persist organization data.
+  tags: [Live]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  responses:
+    "200":
+      description: Organizations the caller can administer
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/LiveOrganizationsResponse.yaml"
+    "401":
+      description: Missing session or API key
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Caller is not a VA administrator
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "409":
+      description: Infinite Flight OAuth is required or the access token expired
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "502":
+      description: Infinite Flight Live API request failed
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Internal error
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

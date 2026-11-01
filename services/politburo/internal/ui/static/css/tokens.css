@@ -24,6 +24,21 @@
   --glass-tile: color-mix(in srgb, var(--bg-surface-elevated) 42%, transparent);
   --glass-border: color-mix(in srgb, var(--text-primary) 11%, transparent);
   --glass-blur: blur(14px) saturate(140%);
+  --glass-row-hover: color-mix(in srgb, var(--accent-primary) 6%, transparent);
+  --glass-row-selected: color-mix(in srgb, var(--accent-primary) 10%, transparent);
+  --glass-head: color-mix(in srgb, var(--glass-tile) 72%, var(--bg-surface-elevated));
+
+  /* App backdrop (CDN: /static/brand/) */
+  --app-backdrop-image: image-set(
+    url("/static/brand/background.webp") type("image/webp"),
+    url("/static/brand/background.jpg") type("image/jpeg")
+  );
+  --app-backdrop-scrim: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg-app) 78%, transparent),
+    color-mix(in srgb, var(--bg-app) 58%, transparent)
+  );
+  --app-backdrop: var(--app-backdrop-scrim), var(--app-backdrop-image) center 40% / cover no-repeat, var(--bg-app);
 
   /* Elevation */
   --shadow-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -31,6 +46,7 @@
   --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.22), 0 6px 16px rgba(0, 0, 0, 0.26);
   --shadow-3: 0 1px 2px rgba(0, 0, 0, 0.22), 0 6px 16px rgba(0, 0, 0, 0.26), 0 18px 44px rgba(0, 0, 0, 0.34);
   --shadow-glass-panel: var(--shadow-highlight), var(--shadow-3);
+  --shadow-marker: 0 1px 2px rgba(0, 0, 0, 0.45);
 
   /* Shape, motion, layering */
   --radius-sm: 0.5rem;
@@ -52,4 +68,7 @@
   --text-md: 0.85rem;
   --text-lg: 1.15rem;
   --text-xl: 1.35rem;
+  --text-2xl: 1.75rem;
+
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }

@@ -9,7 +9,7 @@ info:
     **Authentication**
     - `X-API-Key` — UUID API key for `/api/v1/*` machine clients (Discord bot, integrations).
     - `X-Discord-User-Id` and `X-Discord-Server-Id` — Discord context on bot-originated requests.
-    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/oauth/infinite-flight`, `/oauth/callback`, `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger`, and related routes).
+    - `session_id` cookie — browser session after signed-link login (`/api/v1/game/*`, `/api/v1/operator/*`, `/api/v1/user/me`, `/api/v1/oauth/infinite-flight`, `/api/v1/live/organizations`, `/oauth/callback`, `/api/v1/va`, `/api/v1/va/config`, `/api/v1/va/webhook/trigger`, and related routes).
 
     **Documentation** — https://sanketpandia.github.io/comrade-bot/api/reference/
 servers:
@@ -32,6 +32,8 @@ tags:
     description: Platform operator (god mode) actions.
   - name: VirtualAirline
     description: VA administrator settings and metadata.
+  - name: Live
+    description: Infinite Flight Live API proxies for dashboard Live Mode.
 paths:
   /health/status:
     get:
@@ -266,6 +268,58 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/live/organizations:
+    get:
+      operationId: listLiveOrganizations
+      summary: List Infinite Flight Live organizations for the current user
+      description: |
+        Proxies Infinite Flight Public API v3 `GET /live/organizations` using the caller's
+        stored Infinite Flight OAuth access token (from Admin Live Mode connect). Returns
+        organizations where the caller is Admin or Owner only.
+
+        Requires VA administrator role (`administrator`). Does not persist organization data.
+      tags:
+        - Live
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Organizations the caller can administer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveOrganizationsResponse'
+        '401':
+          description: Missing session or API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not a VA administrator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Infinite Flight OAuth is required or the access token expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Infinite Flight Live API request failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/oauth/infinite-flight:
     get:
       operationId: getInfiniteFlightOAuthAuthorize
@@ -277,11 +331,24 @@ paths:
         the user completes consent at Infinite Flight and returns via `GET /oauth/callback`.
 
         Requires Infinite Flight OAuth client credentials on the server.
+
+        Use query `scope_set=admin_scopes` for the VA administrator Live Mode grant (requires virtual airline context on the caller).
       tags:
         - Auth
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
+      parameters:
+        - name: scope_set
+          in: query
+          required: false
+          description: |
+            OAuth scope bundle. `admin_scopes` requests the VA staff grant including refresh and schedule write.
+            Omitted uses read-only user scopes.
+          schema:
+            type: string
+            enum:
+              - admin_scopes
       responses:
         '200':
           description: Authorize URL for the browser
@@ -289,6 +356,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InfiniteFlightOAuthAuthorizeResponse'
+        '400':
+          description: Invalid scope set or missing VA context for admin scopes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Missing session or Discord user id
           content:
@@ -963,6 +1036,159 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Failed to load config or persist dispatch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va/live/connections:
+    get:
+      operationId: listVALiveConnections
+      summary: List persisted Live organisation connections for this VA
+      description: |
+        Returns Infinite Flight Live organisations linked to the caller's virtual airline.
+        Requires VA administrator role (`administrator`).
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Linked organisations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VALiveConnectionsResponse'
+        '401':
+          description: Missing or inactive API key or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not a VA administrator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No virtual airline context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to load connections
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va/live/connections/{organizationId}:
+    delete:
+      operationId: deleteVALiveConnection
+      summary: Remove a Live organisation connection from this VA
+      description: |
+        Unlinks an Infinite Flight Live organisation from the caller's virtual airline.
+        Requires VA administrator role (`administrator`).
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: Infinite Flight Live organisation id
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Connection removed
+        '401':
+          description: Missing or inactive API key or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not a VA administrator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Connection or VA context not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to remove connection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va/live/connections/{organizationId}/ping:
+    get:
+      operationId: pingVALiveConnection
+      summary: Verify Live API access for a linked organisation
+      description: |
+        Calls Infinite Flight Live API for the linked organisation using this VA's OAuth grant.
+        Requires VA administrator role (`administrator`).
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: Infinite Flight Live organisation id
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Organisation reachable with the VA grant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VALiveConnectionPingResponse'
+        '401':
+          description: Missing or inactive API key or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not a VA administrator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Connection or VA context not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: VA Live OAuth grant missing or needs reconnect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to ping connection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Infinite Flight Live API request failed
           content:
             application/json:
               schema:
@@ -1791,6 +2017,83 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/InfiniteFlightOAuthAuthorizeData'
+    LiveOrganizationListItem:
+      type: object
+      required:
+        - id
+        - name
+        - role
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Infinite Flight Live organization ID.
+        name:
+          type: string
+          description: Organization display name.
+        role:
+          type: integer
+          description: Caller role in the organization (`PersistentOrganizationMemberRole`). Only Admin (1) and Owner (2) are returned.
+          enum:
+            - 1
+            - 2
+    LiveOrganizationsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LiveOrganizationListItem'
+    VALiveConnection:
+      type: object
+      required:
+        - id
+        - name
+        - role
+        - linkedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Infinite Flight Live organisation id
+        name:
+          type: string
+        role:
+          type: integer
+          description: Caller's in-game role in the organisation (Admin or Owner when linked)
+        linkedAt:
+          type: string
+          format: date-time
+    VALiveConnectionsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/VALiveConnection'
+    VALiveConnectionPingResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - id
+            - name
+            - role
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            role:
+              type: integer
     ActiveFlightTrack:
       type: object
       required:

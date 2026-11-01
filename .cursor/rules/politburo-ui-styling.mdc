@@ -1,0 +1,38 @@
+---
+description: Politburo SSR UI styling — tokens, glass components, page skeleton
+globs:
+  - services/politburo/internal/ui/**
+  - services/politburo/internal/transport/http/ui/**
+---
+
+# Politburo UI styling
+
+Authoritative guide: `docs/politburo/development/styling-guide.md`.
+
+## Rules
+
+- Colours, shadows, blur, and backdrop images live in `static/css/tokens.css` only.
+- Prefer shared classes in `components.css` over page-local CSS.
+- Glass is the default for `.panel`, `.tabs--nav`, `.data-table`, `.topbar` on app pages.
+- Controls (`.input`, `.select`, `.btn`, `.icon-btn`) stay on solid `--bg-surface-elevated`.
+
+## App page skeleton
+
+```html
+<header class="page-header">
+  <h1 class="page-header__title">Title</h1>
+</header>
+<div class="section-layout">
+  <nav class="tabs tabs--nav">…</nav>
+  <section class="panel stack">…</section>
+</div>
+```
+
+## Assets
+
+Brand images under `static/brand/`; reference as `/static/brand/...` in tokens (CDN-cached).
+
+## Before finishing
+
+- Run `go test ./internal/ui/...` from `services/politburo/`.
+- Do not reintroduce `.panel--glass`, `.admin-layout`, or raw hex/rgba in non-token CSS.

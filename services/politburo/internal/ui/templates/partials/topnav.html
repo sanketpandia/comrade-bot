@@ -6,6 +6,7 @@
   <nav class="topbar__nav" aria-label="Primary">
     <a class="topbar__link" href="/dashboard"{{if eq .Content "dashboard-content"}} aria-current="page"{{end}}>Dashboard</a>
     {{if eq .Role "administrator"}}
+    <a class="topbar__link" href="/live/aircraft"{{if eq .Content "live-content"}} aria-current="page"{{end}}>Live Mode</a>
     <a class="topbar__link" href="/admin/general"{{if eq .Content "admin-content"}} aria-current="page"{{end}}>Admin</a>
     {{end}}
     <button type="button" class="icon-btn icon-btn--round topbar__profile" aria-label="Profile">

@@ -8,10 +8,22 @@ get:
     the user completes consent at Infinite Flight and returns via `GET /oauth/callback`.
 
     Requires Infinite Flight OAuth client credentials on the server.
+
+    Use query `scope_set=admin_scopes` for the VA administrator Live Mode grant (requires virtual airline context on the caller).
   tags: [Auth]
   security:
     - ApiKeyAuth: []
     - CookieAuth: []
+  parameters:
+    - name: scope_set
+      in: query
+      required: false
+      description: |
+        OAuth scope bundle. `admin_scopes` requests the VA staff grant including refresh and schedule write.
+        Omitted uses read-only user scopes.
+      schema:
+        type: string
+        enum: [admin_scopes]
   responses:
     "200":
       description: Authorize URL for the browser
@@ -27,6 +39,12 @@ get:
             $ref: "../../components/schemas/ErrorResponse.yaml"
     "404":
       description: User record not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "400":
+      description: Invalid scope set or missing VA context for admin scopes
       content:
         application/json:
           schema:

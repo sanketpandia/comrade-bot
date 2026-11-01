@@ -2,12 +2,11 @@
 
 How the server-rendered Politburo UI (`services/politburo/internal/ui/`) should
 look and how its CSS should be organised. The live flights map
-(`/maps/flights/active`) is the reference implementation: its glass panels,
-cards, key-value tables, and status chips are the target look for every page.
+(`/maps/flights/active`) established the glass panel look; Dashboard, Live Mode,
+Admin, and the map now share the same tokens and components.
 
-The [Migration plan](#migration-plan) at the end lists the work needed to bring
-the rest of the UI in line. That work is tracked separately; this document is
-the contract it should converge on.
+Run `go test ./internal/ui/...` after CSS or template changes; `TestCSSUsesTokens`
+and `TestTemplatesAvoidRemovedUIClasses` guard the contract.
 
 ## Principles
 
@@ -23,32 +22,36 @@ the contract it should converge on.
 4. **Server-rendered and HTMX-friendly.** Styling must not depend on JS state
    beyond classes that the server can also render (`hidden`, `aria-expanded`,
    `aria-selected`, `aria-current`, shell modifier classes).
-5. **Glass only where something floats.** Translucent, blurred surfaces are
-   for chrome layered over live content (map panels, popovers, sticky bars).
-   Normal page content uses solid surfaces.
+5. **Glass is the default surface.** App pages use `--app-backdrop` (CDN image
+   `/static/brand/background.jpg` with a scrim). Panels, side nav, tables, and
+   the sticky topbar are glass; inputs, selects, and icon buttons stay on the
+   solid control surface for legibility. The map page keeps the Leaflet canvas as
+   its backdrop (`.maps-page`).
+
+## Assets
+
+Brand images live under `static/brand/` and are served at `/static/brand/*` with
+long cache headers (see `Brand()` in the HTTP UI handler). Reference them with
+root-relative URLs in `tokens.css` (for example `--app-backdrop-image`), never
+inline `style=` in templates.
+
+The backdrop photo is from Unsplash and needs attribution wherever it shows.
+The `photo-credit` partial renders it in the app footer (`base.html`, every page
+except the map) and in `public-footer`. If you replace the image, update that
+partial; the dashboard and contact handler tests assert the credit is present.
 
 ## File layout
-
-### Today
-
-| File | Contents |
-|---|---|
-| `static/css/base.css` | `:root` palette, reset, topbar, layout shells, dashboard `tile`, admin tabs/forms |
-| `static/css/public.css` | Public pages: stage, buttons, contact form, loader |
-| `static/css/maps.css` | Everything on the live map, including glass tokens scoped to `.maps-page` |
-
-### Target
 
 | File | Contents | Loaded by |
 |---|---|---|
 | `tokens.css` | `:root` custom properties only | every layout |
-| `base.css` | Reset, typography, focus ring, `[hidden]`, app shell, topbar | every layout |
+| `base.css` | Reset, app backdrop, topbar, page shell, `.page-header`, `.section-layout` | every layout |
 | `components.css` | Shared components listed below | every layout |
 | `public.css` | Public page layout only | `public.html` |
 | `maps.css` | Map layout, Leaflet overrides, map-only elements | map page |
 
 Order in `<head>`: `tokens.css` → `base.css` → `components.css` → page CSS.
-Third-party CSS (Leaflet) loads before page CSS so overrides win without
+Third-party CSS (Leaflet) loads before `maps.css` so overrides win without
 `!important`.
 
 ## Tokens
@@ -78,18 +81,19 @@ Add `--status-warn: var(--accent-primary)` so "warning" reads as intent rather
 than reusing the accent name. Replace the hard-coded `#c0392b` in
 `public.css` with `--status-error`.
 
-### Glass (promote from `maps.css`)
+### Glass and backdrop
 
-Currently defined as `--maps-glass-*` on `.maps-page`. Move to `:root` and drop
-the `maps-` prefix.
-
-| Token | Value | Use |
-|---|---|---|
-| `--glass-bg` | `color-mix(in srgb, var(--bg-surface) 74%, transparent)` | Floating panel fill |
-| `--glass-bg-strong` | `color-mix(in srgb, var(--bg-surface) 86%, transparent)` | Popovers and small chips that need more contrast |
-| `--glass-tile` | `color-mix(in srgb, var(--bg-surface-elevated) 42%, transparent)` | Cards, tables, and collapsibles inside a glass panel |
-| `--glass-border` | `color-mix(in srgb, var(--text-primary) 11%, transparent)` | Hairline border on glass and on dividers inside it |
-| `--glass-blur` | `blur(14px) saturate(140%)` | `backdrop-filter` value |
+| Token | Use |
+|---|---|
+| `--app-backdrop` | Full-page background on authenticated pages (scrim + photo + fallback) |
+| `--app-backdrop-image` | `image-set()` of `/static/brand/background.webp` and `.jpg` |
+| `--glass-bg` | Default panel fill |
+| `--glass-bg-strong` | Topbar, popovers, row menus |
+| `--glass-tile` | Cards, tables, notices inside a panel |
+| `--glass-head` | Table header row |
+| `--glass-row-hover` / `--glass-row-selected` | Interactive table rows |
+| `--glass-border` | Hairlines on glass |
+| `--glass-blur` | `backdrop-filter` value |
 
 Always pair `backdrop-filter` with `-webkit-backdrop-filter` (Safari).
 
@@ -135,7 +139,8 @@ ones (`0.58rem`, `0.82rem`, `0.78rem`, and similar should collapse into these).
 | `--text-sm` | `0.8rem` | Table cells, field labels, panel body |
 | `--text-md` | `0.85rem` | Inputs, buttons, card values |
 | `--text-lg` | `1.15rem` | Tile and panel headings |
-| `--text-xl` | `1.35rem` | Hero value such as a callsign |
+| `--text-xl` | `1.35rem` | Page titles, hero values |
+| `--text-2xl` | `1.75rem` | Public marketing headings |
 
 Use `rem` for type and spacing. `px` is only for hairlines and `--chrome-inset`.
 
@@ -145,26 +150,43 @@ Pick the surface by what is underneath it.
 
 | Surface | Fill | Border | Shadow | When |
 |---|---|---|---|---|
-| Page | `--bg-app` | none | none | Body background |
-| Solid panel | `--bg-surface` | `--border-color` | `--shadow-2` | Dashboard tiles, admin panels, topbar |
-| Glass panel | `--glass-bg` + `--glass-blur` | `--glass-border` | highlight + `--shadow-3` | Anything floating over the map or other live content |
-| Tile | `--glass-tile` | `--glass-border` | highlight + `--shadow-1` | Cards, tables, collapsibles inside a glass panel |
-| Popover | `--glass-bg-strong` + `--glass-blur` | `--glass-border` | highlight + `--shadow-3` | Dropdown and multiselect panels |
-| Control | `--bg-surface-elevated` | `--border-color` | none | Inputs, selects, icon buttons |
+| App backdrop | `--app-backdrop` | none | none | Body on Dashboard, Live, Admin |
+| Map page | Leaflet tiles | none | none | `.maps-page` only |
+| Glass panel | `--glass-bg` + blur | `--glass-border` | `--shadow-glass-panel` | `.panel`, side nav |
+| Glass topbar | `--glass-bg-strong` + blur | `--glass-border` | highlight | Sticky `.topbar` |
+| Tile | `--glass-tile` | `--glass-border` | highlight + `--shadow-1` | Cards, `.data-table`, `.notice` |
+| Popover | `--glass-bg-strong` + blur | `--glass-border` | `--shadow-glass-panel` | `.row-menu`, multiselect panel |
+| Control | `--bg-surface-elevated` | `--border-color` | none | `.input`, `.select`, `.btn`, `.icon-btn` |
 
 Inside a glass panel, dividers use `--glass-border`, never `--border-color`.
 
+### App page skeleton
+
+Authenticated pages (Dashboard, Live Mode, Admin) follow this structure:
+
+```html
+<header class="page-header">
+  <h1 class="page-header__title">…</h1>
+  <!-- optional: <div class="field page-header__aside">…</div> -->
+</header>
+<div class="section-layout">
+  <nav class="tabs tabs--nav">…</nav>
+  <section class="panel stack">…</section>
+</div>
+```
+
+Use `.stack` instead of `.section-layout` when there is no side nav (for example
+the Dashboard live-flights tile).
+
 ## Components
 
-Proposed shared class names are listed first; the map class that implements it
-today is in brackets. Use BEM: `block__element--modifier`.
+Shared class names use BEM: `block__element--modifier`.
 
-### Panel `.panel` `.panel--glass`
+### Panel `.panel`
 
-[`.maps-filters`, `.maps-detail-panel`]
+[`.maps-filters`, `.maps-detail-panel`, Live fleet panels]
 
-Container with padding `0.85rem 1rem`, `--radius-md`, and the solid or glass
-surface. Header row pattern:
+Glass by default: padding `0.85rem 1rem`, `--radius-md`. Header row pattern:
 
 ```
 <icon> <title / count> .................. <icon button>
@@ -196,6 +218,24 @@ A real `<table>` with `<th scope="row">` labels (40% width, muted) and `<td>`
 values. Tile surface, rounded via `border-collapse: separate` plus
 `overflow: hidden`, `--glass-border` between rows, no border on the last row.
 Use it for any list of metrics; do not build these from `<ul>` or divs.
+
+### Data table `.data-table`
+
+[Live Mode fleet, schedules, flights]
+
+Columnar lists inside a `.panel`. Tile surface (`--glass-tile`), glass borders,
+`--glass-head` on `thead`, row hover/selection via `--glass-row-hover` and
+`--glass-row-selected`. Wrap in `.data-table-wrap` for horizontal scroll.
+
+### Notice `.notice` `.notice--error`
+
+Standalone callouts (especially HTMX/JS errors). Use instead of bare
+`.panel-message--error` outside a panel.
+
+### Panel header modifiers
+
+- `.panel__header--wrap` — title and filter on one row (schedules, flights).
+- `.panel__filter` — min-width for aircraft `<select>` filters.
 
 ### Section `.section` with `.section__title`
 
@@ -311,11 +351,15 @@ Copy the raw value only; the tag is display-only.
 
 ### Tabs `.tabs`
 
-[`.maps-detail-panel__tab`, `.admin-tabs__link`]
+[`.maps-detail-panel__tab`, `.tabs--nav` on Admin and Live]
 
 Active state is `aria-selected="true"` (tab widgets) or
-`aria-current="page"` (navigation). Underline tabs use an inset accent bar;
-navigation pills use the control surface plus `--shadow-2`.
+`aria-current="page"` (navigation). Side nav (`.tabs--nav`) is a glass panel;
+the current item uses a tile pill and accent colour.
+
+### Row menu `.row-menu`
+
+Context menu for selectable table rows. Popover glass surface; position with JS.
 
 ### Links
 
@@ -351,69 +395,23 @@ numbers. External links open in a new tab with `rel="noopener noreferrer"`.
 - **Floating panels** must not cover map controls. When a rail opens, shift
   map controls with a shell modifier class rather than raising z-index.
 
-## Duplication audit
+## Status
 
-Found while building the map. Each line is one item of cleanup.
-
-- Focus ring declared per component about fifteen times across the three files.
-- Three input styles: `.maps-filters select/input`, `.admin-field input`,
-  `.public-form__input`.
-- Four icon-button implementations (close, collapse, filter toggle, profile).
-- Four button looks: `.tile__link`, `.public-button`, `.maps-filters__apply`,
-  `.maps-map-only`.
-- Three eyebrow-label rules in `maps.css`.
-- Glass tokens scoped to `.maps-page`, so other pages cannot use them.
-- `--shadow-surface` and inline `rgba()` shadows instead of an elevation scale.
-- `.maps-filters__header-filter` and `.maps-filters__header-collapse` use solid
-  control tokens while sitting inside a glass panel.
-- `.maps-map-only`, `.flight-tooltip`, and Leaflet controls still use the old
-  `blur(6–8px)` and `--shadow-surface` instead of the glass tokens.
-- Dead rule: the empty `.maps-shell--chrome-hidden …` block in `maps.css`.
-- ID selectors used for styling (`#maps-count`, `#maps-cached`, `#maps-error`).
-- `!important` on Leaflet overrides, which can be dropped once page CSS loads
-  after `leaflet.css`. The map layout currently loads `maps.css` before
-  Leaflet.
-- Hard-coded `#c0392b` in `public.css`.
-- Mixed `px` and `rem` for gaps (`6px`, `2px`, `8px`).
-- `docs/standards.md` still points to `static/css/design-system.css` and
-  `ui-components.mjs`, which do not exist in the rewrite.
-
-## Migration plan
-
-Do these in order; each phase should ship on its own with no visual
-regressions except where noted.
-
-1. **Tokens.** Create `tokens.css` holding the palette plus the glass,
-   elevation, shape, motion, z-index, and type tokens above. Load it from both
-   layouts. Alias the old names (`--maps-glass-*`, `--shadow-surface`) to the
-   new ones so nothing breaks.
-2. **Base.** Add the single focus rule, global `[hidden]`, and the
-   reduced-motion block to `base.css`, then delete the per-component copies.
-3. **Components.** Create `components.css` with `.panel`, `.card-grid`/`.card`,
-   `.kv-table`, `.section`, `.eyebrow`, `.badge`, `.btn`, `.icon-btn`,
-   `.field`/`.input`/`.select`, `.check-chip`, `.collapsible`, `.copy-key`, and
-   `.multiselect`. Move the shared JS (multiselect, copy-to-clipboard) to
-   `static/js/ui/`.
-4. **Map.** Switch map templates to the shared classes, leaving only layout in
-   `maps.css`. Put the remaining map chrome (map-only button, tooltip, Leaflet
-   controls) on glass tokens. Load `maps.css` after `leaflet.css` and remove
-   `!important`.
-5. **Dashboard and admin.** Move `tile`, `admin-tabs`, and `admin-field` onto
-   `.panel`, `.tabs`, and `.field`. This phase intentionally changes the look
-   to match the map.
-6. **Public pages.** Move `public-button` and `public-form__*` onto `.btn` and
-   `.field`, and fix the hard-coded colour.
-7. **Clean up.** Remove the token aliases from phase 1, delete dead rules, and
-   update the Vizburo UI section of `docs/standards.md` to point here.
+The token split (`tokens.css`, `components.css`), map shared components, glass
+Dashboard/Live/Admin shell, CDN backdrop, and CSS guard tests are implemented.
+Remaining cleanup: migrate public pages fully onto `.btn`/`.field`, and trim
+legacy map-specific class names where templates already use shared components.
 
 ## Checklist for new UI
 
-- [ ] No raw colours, shadows, or blur values; tokens only.
-- [ ] Uses an existing component class or adds a modifier to one.
-- [ ] Glass only for surfaces floating over live content.
+- [ ] No raw colours, shadows, or blur values outside `tokens.css`; `go test ./internal/ui/...` passes.
+- [ ] Uses an existing component class or adds a BEM modifier to one.
+- [ ] Follows the app page skeleton (`.page-header`, `.section-layout` or `.stack`, `.panel`).
+- [ ] Errors use `.notice notice--error` when rendered outside a panel.
 - [ ] Missing values show `—`; times show UTC with `<time datetime>`.
 - [ ] Icon-only controls have `aria-label`; `aria-expanded`/`aria-selected`
       stay in sync.
 - [ ] Works with HTMX swaps (delegated listeners, no per-node init that a swap
       would drop).
+- [ ] Brand images referenced via `/static/brand/...` in tokens, not inline styles.
 - [ ] Checked at mobile width, or the desktop-only tradeoff is written down.

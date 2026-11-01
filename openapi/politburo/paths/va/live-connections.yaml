@@ -1,0 +1,41 @@
+get:
+  operationId: listVALiveConnections
+  summary: List persisted Live organisation connections for this VA
+  description: |
+    Returns Infinite Flight Live organisations linked to the caller's virtual airline.
+    Requires VA administrator role (`administrator`).
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  responses:
+    "200":
+      description: Linked organisations
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VALiveConnectionsResponse.yaml"
+    "401":
+      description: Missing or inactive API key or session cookie
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Caller is not a VA administrator
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: No virtual airline context
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Failed to load connections
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

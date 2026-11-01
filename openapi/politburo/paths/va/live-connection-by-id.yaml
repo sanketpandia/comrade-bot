@@ -1,0 +1,45 @@
+delete:
+  operationId: deleteVALiveConnection
+  summary: Remove a Live organisation connection from this VA
+  description: |
+    Unlinks an Infinite Flight Live organisation from the caller's virtual airline.
+    Requires VA administrator role (`administrator`).
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: organizationId
+      in: path
+      required: true
+      description: Infinite Flight Live organisation id
+      schema:
+        type: string
+        format: uuid
+  responses:
+    "204":
+      description: Connection removed
+    "401":
+      description: Missing or inactive API key or session cookie
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Caller is not a VA administrator
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: Connection or VA context not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Failed to remove connection
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
