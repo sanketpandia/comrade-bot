@@ -19,6 +19,7 @@ func mountAPI(router chi.Router, h handlers, application *app.App) {
 		bot:         botStack(application),
 		god:         godStack(application),
 		vaAdmin:     vaAdminStack(application),
+		vaStaff:     vaStaffStack(application),
 		currentUser: currentUserStack(application),
 	}
 	api := apiHandler{handlers: h, stacks: stacks}
@@ -33,7 +34,7 @@ func mountAPI(router chi.Router, h handlers, application *app.App) {
 }
 
 type apiStacks struct {
-	bot, god, vaAdmin, currentUser middlewareStack
+	bot, god, vaAdmin, vaStaff, currentUser middlewareStack
 }
 
 type apiHandler struct {
@@ -146,7 +147,7 @@ func (h apiHandler) CompleteInfiniteFlightOAuthCallback(w stdhttp.ResponseWriter
 }
 
 func (h apiHandler) ListVALiveConnections(w stdhttp.ResponseWriter, r *stdhttp.Request) {
-	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.handlers.liveConn.ListConnections(w, r)
 	})).ServeHTTP(w, r)
 }
@@ -158,7 +159,7 @@ func (h apiHandler) DeleteVALiveConnection(w stdhttp.ResponseWriter, r *stdhttp.
 }
 
 func (h apiHandler) PingVALiveConnection(w stdhttp.ResponseWriter, r *stdhttp.Request, organizationID openapi_types.UUID) {
-	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.handlers.liveConn.PingConnection(w, r, organizationID.String())
 	})).ServeHTTP(w, r)
 }

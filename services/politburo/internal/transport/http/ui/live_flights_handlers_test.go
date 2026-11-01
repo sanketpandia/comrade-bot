@@ -60,7 +60,7 @@ func (s *flightsLiveStub) ListAircraftFlights(_ context.Context, _, aircraftID s
 	}, nil
 }
 
-func TestLiveFlightsListForbiddenForNonAdmin(t *testing.T) {
+func TestLiveFlightsListForbiddenForProletariat(t *testing.T) {
 	handler := newLiveFleetHandler(t, &LiveFleetDeps{
 		Live:        &flightsLiveStub{},
 		Tokens:      fleetTokensStub{token: "tok"},
@@ -71,6 +71,26 @@ func TestLiveFlightsListForbiddenForNonAdmin(t *testing.T) {
 	handler.LiveFlightsListPartial(rec, req)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403", rec.Code)
+	}
+}
+
+func TestLiveFlightsListAllowsBourgeoisie(t *testing.T) {
+	live := &flightsLiveStub{
+		aircraft: []infiniteflight.LiveAircraft{{ID: "ac-1", Registration: "N682XL", FleetRank: 1}},
+	}
+	handler := newLiveFleetHandler(t, &LiveFleetDeps{
+		Live:        live,
+		Tokens:      fleetTokensStub{token: "tok"},
+		Connections: fleetConnectionsStub{conn: &valive.Connection{LiveOrganizationID: "org-1"}},
+	})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveFlightsList+"?organizationId=org-1&aircraftId=ac-1", nil), auth.Claims{
+		Role:       "bourgeoisie",
+		PbServerID: "va-1",
+	})
+	rec := httptest.NewRecorder()
+	handler.LiveFlightsListPartial(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 }
 

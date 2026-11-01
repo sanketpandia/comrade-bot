@@ -36,7 +36,7 @@ func parseQueryAircraftIDs(r *http.Request) []string {
 
 func (h *Handler) LiveSchedulesListPartial(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.ClaimsFromContext(r.Context())
-	if !ok || !claims.IsAdmin() {
+	if !ok || !claims.IsStaff() {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
