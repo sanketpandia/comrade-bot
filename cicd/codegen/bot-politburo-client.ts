@@ -17,10 +17,49 @@ export type CreateUserRequest = components["schemas"]["CreateUserRequest"];
 export type CreateUserData = components["schemas"]["CreateUserData"];
 export type CreateServerRequest = components["schemas"]["CreateServerRequest"];
 export type CreateServerData = components["schemas"]["CreateServerData"];
+export type LiveScheduleAssignMeBody = components["schemas"]["LiveScheduleAssignMeBody"];
+export type LiveScheduleAssignMeResponse = components["schemas"]["LiveScheduleAssignMeResponse"];
+export type VALiveConnection = components["schemas"]["VALiveConnection"];
+export type LiveOrganizationAircraftItem = components["schemas"]["LiveOrganizationAircraftItem"];
+export type LiveScheduleItem = components["schemas"]["LiveScheduleItem"];
+export type LiveAircraftFlightItem = components["schemas"]["LiveAircraftFlightItem"];
+
+export type LivePagedSchedules = {
+    data: LiveScheduleItem[];
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+};
+
+export type LivePagedFlights = {
+    data: LiveAircraftFlightItem[];
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+};
 
 export type PolitburoClient = {
     createUser(meta: MetaInfo, body: CreateUserRequest): Promise<CreateUserData>;
     createServer(meta: MetaInfo, body: CreateServerRequest): Promise<CreateServerData>;
+    listVALiveConnections(meta: MetaInfo): Promise<VALiveConnection[]>;
+    listVALiveOrganizationAircraft(meta: MetaInfo, organizationId: string): Promise<LiveOrganizationAircraftItem[]>;
+    listVALiveOrganizationSchedules(
+        meta: MetaInfo,
+        organizationId: string,
+        query?: { registration?: string; page?: number; pageSize?: number },
+    ): Promise<LivePagedSchedules>;
+    listVALiveOrganizationFlights(
+        meta: MetaInfo,
+        organizationId: string,
+        query: { registration: string; page?: number; pageSize?: number },
+    ): Promise<LivePagedFlights>;
+    assignLiveScheduleToMe(
+        meta: MetaInfo,
+        organizationId: string,
+        body: LiveScheduleAssignMeBody,
+    ): Promise<LiveScheduleAssignMeResponse>;
 };
 
 function normalizeBaseUrl(baseUrl: string): string {
@@ -89,6 +128,152 @@ export function createPolitburoClient(
             }
 
             const unwrapped = unwrapApiData<CreateServerData>(
+                data as Record<string, unknown> | undefined,
+            );
+            if (!unwrapped) {
+                throw new Error("No data received in API response");
+            }
+            return unwrapped;
+        },
+
+        async listVALiveConnections(meta: MetaInfo): Promise<VALiveConnection[]> {
+            const { data, error, response } = await client.GET("/api/v1/va/live/connections", {
+                headers: {
+                    "X-API-Key": getPolitburoApiKey(),
+                    "X-Discord-User-Id": meta.userId,
+                    "X-Discord-Server-Id": meta.discordId,
+                },
+            });
+
+            if (!response.ok) {
+                throw PolitburoApiError.fromBody(response.status, error ?? data);
+            }
+
+            const unwrapped = unwrapApiData<VALiveConnection[]>(
+                data as Record<string, unknown> | undefined,
+            );
+            if (!unwrapped) {
+                return [];
+            }
+            return unwrapped;
+        },
+
+        async listVALiveOrganizationAircraft(
+            meta: MetaInfo,
+            organizationId: string,
+        ): Promise<LiveOrganizationAircraftItem[]> {
+            const { data, error, response } = await client.GET(
+                "/api/v1/va/live/organizations/{organizationId}/aircraft",
+                {
+                    params: { path: { organizationId } },
+                    headers: {
+                        "X-API-Key": getPolitburoApiKey(),
+                        "X-Discord-User-Id": meta.userId,
+                        "X-Discord-Server-Id": meta.discordId,
+                    },
+                },
+            );
+            if (!response.ok) {
+                throw PolitburoApiError.fromBody(response.status, error ?? data);
+            }
+            const unwrapped = unwrapApiData<LiveOrganizationAircraftItem[]>(
+                data as Record<string, unknown> | undefined,
+            );
+            return unwrapped ?? [];
+        },
+
+        async listVALiveOrganizationSchedules(
+            meta: MetaInfo,
+            organizationId: string,
+            query?: { registration?: string; page?: number; pageSize?: number },
+        ): Promise<LivePagedSchedules> {
+            const { data, error, response } = await client.GET(
+                "/api/v1/va/live/organizations/{organizationId}/schedules",
+                {
+                    params: {
+                        path: { organizationId },
+                        query: {
+                            registration: query?.registration,
+                            page: query?.page,
+                            pageSize: query?.pageSize,
+                        },
+                    },
+                    headers: {
+                        "X-API-Key": getPolitburoApiKey(),
+                        "X-Discord-User-Id": meta.userId,
+                        "X-Discord-Server-Id": meta.discordId,
+                    },
+                },
+            );
+            if (!response.ok) {
+                throw PolitburoApiError.fromBody(response.status, error ?? data);
+            }
+            const body = data as Record<string, unknown> | undefined;
+            if (!body || !Array.isArray(body.data)) {
+                throw new Error("No data received in API response");
+            }
+            return body as unknown as LivePagedSchedules;
+        },
+
+        async listVALiveOrganizationFlights(
+            meta: MetaInfo,
+            organizationId: string,
+            query: { registration: string; page?: number; pageSize?: number },
+        ): Promise<LivePagedFlights> {
+            const { data, error, response } = await client.GET(
+                "/api/v1/va/live/organizations/{organizationId}/flights",
+                {
+                    params: {
+                        path: { organizationId },
+                        query: {
+                            registration: query.registration,
+                            page: query.page,
+                            pageSize: query.pageSize,
+                        },
+                    },
+                    headers: {
+                        "X-API-Key": getPolitburoApiKey(),
+                        "X-Discord-User-Id": meta.userId,
+                        "X-Discord-Server-Id": meta.discordId,
+                    },
+                },
+            );
+            if (!response.ok) {
+                throw PolitburoApiError.fromBody(response.status, error ?? data);
+            }
+            const body = data as Record<string, unknown> | undefined;
+            if (!body || !Array.isArray(body.data)) {
+                throw new Error("No data received in API response");
+            }
+            return body as unknown as LivePagedFlights;
+        },
+
+        async assignLiveScheduleToMe(
+            meta: MetaInfo,
+            organizationId: string,
+            body: LiveScheduleAssignMeBody,
+        ): Promise<LiveScheduleAssignMeResponse> {
+            const { data, error, response } = await client.POST(
+                "/api/v1/va/live/organizations/{organizationId}/schedules/assign-me",
+                {
+                    params: {
+                        path: { organizationId },
+                    },
+                    body,
+                    headers: {
+                        "X-API-Key": getPolitburoApiKey(),
+                        "X-Discord-User-Id": meta.userId,
+                        "X-Discord-Server-Id": meta.discordId,
+                        "Content-Type": "application/json",
+                    },
+                },
+            );
+
+            if (!response.ok) {
+                throw PolitburoApiError.fromBody(response.status, error ?? data);
+            }
+
+            const unwrapped = unwrapApiData<LiveScheduleAssignMeResponse>(
                 data as Record<string, unknown> | undefined,
             );
             if (!unwrapped) {

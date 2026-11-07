@@ -1,0 +1,5 @@
+type: string
+description: Crew role on a schedule (`PersistentFlightCrewMemberRole` in Infinite Flight Live API).
+enum:
+  - Captain
+  - FirstOfficer

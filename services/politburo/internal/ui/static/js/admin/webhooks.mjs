@@ -1,17 +1,21 @@
 import { initMultiselect } from '/static/js/ui/multiselect.mjs';
 
 const FEATURE = 'active_flights';
+const FEATURE_ASSIGNMENT = 'live_mode_assignment';
 const CONFIG_URL = '/api/v1/va/config?configType=WEBHOOKS';
 const TRIGGER_URL = '/api/v1/va/webhook/trigger';
 const FREQUENCIES = new Set(['30m', '60m', '120m']);
 
 const form = document.getElementById('admin-webhooks-form');
+const assignmentForm = document.getElementById('admin-webhooks-assignment-form');
 const statusEl = document.getElementById('admin-webhooks-status');
 const urlInput = document.getElementById('webhook-url');
 const frequencyInput = document.getElementById('webhook-frequency');
 const vaCodeInput = document.getElementById('webhook-va-code');
 const saveButton = document.getElementById('webhook-save');
 const sendButton = document.getElementById('webhook-send');
+const assignmentUrlInput = document.getElementById('webhook-assignment-url');
+const assignmentSaveButton = document.getElementById('webhook-assignment-save');
 const pilotState = document.getElementById('webhook-pilot-state');
 const pilotInputs = pilotState
   ? [...pilotState.querySelectorAll('input[type="checkbox"]')]
@@ -19,6 +23,7 @@ const pilotInputs = pilotState
 
 let stored = {};
 let savedSnapshot = null;
+let assignmentSavedSnapshot = null;
 let busy = false;
 let loaded = false;
 
@@ -36,7 +41,17 @@ function errorMessage(body, fallback) {
 }
 
 function controls() {
-  return [urlInput, frequencyInput, vaCodeInput, saveButton, sendButton, ...pilotInputs, pilotState?.querySelector('.multiselect__trigger')].filter(Boolean);
+  return [
+    urlInput,
+    frequencyInput,
+    vaCodeInput,
+    saveButton,
+    sendButton,
+    assignmentUrlInput,
+    assignmentSaveButton,
+    ...pilotInputs,
+    pilotState?.querySelector('.multiselect__trigger'),
+  ].filter(Boolean);
 }
 
 function setBusy(next) {
@@ -91,6 +106,10 @@ function formEntry() {
   };
 }
 
+function assignmentEntry() {
+  return { url: assignmentUrlInput?.value.trim() ?? '' };
+}
+
 function snapshot(entry) {
   const filters = { ...entry.filters };
   if (Array.isArray(filters.pilotState)) {
@@ -101,6 +120,10 @@ function snapshot(entry) {
     frequency: entry.frequency,
     filters,
   });
+}
+
+function assignmentSnapshot(entry) {
+  return JSON.stringify({ url: entry.url });
 }
 
 function applyFeature(feature) {
@@ -124,8 +147,19 @@ function applyFeature(feature) {
   }
 }
 
+function applyAssignmentFeature(feature) {
+  const url = typeof feature?.url === 'string' ? feature.url : '';
+  if (assignmentUrlInput) {
+    assignmentUrlInput.value = url;
+    assignmentUrlInput.placeholder = 'https://discord.com/api/webhooks/…';
+  }
+}
+
 function rememberSaved() {
   savedSnapshot = stored[FEATURE] ? snapshot(formEntry()) : null;
+  assignmentSavedSnapshot = stored[FEATURE_ASSIGNMENT]
+    ? assignmentSnapshot(assignmentEntry())
+    : null;
   syncSend();
 }
 
@@ -156,6 +190,13 @@ function validate(entry) {
   return '';
 }
 
+function validateAssignment(entry) {
+  if (!validWebhookURL(entry.url)) {
+    return 'Use an HTTPS Discord webhook URL (discord.com or discordapp.com).';
+  }
+  return '';
+}
+
 async function loadConfig() {
   try {
     const response = await fetch(CONFIG_URL, { credentials: 'same-origin' });
@@ -163,6 +204,7 @@ async function loadConfig() {
     if (response.status === 404) {
       stored = {};
       applyFeature(null);
+      applyAssignmentFeature(null);
       showStatus('No webhook saved yet.', false);
       loaded = true;
       return;
@@ -173,7 +215,9 @@ async function loadConfig() {
     }
     stored = body?.data?.config && typeof body.data.config === 'object' ? body.data.config : {};
     applyFeature(stored[FEATURE] ?? null);
-    showStatus(stored[FEATURE] ? '' : 'No active flights webhook saved yet.', false);
+    applyAssignmentFeature(stored[FEATURE_ASSIGNMENT] ?? null);
+    const any = stored[FEATURE] || stored[FEATURE_ASSIGNMENT];
+    showStatus(any ? '' : 'No webhooks saved yet.', false);
     loaded = true;
   } catch {
     showStatus('Could not load webhooks.', true);
@@ -210,6 +254,42 @@ async function saveConfig(event) {
     }
     stored = body?.data?.config && typeof body.data.config === 'object' ? body.data.config : next;
     applyFeature(stored[FEATURE] ?? entry);
+    applyAssignmentFeature(stored[FEATURE_ASSIGNMENT] ?? null);
+    showStatus('Saved.', false);
+  } catch {
+    showStatus('Could not save webhook.', true);
+  } finally {
+    setBusy(false);
+    rememberSaved();
+  }
+}
+
+async function saveAssignmentConfig(event) {
+  event.preventDefault();
+  if (busy) return;
+  const entry = assignmentEntry();
+  const problem = validateAssignment(entry);
+  if (problem) {
+    showStatus(problem, true);
+    return;
+  }
+  const next = { ...stored, [FEATURE_ASSIGNMENT]: entry };
+  setBusy(true);
+  try {
+    const response = await fetch(CONFIG_URL, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(next),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      showStatus(errorMessage(body, `Could not save webhook (${response.status}).`), true);
+      return;
+    }
+    stored = body?.data?.config && typeof body.data.config === 'object' ? body.data.config : next;
+    applyFeature(stored[FEATURE] ?? null);
+    applyAssignmentFeature(stored[FEATURE_ASSIGNMENT] ?? entry);
     showStatus('Saved.', false);
   } catch {
     showStatus('Could not save webhook.', true);
@@ -263,6 +343,7 @@ async function sendNow() {
 form?.addEventListener('submit', saveConfig);
 form?.addEventListener('input', syncSend);
 form?.addEventListener('change', syncSend);
+assignmentForm?.addEventListener('submit', saveAssignmentConfig);
 sendButton?.addEventListener('click', sendNow);
 
 loadConfig();

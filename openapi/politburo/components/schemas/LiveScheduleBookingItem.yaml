@@ -1,0 +1,50 @@
+type: object
+required:
+  - id
+  - startedAt
+  - outcome
+properties:
+  id:
+    type: string
+    format: uuid
+  startedAt:
+    type: string
+    format: date-time
+  outcome:
+    type: string
+    enum: [success, error]
+  upstreamStatus:
+    type: integer
+    nullable: true
+  errorMessage:
+    type: string
+    nullable: true
+  organizationId:
+    type: string
+    format: uuid
+    nullable: true
+  actorUsername:
+    type: string
+    nullable: true
+  actorIfcUsername:
+    type: string
+    nullable: true
+  registration:
+    type: string
+    nullable: true
+  route:
+    type: string
+    nullable: true
+  callsign:
+    type: string
+    nullable: true
+  originIcao:
+    type: string
+    nullable: true
+  destinationIcao:
+    type: string
+    nullable: true
+  scheduleId:
+    type: string
+    format: uuid
+    nullable: true

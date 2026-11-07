@@ -129,7 +129,15 @@ func (p *TokenProvider) refreshAndStore(ctx context.Context, vaID, refreshToken 
 }
 
 // Write runs a Live API v3 write call with a resolved VA token and records action history.
-func (p *TokenProvider) Write(ctx context.Context, vaID string, actorUserID *string, orgID *string, actionName string, fn func(accessToken string) error) error {
+func (p *TokenProvider) Write(
+	ctx context.Context,
+	vaID string,
+	actorUserID *string,
+	orgID *string,
+	actionName string,
+	meta map[string]any,
+	fn func(accessToken string) error,
+) error {
 	started := time.Now().UTC()
 	accessToken, err := p.AccessToken(ctx, vaID)
 	if err != nil {
@@ -144,6 +152,7 @@ func (p *TokenProvider) Write(ctx context.Context, vaID string, actorUserID *str
 		msg := callErr.Error()
 		errMsg = &msg
 	}
+	statusCopy := upstreamStatusForCallError(callErr)
 	if p.actions != nil {
 		_ = p.actions.Insert(ctx, InsertActionInput{
 			VAID:               vaID,
@@ -151,10 +160,22 @@ func (p *TokenProvider) Write(ctx context.Context, vaID string, actorUserID *str
 			LiveOrganizationID: orgID,
 			ActionName:         actionName,
 			Outcome:            outcome,
+			UpstreamStatus:     &statusCopy,
 			ErrorMessage:       errMsg,
+			Meta:               meta,
 			StartedAt:          started,
 			FinishedAt:         finished,
 		})
 	}
 	return callErr
+}
+
+func upstreamStatusForCallError(callErr error) int {
+	if callErr == nil {
+		return 200
+	}
+	if status, ok := infiniteflight.HTTPStatusFromError(callErr); ok {
+		return status
+	}
+	return 200
 }

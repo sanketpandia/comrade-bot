@@ -64,6 +64,9 @@ func TestValidate(t *testing.T) {
 		{name: "filters array", raw: activeFlights(`"30m"`, `["active"]`), ok: false},
 		{name: "unknown feature", raw: `{"future_feature":{"anything":true}}`, ok: true},
 		{name: "unknown feature not object", raw: `{"future_feature":[]}`, ok: false},
+		{name: "live mode assignment url only", raw: `{"live_mode_assignment":{"url":"https://discord.com/api/webhooks/1/token"}}`, ok: true},
+		{name: "live mode assignment with frequency", raw: `{"live_mode_assignment":{"url":"https://discord.com/api/webhooks/1/token","frequency":"30m"}}`, ok: false},
+		{name: "live mode assignment with filters", raw: `{"live_mode_assignment":{"url":"https://discord.com/api/webhooks/1/token","filters":{}}}`, ok: false},
 		{name: "array body", raw: `[]`, ok: false},
 	}
 	for _, tt := range tests {
@@ -76,6 +79,15 @@ func TestValidate(t *testing.T) {
 				t.Fatal("expected error")
 			}
 		})
+	}
+}
+
+func TestSchedulable(t *testing.T) {
+	if !Schedulable(FeatureActiveFlights) {
+		t.Fatal("active_flights should be schedulable")
+	}
+	if Schedulable(FeatureLiveModeAssignment) {
+		t.Fatal("live_mode_assignment should not be schedulable")
 	}
 }
 

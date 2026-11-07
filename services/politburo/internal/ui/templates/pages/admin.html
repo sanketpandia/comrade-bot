@@ -48,7 +48,7 @@
     <header class="panel__header">
       <h2 class="panel-heading" id="admin-webhooks-heading">Webhooks</h2>
     </header>
-    <p class="panel-lead">Discord posts for active flights on this virtual airline.</p>
+    <p class="panel-lead">Discord posts for active flights and live schedule assignments on this virtual airline.</p>
     <p id="admin-webhooks-status" class="panel-message" role="status" hidden></p>
     <section class="section">
       <h3 class="section__title">Active flights</h3>
@@ -99,6 +99,19 @@
         <div class="link-row">
           <button type="submit" class="btn btn--primary" id="webhook-save" disabled>Save</button>
           <button type="button" class="btn" id="webhook-send" disabled>Send now</button>
+        </div>
+      </form>
+    </section>
+    <section class="section">
+      <h3 class="section__title">Live assignment</h3>
+      <p class="panel-message">Posts when a pilot assigns themselves to a schedule (assign-to-me). No filters or manual send.</p>
+      <form class="form-stack form-stack--wide" id="admin-webhooks-assignment-form">
+        <div class="field">
+          <label class="field__label" for="webhook-assignment-url">Discord webhook URL</label>
+          <input class="input" id="webhook-assignment-url" name="url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="Loading…" disabled required>
+        </div>
+        <div class="link-row">
+          <button type="submit" class="btn btn--primary" id="webhook-assignment-save" disabled>Save</button>
         </div>
       </form>
     </section>

@@ -455,20 +455,29 @@ func liveTab(path string) string {
 		return "schedules"
 	case routes.LiveAircraft:
 		return "aircraft"
+	case routes.LiveBookings:
+		return "bookings"
 	default:
 		return "aircraft"
 	}
 }
 
-// LiveMode is the Infinite Flight Live dashboard for VA staff (bourgeoisie and administrator).
+// LiveMode is the Infinite Flight Live dashboard for VA members.
 func (h *Handler) LiveMode(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.ClaimsFromContext(r.Context())
-	if !ok || !claims.IsStaff() {
+	if !ok || !claims.IsMember() {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	tab := liveTab(r.URL.Path)
+	if tab == "bookings" && !claims.IsStaff() {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 	data := basePageData(r, "Live Mode", "live-content", map[string]any{
-		"LiveTab": liveTab(r.URL.Path),
+		"LiveTab":         tab,
+		"IsAdministrator": claims.IsAdmin(),
+		"IsStaff":         claims.IsStaff(),
 	})
 	if err := h.renderer.Render(w, "base", data); err != nil {
 		http.Error(w, "template render failed", http.StatusInternalServerError)

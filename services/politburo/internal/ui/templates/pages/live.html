@@ -1,11 +1,16 @@
 {{define "live-content"}}
 <header class="page-header">
   <h1 class="page-header__title">Live Mode</h1>
-  <div class="field page-header__aside">
-    <label class="field__label" for="live-org-select">Organisation</label>
-    <select class="select" id="live-org-select" name="organizationId" disabled>
-      <option value="">Loading…</option>
-    </select>
+  <div class="page-header__aside page-header__aside--cluster">
+    {{if and (eq .LiveTab "schedules") .IsAdministrator}}
+    <button type="button" class="btn btn--primary" id="live-schedule-add" disabled>Add schedule</button>
+    {{end}}
+    <div class="field">
+      <label class="field__label" for="live-org-select">Organisation</label>
+      <select class="select" id="live-org-select" name="organizationId" disabled>
+        <option value="">Loading…</option>
+      </select>
+    </div>
   </div>
 </header>
 <p id="live-org-status" class="panel-message" role="status" hidden></p>
@@ -14,6 +19,9 @@
     <a class="tabs__tab" href="/live/aircraft"{{if eq .LiveTab "aircraft"}} aria-current="page"{{end}}>Aircrafts</a>
     <a class="tabs__tab" href="/live/schedules"{{if eq .LiveTab "schedules"}} aria-current="page"{{end}}>Schedules</a>
     <a class="tabs__tab" href="/live/flights"{{if eq .LiveTab "flights"}} aria-current="page"{{end}}>Flights</a>
+    {{if .IsStaff}}
+    <a class="tabs__tab" href="/live/bookings"{{if eq .LiveTab "bookings"}} aria-current="page"{{end}}>Bookings</a>
+    {{end}}
   </nav>
   {{if eq .LiveTab "aircraft"}}
   <div class="section-layout__main stack">
@@ -39,9 +47,97 @@
     </div>
   </div>
   <div id="live-schedules-row-menu" class="row-menu" hidden role="menu" aria-label="Schedule actions">
+    {{if .IsAdministrator}}
+    <button type="button" class="row-menu__item" role="menuitem" data-action="edit-schedule">Edit schedule</button>
+    <button type="button" class="row-menu__item" role="menuitem" data-action="edit-flightplan">Edit flight plan</button>
+    {{end}}
     <button type="button" class="row-menu__item" role="menuitem" data-action="copy-aircraft-id">Copy Aircraft ID</button>
     <button type="button" class="row-menu__item" role="menuitem" data-action="copy-schedule-id">Copy Schedule ID</button>
   </div>
+  {{if .IsAdministrator}}
+  <dialog id="live-schedule-modal" class="live-schedule-dialog">
+    <form method="dialog" class="panel stack" id="live-schedule-form">
+      <header class="panel__header">
+        <h2 class="panel-heading" id="live-schedule-modal-title">Schedule</h2>
+        <button type="button" class="icon-btn" id="live-schedule-modal-close" aria-label="Close">×</button>
+      </header>
+      <p id="live-schedule-modal-status" class="panel-message" role="status" hidden></p>
+      <div class="field" id="live-schedule-field-aircraft">
+        <label class="field__label" for="live-schedule-aircraft">Aircraft</label>
+        <select class="select" id="live-schedule-aircraft" name="aircraftId" required>
+          <option value="">Select an aircraft</option>
+        </select>
+      </div>
+      <div class="form-stack">
+        <div class="field">
+          <label class="field__label" for="live-schedule-callsign">Callsign</label>
+          <input class="input" id="live-schedule-callsign" name="callsign" type="text" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="field__label" for="live-schedule-origin">Origin ICAO</label>
+          <input class="input" id="live-schedule-origin" name="originIcao" type="text" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="field__label" for="live-schedule-destination">Destination ICAO</label>
+          <input class="input" id="live-schedule-destination" name="destinationIcao" type="text" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="field__label" for="live-schedule-status">Status</label>
+          <select class="select" id="live-schedule-status" name="status">
+            <option value="">Not set</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="live-schedule-flight-type">Flight type</label>
+          <select class="select" id="live-schedule-flight-type" name="flightType">
+            <option value="">Not set</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="live-schedule-timeless">Timeless schedule</label>
+          <input type="checkbox" id="live-schedule-timeless" name="isTimeless">
+        </div>
+        <div class="field">
+          <label class="field__label" for="live-schedule-departure">Scheduled departure (UTC)</label>
+          <input class="input" id="live-schedule-departure" name="scheduledDepartureUtc" type="datetime-local" step="1">
+        </div>
+        <div class="field">
+          <label class="field__label" for="live-schedule-arrival">Scheduled arrival (UTC)</label>
+          <input class="input" id="live-schedule-arrival" name="scheduledArrivalUtc" type="datetime-local" step="1">
+        </div>
+        <div class="field">
+          <label class="field__label" for="live-schedule-briefing">Briefing</label>
+          <textarea class="input" id="live-schedule-briefing" name="briefing" rows="3"></textarea>
+        </div>
+        <div class="field">
+          <label class="field__label" for="live-schedule-debriefing">Debriefing</label>
+          <textarea class="input" id="live-schedule-debriefing" name="debriefing" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="link-row">
+        <button type="submit" class="btn btn--primary" id="live-schedule-save">Save</button>
+        <button type="button" class="btn" id="live-schedule-cancel">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="live-schedule-flightplan-modal" class="live-schedule-dialog">
+    <form method="dialog" class="panel stack" id="live-schedule-flightplan-form">
+      <header class="panel__header">
+        <h2 class="panel-heading" id="live-schedule-flightplan-modal-title">Edit flight plan</h2>
+        <button type="button" class="icon-btn" id="live-schedule-flightplan-modal-close" aria-label="Close">×</button>
+      </header>
+      <p id="live-schedule-flightplan-modal-status" class="panel-message" role="status" hidden></p>
+      <div class="field">
+        <label class="field__label" for="live-schedule-flightplan-text">Flight plan</label>
+        <textarea class="input" id="live-schedule-flightplan-text" name="flightPlan" rows="8"></textarea>
+      </div>
+      <div class="link-row">
+        <button type="submit" class="btn btn--primary" id="live-schedule-flightplan-save">Save</button>
+        <button type="button" class="btn" id="live-schedule-flightplan-cancel">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+  {{end}}
   {{else if eq .LiveTab "flights"}}
   <div class="section-layout__main stack">
     <div class="field panel__filter" id="live-flights-aircraft-filter-wrap" hidden>
@@ -57,6 +153,12 @@
   <div id="live-flights-row-menu" class="row-menu" hidden role="menu" aria-label="Flight actions">
     <button type="button" class="row-menu__item" role="menuitem" data-action="copy-aircraft-id">Copy Aircraft ID</button>
     <button type="button" class="row-menu__item" role="menuitem" data-action="copy-flight-id">Copy Flight ID</button>
+  </div>
+  {{else if eq .LiveTab "bookings"}}
+  <div class="section-layout__main stack">
+    <div id="live-bookings" class="stack" aria-live="polite">
+      <p class="panel-lead">Select an organisation to load bookings.</p>
+    </div>
   </div>
   {{end}}
 </div>

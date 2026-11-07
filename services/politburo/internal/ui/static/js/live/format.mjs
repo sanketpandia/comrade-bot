@@ -35,33 +35,43 @@ export function aircraftSlotBadge(active) {
     : { label: "Storage", className: "badge--muted" };
 }
 
-export function scheduleStatusBadge(status) {
-  switch (status) {
-    case 0:
-      return { label: "Unknown", className: "badge--muted" };
-    case 1:
-      return { label: "Scheduled", className: "badge--success" };
-    case 2:
-      return { label: "Boarding", className: "badge--success" };
-    case 3:
-      return { label: "Boarded", className: "badge--success" };
-    case 4:
-      return { label: "Taxiing to runway", className: "badge--muted" };
-    case 6:
-      return { label: "In flight", className: "badge--success" };
-    case 7:
-      return { label: "Diverted", className: "badge--error" };
-    case 8:
-      return { label: "Delayed", className: "badge--error" };
-    case 9:
-      return { label: "Cancelled", className: "badge--error" };
-    case 10:
-      return { label: "Taxiing to parking", className: "badge--muted" };
-    case 11:
-      return { label: "Arrived", className: "badge--muted" };
-    default:
-      return { label: `Status ${status}`, className: "badge--muted" };
+export function liveEnumLabel(name) {
+  const s = String(name ?? "").trim();
+  if (s === "") {
+    return "—";
   }
+  return s.replace(/([a-z])([A-Z])/g, "$1 $2");
+}
+
+export function scheduleStatusBadge(status) {
+  const key = String(status ?? "").trim();
+  switch (key) {
+    case "Unknown":
+      return { label: liveEnumLabel(key), className: "badge--muted" };
+    case "Scheduled":
+    case "Boarding":
+    case "Boarded":
+    case "InFlight":
+      return { label: liveEnumLabel(key), className: "badge--success" };
+    case "TaxiingToRunway":
+    case "TaxiingToParking":
+    case "Arrived":
+      return { label: liveEnumLabel(key), className: "badge--muted" };
+    case "Diverted":
+    case "Delayed":
+    case "Cancelled":
+      return { label: liveEnumLabel(key), className: "badge--error" };
+    default:
+      return { label: liveEnumLabel(key) || key, className: "badge--muted" };
+  }
+}
+
+export function scheduleFlightTypeBadge(flightType) {
+  const key = String(flightType ?? "").trim();
+  if (key === "" || key === "None") {
+    return { label: liveEnumLabel(key) || "—", className: "badge--muted" };
+  }
+  return { label: liveEnumLabel(key), className: "badge--muted" };
 }
 
 export function flightStatusBadge(status) {

@@ -534,6 +534,9 @@ func TestAdminWebhooksRendersActiveFlightsForm(t *testing.T) {
 		`id="webhook-va-code"`,
 		`id="webhook-save"`,
 		`id="webhook-send"`,
+		`id="webhook-assignment-url"`,
+		`id="webhook-assignment-save"`,
+		`Live assignment`,
 		`/static/js/admin/webhooks.mjs`,
 	} {
 		if !strings.Contains(body, want) {
@@ -734,10 +737,41 @@ func TestLiveModeRendersSchedulesTabShell(t *testing.T) {
 		`id="live-schedules"`,
 		`id="live-schedules-row-menu"`,
 		`id="live-schedules-aircraft-filter"`,
+		`id="live-schedule-add"`,
+		`data-action="edit-schedule"`,
+		`data-action="edit-flightplan"`,
+		`id="live-schedule-modal"`,
+		`id="live-schedule-flightplan-modal"`,
 		`/static/js/live/schedules.mjs`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %q in %s", want, body)
+		}
+	}
+}
+
+func TestLiveModeSchedulesOmitsWriteControlsForBourgeoisie(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, false, nil)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveSchedules, nil), auth.Claims{Role: "bourgeoisie"})
+	recorder := httptest.NewRecorder()
+	handler.LiveMode(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, absent := range []string{
+		`id="live-schedule-add"`,
+		`data-action="edit-schedule"`,
+		`data-action="edit-flightplan"`,
+		`id="live-schedule-modal"`,
+		`id="live-schedule-flightplan-modal"`,
+	} {
+		if strings.Contains(body, absent) {
+			t.Fatalf("bourgeoisie schedules page should not include %q", absent)
 		}
 	}
 }
@@ -768,13 +802,56 @@ func TestLiveModeRendersFlightsTabShell(t *testing.T) {
 	}
 }
 
-func TestLiveModeForbiddenForProletariat(t *testing.T) {
-	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
-	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveAircraft, nil), auth.Claims{Role: "proletariat"})
+func TestLiveModeBookingsForbiddenForProletariat(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, false, nil)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveBookings, nil), auth.Claims{Role: "proletariat"})
 	recorder := httptest.NewRecorder()
 	handler.LiveMode(recorder, req)
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403", recorder.Code)
+	}
+}
+
+func TestLiveModeBookingsTabForBourgeoisie(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, false, nil)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveBookings, nil), auth.Claims{Role: "bourgeoisie"})
+	recorder := httptest.NewRecorder()
+	handler.LiveMode(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		`href="/live/bookings" aria-current="page"`,
+		`id="live-bookings"`,
+		`id="live-org-select"`,
+		`/static/js/live/bookings.mjs`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q in body", want)
+		}
+	}
+}
+
+func TestLiveModeAllowsProletariat(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, false, nil)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveAircraft, nil), auth.Claims{Role: "proletariat"})
+	recorder := httptest.NewRecorder()
+	handler.LiveMode(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
 	}
 }
 

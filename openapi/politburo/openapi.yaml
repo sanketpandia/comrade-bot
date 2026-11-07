@@ -76,6 +76,10 @@ paths:
     $ref: "./paths/va/config.yaml"
   /api/v1/va/webhook/trigger:
     $ref: "./paths/va/webhook-trigger.yaml"
+  /api/v1/va/live/schedule-enums:
+    $ref: "./paths/va/live-schedule-enums.yaml"
+  /api/v1/va/live/schedule-bookings:
+    $ref: "./paths/va/live-schedule-bookings.yaml"
   /api/v1/va/live/connections:
     $ref: "./paths/va/live-connections.yaml"
   /api/v1/va/live/connections/{organizationId}:
@@ -86,8 +90,18 @@ paths:
     $ref: "./paths/va/live-organization-aircraft.yaml"
   /api/v1/va/live/organizations/{organizationId}/schedules:
     $ref: "./paths/va/live-organization-schedules.yaml"
+  /api/v1/va/live/organizations/{organizationId}/schedules/assign-me:
+    $ref: "./paths/va/live-organization-schedules-assign-me.yaml"
+  /api/v1/va/live/organizations/{organizationId}/schedules/{scheduleId}:
+    $ref: "./paths/va/live-organization-schedule-by-id.yaml"
+  /api/v1/va/live/organizations/{organizationId}/schedules/{scheduleId}/flightplan:
+    $ref: "./paths/va/live-organization-schedule-flightplan.yaml"
+  /api/v1/va/live/organizations/{organizationId}/aircraft/{aircraftId}/schedules:
+    $ref: "./paths/va/live-organization-aircraft-schedules-create.yaml"
   /api/v1/va/live/organizations/{organizationId}/aircraft/{aircraftId}/flights:
     $ref: "./paths/va/live-organization-aircraft-flights.yaml"
+  /api/v1/va/live/organizations/{organizationId}/flights:
+    $ref: "./paths/va/live-organization-flights.yaml"
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -255,6 +269,26 @@ components:
       $ref: "./components/schemas/LiveOrganizationAircraftResponse.yaml"
     LiveScheduleItem:
       $ref: "./components/schemas/LiveScheduleItem.yaml"
+    LiveScheduleUpsertBody:
+      $ref: "./components/schemas/LiveScheduleUpsertBody.yaml"
+    LiveScheduleFlightPlanBody:
+      $ref: "./components/schemas/LiveScheduleFlightPlanBody.yaml"
+    LiveScheduleCrewMember:
+      $ref: "./components/schemas/LiveScheduleCrewMember.yaml"
+    LiveScheduleStatusName:
+      $ref: "./components/schemas/LiveScheduleStatusName.yaml"
+    LiveScheduleFlightTypeName:
+      $ref: "./components/schemas/LiveScheduleFlightTypeName.yaml"
+    LiveScheduleCrewRoleName:
+      $ref: "./components/schemas/LiveScheduleCrewRoleName.yaml"
+    LiveScheduleEnumsResponse:
+      $ref: "./components/schemas/LiveScheduleEnumsResponse.yaml"
+    LiveScheduleAssignMeBody:
+      $ref: "./components/schemas/LiveScheduleAssignMeBody.yaml"
+    LiveScheduleAssignMeResponse:
+      $ref: "./components/schemas/LiveScheduleAssignMeResponse.yaml"
+    LiveScheduleBookingItem:
+      $ref: "./components/schemas/LiveScheduleBookingItem.yaml"
     LiveOrganizationSchedulesResponse:
       $ref: "./components/schemas/LiveOrganizationSchedulesResponse.yaml"
     LiveAircraftFlightCrewMember:

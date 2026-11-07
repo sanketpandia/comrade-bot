@@ -1,0 +1,6 @@
+type: object
+description: Flight plan text update for a Live schedule.
+properties:
+  flightPlan:
+    type: string
+    nullable: true

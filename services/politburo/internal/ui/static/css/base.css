@@ -200,6 +200,14 @@ body:has(.topbar) {
   margin: 0;
 }
 
+.page-header__aside--cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  min-width: min(100%, 28rem);
+}
+
 .panel--spaced {
   margin-top: 1.5rem;
 }

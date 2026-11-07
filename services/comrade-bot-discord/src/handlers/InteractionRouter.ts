@@ -12,6 +12,9 @@ import { handleReportOccupiedIFC } from "../commands/reportOccupiedIfcHandler";
 import { handleFlightHistory } from "../commands/logbookHandler";
 import { logModeSelectionHandler } from "../commands/logModeSelectionHandler";
 import { handleTourFilePirep } from "../commands/tourButtonHandler";
+import { handleAssignToMeOrgSelect, parseAssignToMeSelectCustomId } from "../commands/assign-to-me";
+import { parseLiveOrgSelectCustomId } from "../helpers/liveCommands";
+import { handleLiveOrgSelect } from "../commands/liveOrgSelect";
 import { commandMap } from "../configs/commandMap";
 import { logger, errorFields } from "../infra/logger";
 import { CommandResult, InteractionResult, metrics } from "../infra/metrics";
@@ -62,9 +65,34 @@ export class InteractionRouter {
     /**
      * Handle select menu interactions
      */
-    private static async handleSelectMenu(_interaction: Interaction): Promise<void> {
-        metrics.recordInteraction("select_menu", "ignored");
-        // No active select menu handlers — pilot role configuration removed.
+    private static async handleSelectMenu(interaction: Interaction): Promise<void> {
+        if (!interaction.isStringSelectMenu()) return;
+
+        const start = Date.now();
+        let result: InteractionResult = "success";
+
+        try {
+            if (parseAssignToMeSelectCustomId(interaction.customId) !== null) {
+                await handleAssignToMeOrgSelect(new DiscordInteraction(interaction));
+                return;
+            }
+            if (parseLiveOrgSelectCustomId(interaction.customId) !== null) {
+                await handleLiveOrgSelect(new DiscordInteraction(interaction));
+                return;
+            }
+            result = "ignored";
+        } catch (error) {
+            result = "error";
+            throw error;
+        } finally {
+            metrics.recordInteraction("select_menu", result);
+            logger.info("interaction_completed", {
+                interaction_type: "select_menu",
+                result,
+                guild_id: interaction.guildId || "DM",
+                duration_ms: Date.now() - start,
+            });
+        }
     }
 
     /**

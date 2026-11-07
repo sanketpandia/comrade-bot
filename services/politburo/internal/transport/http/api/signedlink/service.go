@@ -64,7 +64,7 @@ func (s *Service) Generate(ctx context.Context, claims auth.Claims, linkType, cu
 			return GenerateResult{}, fmt.Errorf("%w: %w", ErrVALookupFailed, err)
 		}
 		if configured && s.membership != nil {
-			resolvedVA, resolvedRole, ok, err := s.membership.ResolveMembership(ctx, claims.DsUserID, claims.DsServerID)
+			resolvedVA, resolvedRole, _, ok, err := s.membership.ResolveMembership(ctx, claims.DsUserID, claims.DsServerID)
 			if err != nil {
 				slog.Error("resolve membership for signed link", "error", err, "discord_user_id", claims.DsUserID, "link_type", linkType)
 				return GenerateResult{}, fmt.Errorf("%w: %w", ErrMembershipLookupFailed, err)

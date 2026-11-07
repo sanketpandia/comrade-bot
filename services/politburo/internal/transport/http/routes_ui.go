@@ -37,6 +37,8 @@ func mountUI(router chi.Router, h handlers, application *app.App) {
 		ui.Get(routes.LiveSchedules+"/", h.ui.LiveMode)
 		ui.Get(routes.LiveFlights, h.ui.LiveMode)
 		ui.Get(routes.LiveFlights+"/", h.ui.LiveMode)
+		ui.Get(routes.LiveBookings, h.ui.LiveMode)
+		ui.Get(routes.LiveBookings+"/", h.ui.LiveMode)
 		ui.Get(routes.OperatorReports, h.ui.OperatorReports)
 		ui.Post(routes.OperatorReportsResolve, h.ui.ResolveOperatorReport)
 	})

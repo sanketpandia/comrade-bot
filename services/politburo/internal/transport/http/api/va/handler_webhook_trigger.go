@@ -11,6 +11,7 @@ import (
 
 	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/transport/http/response"
+	webhookconfig "infinite-experiment/politburo/internal/webhooks/config"
 	"infinite-experiment/politburo/internal/webhooks/dispatch"
 	webhookjobs "infinite-experiment/politburo/internal/webhooks/jobs"
 )
@@ -39,6 +40,10 @@ func (h *Handler) TriggerVAWebhook(w http.ResponseWriter, r *http.Request) {
 	webhookType := strings.TrimSpace(body.WebhookType)
 	if webhookType == "" {
 		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "webhookType is required")
+		return
+	}
+	if webhookType == webhookconfig.FeatureLiveModeAssignment {
+		response.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "live_mode_assignment is event-driven and cannot be triggered manually")
 		return
 	}
 

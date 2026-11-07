@@ -16,7 +16,7 @@ properties:
     type: string
     format: uuid
   status:
-    type: integer
+    $ref: "./LiveScheduleStatusName.yaml"
   callsign:
     type: string
   organizationId:
@@ -26,7 +26,7 @@ properties:
     type: string
     format: uuid
   flightType:
-    type: integer
+    $ref: "./LiveScheduleFlightTypeName.yaml"
   originIcao:
     type: string
   destinationIcao:
@@ -34,6 +34,28 @@ properties:
   isTimeless:
     type: boolean
   scheduledDepartureUtc:
+    type: string
+    format: date-time
+  scheduledArrivalUtc:
+    type: string
+    format: date-time
+  briefing:
+    type: string
+    nullable: true
+  debriefing:
+    type: string
+    nullable: true
+  flightPlan:
+    type: string
+    nullable: true
+  crew:
+    type: array
+    items:
+      $ref: "./LiveScheduleCrewMember.yaml"
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
     type: string
     format: date-time
   sequence:

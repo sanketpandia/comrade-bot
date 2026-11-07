@@ -12,6 +12,7 @@ import (
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	"infinite-experiment/politburo/internal/livegame/valive"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
+	"infinite-experiment/politburo/internal/webhooks/features/livemodeassignment"
 	userapi "infinite-experiment/politburo/internal/transport/http/api/user"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
@@ -28,16 +29,29 @@ type liveOrgClient interface {
 
 type vaTokenProvider interface {
 	AccessToken(context.Context, string) (string, error)
+	Write(ctx context.Context, vaID string, actorUserID *string, orgID *string, actionName string, meta map[string]any, fn func(accessToken string) error) error
+}
+
+type scheduleAssigner interface {
+	AssignCaptain(context.Context, valive.AssignCaptainInput) (valive.AssignCaptainResult, error)
+	ResolveAircraftIDs(context.Context, string, string, string) ([]string, map[string]string, error)
+}
+
+type assignmentNotifier interface {
+	Notify(context.Context, string, livemodeassignment.Event) error
 }
 
 // ConnectionsHandler serves persisted VA Live organisation connections and staff list proxies.
 type ConnectionsHandler struct {
-	connections connectionsRepo
-	live        liveOrgClient
-	liveData    liveVADataClient
-	tokens      vaTokenProvider
-	users       currentUser
-	liveries    *gameliveries.Lookup
+	connections        connectionsRepo
+	live               liveOrgClient
+	liveData           liveVADataClient
+	tokens             vaTokenProvider
+	users              currentUser
+	liveries           *gameliveries.Lookup
+	assignCaptain      scheduleAssigner
+	assignmentNotifier assignmentNotifier
+	actions            *valive.ActionHistoryRepository
 }
 
 func NewConnectionsHandler(
@@ -46,18 +60,24 @@ func NewConnectionsHandler(
 	tokens *valive.TokenProvider,
 	users currentUser,
 	liveries *gameliveries.Lookup,
+	assignCaptain scheduleAssigner,
+	assignmentNotifier assignmentNotifier,
+	actions *valive.ActionHistoryRepository,
 ) *ConnectionsHandler {
 	var data liveVADataClient
 	if live != nil {
 		data = live
 	}
 	return &ConnectionsHandler{
-		connections: connections,
-		live:        live,
-		liveData:    data,
-		tokens:      tokens,
-		users:       users,
-		liveries:    liveries,
+		connections:   connections,
+		live:          live,
+		liveData:      data,
+		tokens:        tokens,
+		users:         users,
+		liveries:             liveries,
+		assignCaptain:        assignCaptain,
+		assignmentNotifier:   assignmentNotifier,
+		actions:              actions,
 	}
 }
 

@@ -20,6 +20,7 @@ func mountAPI(router chi.Router, h handlers, application *app.App) {
 		god:         godStack(application),
 		vaAdmin:     vaAdminStack(application),
 		vaStaff:     vaStaffStack(application),
+		vaMember:    vaMemberStack(application),
 		currentUser: currentUserStack(application),
 	}
 	api := apiHandler{handlers: h, stacks: stacks}
@@ -34,7 +35,7 @@ func mountAPI(router chi.Router, h handlers, application *app.App) {
 }
 
 type apiStacks struct {
-	bot, god, vaAdmin, vaStaff, currentUser middlewareStack
+	bot, god, vaAdmin, vaStaff, vaMember, currentUser middlewareStack
 }
 
 type apiHandler struct {
@@ -172,8 +173,14 @@ func (h apiHandler) CompleteInfiniteFlightOAuthCallback(w stdhttp.ResponseWriter
 	h.handlers.oauth.CompleteCallback(w, r, params.Code, params.State)
 }
 
-func (h apiHandler) ListVALiveConnections(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+func (h apiHandler) ListVALiveScheduleEnums(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.ListVALiveScheduleEnums(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) ListVALiveConnections(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaMember.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.handlers.liveConn.ListConnections(w, r)
 	})).ServeHTTP(w, r)
 }
@@ -191,7 +198,7 @@ func (h apiHandler) PingVALiveConnection(w stdhttp.ResponseWriter, r *stdhttp.Re
 }
 
 func (h apiHandler) ListVALiveOrganizationAircraft(w stdhttp.ResponseWriter, r *stdhttp.Request, organizationID openapi_types.UUID) {
-	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaMember.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.handlers.liveConn.ListOrganizationAircraft(w, r, organizationID)
 	})).ServeHTTP(w, r)
 }
@@ -202,7 +209,7 @@ func (h apiHandler) ListVALiveOrganizationSchedules(
 	organizationID openapi_types.UUID,
 	params politburoapi.ListVALiveOrganizationSchedulesParams,
 ) {
-	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaMember.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.handlers.liveConn.ListOrganizationSchedules(w, r, organizationID, params)
 	})).ServeHTTP(w, r)
 }
@@ -214,8 +221,72 @@ func (h apiHandler) ListVALiveAircraftFlights(
 	aircraftID openapi_types.UUID,
 	params politburoapi.ListVALiveAircraftFlightsParams,
 ) {
-	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaMember.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.handlers.liveConn.ListAircraftFlights(w, r, organizationID, aircraftID, params)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) ListVALiveOrganizationFlights(
+	w stdhttp.ResponseWriter,
+	r *stdhttp.Request,
+	organizationID openapi_types.UUID,
+	params politburoapi.ListVALiveOrganizationFlightsParams,
+) {
+	h.stacks.vaMember.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.ListOrganizationFlights(w, r, organizationID, params)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) CreateVALiveAircraftSchedule(
+	w stdhttp.ResponseWriter,
+	r *stdhttp.Request,
+	organizationID openapi_types.UUID,
+	aircraftID openapi_types.UUID,
+) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.CreateVALiveAircraftSchedule(w, r, organizationID, aircraftID)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) UpdateVALiveSchedule(
+	w stdhttp.ResponseWriter,
+	r *stdhttp.Request,
+	organizationID openapi_types.UUID,
+	scheduleID openapi_types.UUID,
+) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.UpdateVALiveSchedule(w, r, organizationID, scheduleID)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) UpdateVALiveScheduleFlightPlan(
+	w stdhttp.ResponseWriter,
+	r *stdhttp.Request,
+	organizationID openapi_types.UUID,
+	scheduleID openapi_types.UUID,
+) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.UpdateVALiveScheduleFlightPlan(w, r, organizationID, scheduleID)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) AssignVALiveScheduleToMe(
+	w stdhttp.ResponseWriter,
+	r *stdhttp.Request,
+	organizationID openapi_types.UUID,
+) {
+	h.stacks.vaMember.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.AssignVALiveScheduleToMe(w, r, organizationID)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) ListVALiveScheduleBookings(
+	w stdhttp.ResponseWriter,
+	r *stdhttp.Request,
+	params politburoapi.ListVALiveScheduleBookingsParams,
+) {
+	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.ListVALiveScheduleBookings(w, r, params)
 	})).ServeHTTP(w, r)
 }
 

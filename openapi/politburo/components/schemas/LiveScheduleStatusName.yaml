@@ -1,0 +1,14 @@
+type: string
+description: Scheduled flight status (`ScheduledFlightStatus` in Infinite Flight Live API).
+enum:
+  - Unknown
+  - Scheduled
+  - Boarding
+  - Boarded
+  - TaxiingToRunway
+  - InFlight
+  - Diverted
+  - Delayed
+  - Cancelled
+  - TaxiingToParking
+  - Arrived

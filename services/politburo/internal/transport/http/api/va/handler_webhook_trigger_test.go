@@ -69,6 +69,24 @@ func TestTriggerVAWebhookNotFound(t *testing.T) {
 	}
 }
 
+func TestTriggerVAWebhookLiveModeAssignmentRejected(t *testing.T) {
+	trigger := &webhookTriggerStub{}
+	handler := &Handler{vas: configTestVA(), webhooks: trigger}
+	body := bytes.NewBufferString(`{"webhookType":"live_mode_assignment"}`)
+	recorder := httptest.NewRecorder()
+	req := withClaims(httptest.NewRequest(http.MethodPost, routes.VAWebhookTrigger, body), auth.Claims{
+		PbServerID: "va-1",
+		Role:       "administrator",
+	})
+	handler.TriggerVAWebhook(recorder, req)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
+	}
+	if trigger.webhookType != "" {
+		t.Fatalf("trigger should not run, got %+v", trigger)
+	}
+}
+
 func TestTriggerVAWebhookInvalidBody(t *testing.T) {
 	handler := &Handler{vas: configTestVA(), webhooks: &webhookTriggerStub{}}
 	recorder := httptest.NewRecorder()
