@@ -4,9 +4,7 @@ import { DiscordInteraction } from "../types/DiscordInteraction";
 import {
     handleLiveMemberError,
     LIVE_PAGE_SIZE,
-    liveModeRedirectPath,
     paginationFooter,
-    withLiveModeLink,
     withVaLiveOrg,
 } from "../helpers/liveCommands";
 
@@ -64,8 +62,7 @@ export async function replyAircraftsPage(
         timestamp: new Date().toISOString(),
     };
 
-    const linked = await withLiveModeLink(meta, [baseEmbed], liveModeRedirectPath("aircraft", organizationId));
-    await editReply(linked);
+    await editReply({ embeds: [baseEmbed] });
 }
 
 export async function execute(interaction: DiscordInteraction): Promise<void> {

@@ -20,7 +20,7 @@ It is not an architecture spec and not a production-migration guide.
 Related docs:
 
 - `../architecture/overview.md` — current rewrite process and HTTP surfaces
-- `../conventions.md` — cache-backed API and auth boundaries
+- `../conventions.md` — cache-backed API, auth boundaries, and Discord signed-link visibility
 - `../future/` — infra plans not yet executed (Kubernetes)
 - Workspace root `TECHNICAL_STANDARDS.md` and `UI_FEATURE_AUDIT.md` describe
   the **previous** Politburo/Vizburo. Treat them as historical product memory,

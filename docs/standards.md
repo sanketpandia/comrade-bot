@@ -1,6 +1,6 @@
 # Infinite Experiment Technical Standards
 
-Status: living reference. Last reviewed: 2026-05-22.
+Status: living reference. Last reviewed: 2026-11-07.
 
 This document describes standards for new work across the Infinite Experiment workspace. It is intentionally concise; source code wins when this file and implementation disagree.
 
@@ -88,6 +88,7 @@ This document describes standards for new work across the Infinite Experiment wo
 - Generate API auth/meta headers through `src/helpers/utils.ts`.
 - Parse Politburo response envelopes in `ApiService` and map common 401/403/404/409/422 behavior there, not in every command.
 - Keep commands thin and pilot-safe; do not implement complex admin setup workflows entirely in Discord.
+- Signed links are one-time login URLs. Attach them only to ephemeral replies, which Discord shows solely to the user who invoked the command. Public channel replies, follow-ups, and webhook posts must not call the signed-link API or include a signed URL. Live-mode list and claim replies (`/aircrafts`, `/schedules`, `/history`, `/assign-to-me`) are public and stay link-free. Ephemeral commands such as `/live`, `/dashboard`, `/logbook`, and `/tour` may still return a signed link.
 - `/initserver` is intentionally a minimal Discord bootstrap: collect only a VA Code / ID, then direct admins to Vizburo Basic Setup for display name and callsign matching.
 - Admin-only Discord commands, including `/initserver`, should use Discord default member permissions where possible in addition to backend authorization checks.
 - Use existing structured logging and metrics helpers; keep labels bounded and avoid secrets, request bodies, tokens, Discord IDs, and free-form errors as metric labels.

@@ -10,11 +10,7 @@ import { ApiService } from "../services/apiService";
 import { DiscordInteraction } from "../types/DiscordInteraction";
 import { CUSTOM_IDS } from "../configs/constants";
 import type { LiveScheduleAssignMeResponse } from "../generated/politburoClient";
-import {
-    handleLiveMemberError,
-    liveModeRedirectPath,
-    withLiveModeLink,
-} from "../helpers/liveCommands";
+import { handleLiveMemberError } from "../helpers/liveCommands";
 
 export const data = new SlashCommandBuilder()
     .setName("assign-to-me")
@@ -53,16 +49,9 @@ export function parseAssignToMeSelectCustomId(customId: string): { registration:
 
 async function replyAssignSuccess(
     editReply: (content: InteractionEditReplyOptions) => Promise<unknown>,
-    meta: ReturnType<DiscordInteraction["getMetaInfo"]>,
-    organizationId: string,
     result: LiveScheduleAssignMeResponse,
 ): Promise<void> {
-    const linked = await withLiveModeLink(
-        meta,
-        [successEmbed(result)],
-        liveModeRedirectPath("schedules", organizationId),
-    );
-    await editReply(linked);
+    await editReply({ embeds: [successEmbed(result)] });
 }
 
 export async function execute(interaction: DiscordInteraction): Promise<void> {
@@ -92,7 +81,7 @@ export async function execute(interaction: DiscordInteraction): Promise<void> {
                 registration,
                 route,
             });
-            await replyAssignSuccess(chat.editReply.bind(chat), meta, connections[0].id, result);
+            await replyAssignSuccess(chat.editReply.bind(chat), result);
             return;
         }
 
@@ -140,7 +129,7 @@ export async function handleAssignToMeOrgSelect(interaction: DiscordInteraction)
             registration: parsed.registration,
             route: parsed.route,
         });
-        await replyAssignSuccess(select.editReply.bind(select), meta, orgId, result);
+        await replyAssignSuccess(select.editReply.bind(select), result);
     } catch (err: unknown) {
         await handleLiveMemberError(select.editReply.bind(select), err, "Could not assign schedule");
     }
