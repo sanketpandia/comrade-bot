@@ -50,5 +50,5 @@ func Register(
 			return err
 		}
 	}
-	return jobScheduler.Register(webhooks.NewJob(cacheStore, db, metricsRegistry), cache.ScheduleWebhooksSync)
+	return jobScheduler.Register(webhooks.NewJob(cacheStore, lookup, db, metricsRegistry), cache.ScheduleWebhooksSync)
 }

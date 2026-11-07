@@ -8,11 +8,10 @@ var vaMatchEffect = EffectDecision{
 	Apply:   applyVAMatch,
 }
 
-func applyVAMatch(in EffectInput, out *flights.Derived, _ *Outcome) {
-	normalized, matches := callsignAffixFields(in)
-	if out.NormalizedCallsign == normalized && flights.VirtualAirlineMatchesEqual(out.MatchedVirtualAirlines, matches) {
+func applyVAMatch(in EffectInput, _ *flights.Analytics, _ *flights.Actions, links *flights.Links, _ *Outcome) {
+	_, matches := callsignAffixFields(in)
+	if flights.VirtualAirlineMatchesEqual(links.VirtualAirlines, matches) {
 		return
 	}
-	out.NormalizedCallsign = normalized
-	out.MatchedVirtualAirlines = matches
+	links.VirtualAirlines = matches
 }

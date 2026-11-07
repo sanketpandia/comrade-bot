@@ -99,11 +99,56 @@ function openDetailPanel() {
   onChromeTransitionEnd(() => map.invalidateSize());
 }
 
-function closeDetailPanel() {
+function readFlightIdFromURL() {
+  return new URLSearchParams(window.location.search).get('flightId')?.trim() || '';
+}
+
+function buildMapsPageURL(flightId) {
+  const params = new URLSearchParams(window.location.search);
+  const id = (flightId ?? '').trim();
+  if (id) {
+    params.set('flightId', id);
+  } else {
+    params.delete('flightId');
+  }
+  const qs = params.toString();
+  return qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+}
+
+function syncFlightIdToURL(flightId) {
+  const next = buildMapsPageURL(flightId);
+  const current = `${window.location.pathname}${window.location.search}`;
+  if (next !== current) {
+    window.history.replaceState(null, '', next);
+  }
+}
+
+function syncFlightIdHiddenField(flightId) {
+  if (!form) return;
+  const id = (flightId ?? '').trim();
+  let input = form.querySelector('input[name="flightId"]');
+  if (!id) {
+    input?.remove();
+    return;
+  }
+  if (!input) {
+    input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'flightId';
+    form.appendChild(input);
+  }
+  input.value = id;
+}
+
+function closeDetailPanel({ updateURL = true } = {}) {
   if (!detailPanel || !shell) return;
   shell.classList.remove('maps-shell--detail-open');
   detailPanel.hidden = true;
   selectedFlightId = '';
+  if (updateURL) {
+    syncFlightIdToURL('');
+    syncFlightIdHiddenField('');
+  }
   onChromeTransitionEnd(() => map.invalidateSize());
 }
 
@@ -116,9 +161,13 @@ function setActiveTab(tab) {
   }
 }
 
-async function loadFlightDetail(flightId, tab = 'flight') {
+async function loadFlightDetail(flightId, tab = 'flight', { updateURL = true } = {}) {
   if (!flightId || !detailEnabled()) return;
   selectedFlightId = flightId;
+  if (updateURL) {
+    syncFlightIdToURL(flightId);
+    syncFlightIdHiddenField(flightId);
+  }
   openDetailPanel();
   setActiveTab(tab);
   const url = tab === 'flight'
@@ -167,6 +216,35 @@ function readServerFromURL() {
   return new URLSearchParams(window.location.search).get('serverId')?.trim() || '';
 }
 
+function openInitialFlightFromURL() {
+  const flightId = readFlightIdFromURL();
+  if (!flightId || !detailEnabled()) return;
+
+  const open = () => loadFlightDetail(flightId, 'flight', { updateURL: false });
+  if (readTracksFromDOM().length > 0 || document.getElementById('maps-tracks')) {
+    open();
+    return;
+  }
+  const once = (event) => {
+    if (event.target === form || event.detail?.target?.id === 'maps-flights-swap') {
+      document.body.removeEventListener('htmx:afterSettle', once);
+      open();
+    }
+  };
+  document.body.addEventListener('htmx:afterSettle', once);
+}
+
+function bindPopstate() {
+  window.addEventListener('popstate', () => {
+    const flightId = readFlightIdFromURL();
+    if (flightId) {
+      loadFlightDetail(flightId, 'flight', { updateURL: false });
+    } else if (selectedFlightId) {
+      closeDetailPanel({ updateURL: false });
+    }
+  });
+}
+
 function whenServersReady() {
   return new Promise((resolve) => {
     if (!serverSelect) {
@@ -200,6 +278,8 @@ function start() {
   initMapsChrome({ shell, map, getMapPadding });
   initMultiselect(document.getElementById('maps-pilot-state'));
   bindDetailTabs();
+  bindPopstate();
+  openInitialFlightFromURL();
   map.onFlightClick((flight) => {
     const flightId = flight?.flightId ?? flight?.flight_id ?? '';
     if (!flightId) return;

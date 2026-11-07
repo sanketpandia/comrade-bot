@@ -158,10 +158,7 @@ func TestJobRunFastPathOnSecondTick(t *testing.T) {
 	}
 	motion := gameflights.MotionFromUpstream(upstream)
 	prior := gameflights.Record{
-		Raw: gameflights.Observation{FlightID: "f1", Callsign: "Swiss", Speed: 100},
-		Derived: gameflights.Derived{
-			AircraftName: "A350", LiveryName: "Swiss",
-		},
+		Raw: gameflights.Observation{FlightID: "f1", Callsign: "Swiss", Speed: 100, LiveryID: liveryID},
 	}
 	now := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
 	store := &cacheStub{data: withSessions([]infiniteflight.Session{{ID: "session-1", NormalizedName: "casual"}})}

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/livegame/flights"
+	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	"infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/metrics"
 	webhookconfig "infinite-experiment/politburo/internal/webhooks/config"
@@ -42,15 +43,17 @@ type Handler struct {
 	flights  flightLister
 	sessions sessionLister
 	discord  poster
+	lookup   *gameliveries.Lookup
 	metrics  *metrics.Registry
 	now      func() time.Time
 }
 
-func New(flights flightLister, sessions sessionLister, discord poster, reg *metrics.Registry) *Handler {
+func New(flights flightLister, sessions sessionLister, discord poster, lookup *gameliveries.Lookup, reg *metrics.Registry) *Handler {
 	return &Handler{
 		flights:  flights,
 		sessions: sessions,
 		discord:  discord,
+		lookup:   lookup,
 		metrics:  reg,
 		now:      time.Now,
 	}
@@ -95,7 +98,7 @@ func (h *Handler) Handle(ctx context.Context, item dispatch.Item) dispatch.Resul
 		Frequency: item.Frequency,
 		Filters:   item.Filters,
 		Flights:   flightList,
-	})
+	}, h.lookup)
 
 	sent := 0
 	for _, embed := range embeds {

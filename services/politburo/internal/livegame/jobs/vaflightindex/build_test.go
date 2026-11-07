@@ -10,7 +10,7 @@ import (
 func vaRecord(id string, matches []virtualairlines.VirtualAirlineMatch) gameflights.Record {
 	return gameflights.Record{
 		Raw:     gameflights.Observation{FlightID: id},
-		Derived: gameflights.Derived{MatchedVirtualAirlines: matches},
+		Links: gameflights.Links{VirtualAirlines: matches},
 	}
 }
 

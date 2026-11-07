@@ -67,20 +67,12 @@ Grafana dashboard **Infinite Live metrics** (`politburo-livegame`).
   cached snapshot per normalized server name.
 - `politburo_livegame_flights_by_pilot_state{server,pilot_state}` — active
   flights in the latest upstream poll grouped by pilot state.
-- `politburo_livegame_livery_resolve_total{outcome}` — livery catalog match
-  outcomes while mapping flights (`livery`, `aircraft_only`, `miss`).
 - `politburo_livegame_flights_filtered_total{server,endpoint}` — flights
   returned after HTTP query filters (`endpoint` is `active` or `trimmed`).
 
 - `politburo_livegame_va_active_flights{va_id}` — matched active flights per
   active VA from the latest `infinite-flight-va-flight-index` run (0 when none;
   deactivated VAs are dropped). Requested explicitly as a feature gauge.
-
-Livery resolves per 15 minutes:
-
-```promql
-sum by (outcome) (increase(politburo_livegame_livery_resolve_total[15m]))
-```
 
 ## Webhooks
 

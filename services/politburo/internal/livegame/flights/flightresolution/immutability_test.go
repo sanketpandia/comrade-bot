@@ -38,11 +38,12 @@ func runImmutabilityCase(t *testing.T, motionChanged bool) {
 	}
 	prior := &flights.Record{
 		Raw: flights.Observation{FlightID: "f1", Callsign: "IE123", Speed: 100, LiveryID: "l1", AircraftID: "a1"},
-		Derived: flights.Derived{
-			AircraftName: "A320",
-			PathSync:     flights.PathSync{LastFPLSyncAt: now.Add(-flights.FPLSyncInterval)},
-			MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1", VACode: "IE"}},
-			FlightState:            flightSummary,
+		Analytics: flights.Analytics{FlightState: flightSummary},
+		Actions: flights.Actions{
+			FPLSync: flights.FPLSyncAction{LastAt: now.Add(-flights.FPLSyncInterval)},
+		},
+		Links: flights.Links{
+			VirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1", VACode: "IE"}},
 		},
 	}
 	history := flightstate.History{}
@@ -66,12 +67,14 @@ func runImmutabilityCase(t *testing.T, motionChanged bool) {
 		facts.MotionChanged = true
 	}
 	in := EffectInput{Ctx: ctx, Raw: raw, Prior: prior, Facts: facts, History: history}
-	derived := prior.Derived.Clone()
+	analytics := prior.Analytics.Clone()
+	actions := prior.Actions.Clone()
+	links := prior.Links.Clone()
 	outcome := Outcome{}
 
 	for _, effect := range flightEffects {
 		if effect.Applies(in) {
-			effect.Apply(in, &derived, &outcome)
+			effect.Apply(in, &analytics, &actions, &links, &outcome)
 		}
 	}
 

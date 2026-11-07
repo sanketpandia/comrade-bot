@@ -34,7 +34,7 @@ func (s connectionsRepoStub) Delete(context.Context, string, string, string) err
 }
 
 func TestListConnectionsRequiresVAContext(t *testing.T) {
-	handler := NewConnectionsHandler(nil, nil, nil, currentUserStub{user: nil})
+	handler := NewConnectionsHandler(nil, nil, nil, currentUserStub{user: nil}, nil)
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.VALiveConnections, nil), auth.Claims{
 		PbUserID: "user-1",
 		Role:     "administrator",

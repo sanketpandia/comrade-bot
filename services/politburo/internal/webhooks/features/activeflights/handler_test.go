@@ -22,7 +22,7 @@ func TestHandleCapsAcrossServers(t *testing.T) {
 	}
 	poster := &fakePoster{}
 	reg := metrics.NewRegistry()
-	handler := New(&fakeFlights{byServer: byServer}, &fakeSessions{names: []string{"bravo", "alpha", "offline"}}, poster, reg)
+	handler := New(&fakeFlights{byServer: byServer}, &fakeSessions{names: []string{"bravo", "alpha", "offline"}}, poster, nil, reg)
 
 	result := handler.Handle(context.Background(), dispatch.Item{
 		VAID:             "va-1",
@@ -73,7 +73,7 @@ func TestHandleCapsAcrossServers(t *testing.T) {
 
 func TestHandleUnknownVACodeDoesNotPost(t *testing.T) {
 	poster := &fakePoster{}
-	handler := New(&fakeFlights{err: flights.ErrUnknownVACode}, &fakeSessions{names: []string{"expert"}}, poster, metrics.NewRegistry())
+	handler := New(&fakeFlights{err: flights.ErrUnknownVACode}, &fakeSessions{names: []string{"expert"}}, poster, nil, metrics.NewRegistry())
 	result := handler.Handle(context.Background(), dispatch.Item{
 		VAID:             "va-1",
 		URL:              "https://discord.com/api/webhooks/1/token",
@@ -87,7 +87,7 @@ func TestHandleUnknownVACodeDoesNotPost(t *testing.T) {
 
 func TestHandlePassesNormalizedVACodeToReader(t *testing.T) {
 	flightsAPI := &fakeFlights{}
-	handler := New(flightsAPI, &fakeSessions{names: []string{"expert"}}, &fakePoster{}, metrics.NewRegistry())
+	handler := New(flightsAPI, &fakeSessions{names: []string{"expert"}}, &fakePoster{}, nil, metrics.NewRegistry())
 	handler.Handle(context.Background(), dispatch.Item{
 		VAID:             "va-1",
 		URL:              "https://discord.com/api/webhooks/1/token",
@@ -103,7 +103,7 @@ func TestHandleSkipsWithoutPreferredServers(t *testing.T) {
 	flightsAPI := &fakeFlights{}
 	poster := &fakePoster{}
 	reg := metrics.NewRegistry()
-	handler := New(flightsAPI, &fakeSessions{}, poster, reg)
+	handler := New(flightsAPI, &fakeSessions{}, poster, nil, reg)
 
 	result := handler.Handle(context.Background(), dispatch.Item{VAID: "va-1", Filters: []byte(`{}`)})
 	if result.Outcome != dispatch.OutcomeSkipped || result.SkipReason != dispatch.SkipNoPreferredServers {
@@ -187,7 +187,6 @@ func sampleFlights(prefix string, n int) []flights.Record {
 				Altitude: float64(1000 + i),
 				Speed:    200,
 			},
-			Derived: flights.Derived{AircraftName: "A320"},
 		}
 	}
 	return out

@@ -16,6 +16,9 @@
         {{range $k, $v := .Maps.ChromeHidden}}
         <input type="hidden" name="{{$k}}" value="{{$v}}">
         {{end}}
+        {{if .Maps.DetailFlightID}}
+        <input type="hidden" name="flightId" value="{{.Maps.DetailFlightID}}">
+        {{end}}
         <div class="panel__header maps-filters__header">
           <span class="icon-btn" aria-hidden="true">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">

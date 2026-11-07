@@ -1,8 +1,18 @@
+import {
+  aircraftSlotBadge,
+  aircraftStatusBadge,
+  aircraftVisibilityBadge,
+  apiErrorNotice,
+  countLabel,
+  displayOrDash,
+  formatUtcDateTime,
+  vaLiveAPIPath,
+} from "./format.mjs";
+
 const select = document.getElementById("live-org-select");
 const status = document.getElementById("live-org-status");
 const fleetTarget = document.getElementById("live-aircraft-fleet");
 const rowMenu = document.getElementById("live-aircraft-row-menu");
-const fleetPath = "/live/aircraft/fleet";
 const menuPad = 8;
 
 function pageParams() {
@@ -40,10 +50,7 @@ function showStatus(message, isError = false) {
 }
 
 function clearOptions() {
-  if (!select) {
-    return;
-  }
-  select.replaceChildren();
+  select?.replaceChildren();
 }
 
 function addOption(value, label, selected = false) {
@@ -55,12 +62,6 @@ function addOption(value, label, selected = false) {
   option.textContent = label;
   option.selected = selected;
   select.appendChild(option);
-}
-
-function fleetURL(organizationId) {
-  const params = new URLSearchParams();
-  params.set("organizationId", organizationId);
-  return `${fleetPath}?${params.toString()}`;
 }
 
 function closeRowMenu() {
@@ -157,6 +158,77 @@ function fleetRowFromEvent(event) {
   return row;
 }
 
+function renderFleetTable(rows) {
+  const section = document.createElement("section");
+  section.className = "panel stack";
+  section.setAttribute("aria-labelledby", "live-aircraft-fleet-heading");
+
+  const header = document.createElement("header");
+  header.className = "panel__header";
+  const heading = document.createElement("h2");
+  heading.className = "panel-heading";
+  heading.id = "live-aircraft-fleet-heading";
+  heading.textContent = countLabel(rows.length, "aircraft", "aircraft");
+  header.appendChild(heading);
+  section.appendChild(header);
+
+  if (rows.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "panel-lead";
+    empty.textContent = "No aircraft returned for this organisation.";
+    section.appendChild(empty);
+    return section;
+  }
+
+  const wrap = document.createElement("div");
+  wrap.className = "data-table-wrap";
+  const table = document.createElement("table");
+  table.className = "data-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th scope="col">Registration</th>
+        <th scope="col">Aircraft</th>
+        <th scope="col">Status</th>
+        <th scope="col">Visibility</th>
+        <th scope="col">Slot</th>
+        <th scope="col">Rank</th>
+        <th scope="col">Created</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  for (const row of rows) {
+    const statusBadge = aircraftStatusBadge(row.status);
+    const visBadge = aircraftVisibilityBadge(row.visibility);
+    const slotBadge = aircraftSlotBadge(row.isFleetActiveSlot);
+    const created = formatUtcDateTime(row.createdAt);
+    const tr = document.createElement("tr");
+    tr.className = "data-table__row data-table__row--selectable";
+    tr.dataset.aircraftId = row.id;
+    tr.innerHTML = `
+      <th scope="row">${displayOrDash(row.registration)}</th>
+      <td>${displayOrDash(row.aircraftName)}</td>
+      <td><span class="badge ${statusBadge.className}">${statusBadge.label}</span></td>
+      <td><span class="badge ${visBadge.className}">${visBadge.label}</span></td>
+      <td><span class="badge ${slotBadge.className}">${slotBadge.label}</span></td>
+      <td>${row.fleetRank ?? "—"}</td>
+      <td></td>
+    `;
+    const createdCell = tr.lastElementChild;
+    if (created.iso) {
+      createdCell.innerHTML = `<time datetime="${created.iso}" title="${created.iso}">${created.display}</time><span class="text-subtle">${created.relative}</span>`;
+    } else {
+      createdCell.textContent = "—";
+    }
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  section.appendChild(wrap);
+  return section;
+}
+
 async function loadFleet(organizationId) {
   closeRowMenu();
   if (!fleetTarget) {
@@ -176,19 +248,22 @@ async function loadFleet(organizationId) {
   loading.textContent = "Loading fleet…";
   fleetTarget.appendChild(loading);
   try {
-    const response = await fetch(fleetURL(organizationId), { credentials: "same-origin" });
-    if (response.status === 403) {
-      fleetTarget.innerHTML = '<p class="notice notice--error">Forbidden.</p>';
+    const response = await fetch(vaLiveAPIPath(organizationId, "/aircraft"), { credentials: "same-origin" });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      fleetTarget.innerHTML = `<p class="notice notice--error">${apiErrorNotice(payload, response.status)}</p>`;
       return;
     }
-    if (!response.ok) {
-      throw new Error(`fleet request failed: ${response.status}`);
-    }
-    fleetTarget.innerHTML = await response.text();
+    const rows = Array.isArray(payload?.data) ? payload.data : [];
+    fleetTarget.replaceChildren(renderFleetTable(rows));
+    document.dispatchEvent(
+      new CustomEvent("live-aircraft-catalog", {
+        detail: { organizationId, aircraft: rows },
+      }),
+    );
   } catch (error) {
     console.error("load live aircraft fleet failed", error);
-    fleetTarget.innerHTML =
-      '<p class="notice notice--error">Could not load aircraft.</p>';
+    fleetTarget.innerHTML = '<p class="notice notice--error">Could not load aircraft.</p>';
   }
 }
 
@@ -235,7 +310,6 @@ rowMenu?.addEventListener("click", (event) => {
     params.set("organizationId", orgId);
     params.set("aircraftId", aircraftId);
     window.location.href = `/live/flights?${params.toString()}`;
-    return;
   }
 });
 
@@ -325,4 +399,6 @@ select?.addEventListener("change", () => {
   announceOrgChange(select.value, { clearAircraftFilter: true });
 });
 
-loadOrganizations();
+if (select) {
+  loadOrganizations();
+}

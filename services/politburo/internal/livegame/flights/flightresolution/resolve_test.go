@@ -23,9 +23,8 @@ func testComputeContext(session infiniteflight.Session, motion flights.FlightMot
 	}
 }
 
-func TestResolveFlightSkipsEffectsWhenMotionUnchanged(t *testing.T) {
+func TestResolveFlightSkipsRecordWriteWhenMotionUnchanged(t *testing.T) {
 	liveryID := "df597aaf-456c-4878-9d84-45201f2aae74"
-	lookup := gameliveries.NewLookup(nil)
 	now := time.Date(2026, time.August, 15, 6, 0, 0, 0, time.UTC)
 
 	upstream := infiniteflight.Flight{
@@ -34,25 +33,18 @@ func TestResolveFlightSkipsEffectsWhenMotionUnchanged(t *testing.T) {
 	}
 	motion := flights.MotionFromUpstream(upstream)
 	ctx := testComputeContext(infiniteflight.Session{NormalizedName: "casual"}, motion, true, now)
-	ctx.Deps.Lookup = lookup
 
 	warm := ResolveFlight(ctx, upstream, nil, flightstate.History{})
 	prior := &flights.Record{
-		Raw: warm.Record.Raw,
-		Derived: flights.Derived{
-			AircraftName:       "A350",
-			NormalizedCallsign: flights.NormalizedCallsignForAffix("Swiss"),
-			Normalized:         warm.Record.Derived.Normalized,
-			FlightState:        warm.Record.Derived.FlightState,
-		},
+		Raw:       warm.Record.Raw,
+		Analytics: warm.Record.Analytics.Clone(),
+		Actions:   warm.Record.Actions.Clone(),
+		Links:     warm.Record.Links.Clone(),
 	}
 
 	out := ResolveFlight(ctx, upstream, prior, warm.NextHistory)
 	if out.Outcome.UpdateFlightRecord || out.Outcome.FPLSyncScheduled {
 		t.Fatalf("outcome = %#v", out.Outcome)
-	}
-	if out.Record.Derived.AircraftName != "A350" {
-		t.Fatalf("record = %#v", out.Record)
 	}
 }
 
@@ -63,8 +55,8 @@ func TestResolveFlightFPLSchedulesSyncDespiteUnchangedMotion(t *testing.T) {
 	}
 	prior := &flights.Record{
 		Raw: flights.Observation{FlightID: "f1", Speed: 100, PilotState: flights.PilotStateActive},
-		Derived: flights.Derived{
-			PathSync: flights.PathSync{LastFPLSyncAt: now.Add(-flights.FPLSyncInterval)},
+		Actions: flights.Actions{
+			FPLSync: flights.FPLSyncAction{LastAt: now.Add(-flights.FPLSyncInterval)},
 		},
 	}
 	motion := flights.MotionFromUpstream(upstream)
@@ -77,8 +69,8 @@ func TestResolveFlightFPLSchedulesSyncDespiteUnchangedMotion(t *testing.T) {
 	if !out.Outcome.FPLSyncScheduled {
 		t.Fatalf("outcome = %#v", out.Outcome)
 	}
-	if !out.Record.Derived.PathSync.FPLSyncRequired {
-		t.Fatalf("pathSync = %#v", out.Record.Derived.PathSync)
+	if !out.Record.Actions.FPLSync.Required {
+		t.Fatalf("fplSync = %#v", out.Record.Actions.FPLSync)
 	}
 }
 
@@ -97,18 +89,15 @@ func TestResolveFlightUpdatesRecordWhenOnlyUserIDChanges(t *testing.T) {
 			FlightID: "f1", UserID: userA, Speed: 100, PilotState: flights.PilotStateActive,
 			LastReport: now, LastReportValid: true,
 		},
-		Derived: flights.Derived{
-			Users:      []string{userA},
-			Normalized: flights.Normalized{Speed: "100 kts", VerticalSpeed: "0.0 ft/min", PilotState: "active", IsConnected: "disconnected"},
-		},
+		Links: flights.Links{Users: []string{userA}},
 	}
 
 	out := ResolveFlight(ctx, upstream, prior, flightstate.History{})
 	if !out.Outcome.UpdateFlightRecord {
 		t.Fatal("expected record update when userId changes")
 	}
-	if len(out.Record.Derived.Users) != 2 || out.Record.Derived.Users[1] != userB {
-		t.Fatalf("users = %#v", out.Record.Derived.Users)
+	if len(out.Record.Links.Users) != 2 || out.Record.Links.Users[1] != userB {
+		t.Fatalf("users = %#v", out.Record.Links.Users)
 	}
 }
 
@@ -122,12 +111,12 @@ func TestResolveFlightFPLSyncRequiredResetsAfterSync(t *testing.T) {
 
 	duePrior := &flights.Record{
 		Raw: flights.Observation{FlightID: "f1", Speed: 100, PilotState: flights.PilotStateActive, ObservedAt: now},
-		Derived: flights.Derived{
-			PathSync: flights.PathSync{FPLSyncRequired: true, LastFPLSyncAt: now},
+		Actions: flights.Actions{
+			FPLSync: flights.FPLSyncAction{Required: true, LastAt: now},
 		},
 	}
 	out := ResolveFlight(ctx, upstream, duePrior, flightstate.History{})
-	if out.Record.Derived.PathSync.FPLSyncRequired {
-		t.Fatalf("expected FPLSyncRequired reset when not due, got %#v", out.Record.Derived.PathSync)
+	if out.Record.Actions.FPLSync.Required {
+		t.Fatalf("expected fplSync.required reset when not due, got %#v", out.Record.Actions.FPLSync)
 	}
 }

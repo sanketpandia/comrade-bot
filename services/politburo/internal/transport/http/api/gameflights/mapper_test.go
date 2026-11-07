@@ -19,13 +19,13 @@ func TestActiveFlightRecordFromDomainIncludesUsers(t *testing.T) {
 			Callsign: "Swiss 39 Heavy",
 			UserID:   userA,
 		},
-		Derived: domainflights.Derived{
+		Links: domainflights.Links{
 			Users: []string{userA},
 		},
 	}
 
-	apiRecord := activeFlightRecordFromDomain(record, openapi_types.UUID(flightID))
-	if apiRecord.Users == nil || len(*apiRecord.Users) != 1 || (*apiRecord.Users)[0] != userA {
-		t.Fatalf("users = %#v", apiRecord.Users)
+	apiRecord := activeFlightRecordFromDomain(record, openapi_types.UUID(flightID), nil)
+	if apiRecord.Links.Users == nil || len(*apiRecord.Links.Users) != 1 || (*apiRecord.Links.Users)[0] != userA {
+		t.Fatalf("users = %#v", apiRecord.Links.Users)
 	}
 }

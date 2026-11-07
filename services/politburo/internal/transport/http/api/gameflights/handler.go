@@ -5,6 +5,7 @@ import (
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
+	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	"infinite-experiment/politburo/internal/metrics"
 	"infinite-experiment/politburo/internal/transport/http/response"
 
@@ -15,8 +16,8 @@ type Handler struct {
 	svc *Service
 }
 
-func NewHandler(reader *domainflights.Reader, metricsRegistry *metrics.Registry) *Handler {
-	return &Handler{svc: NewService(reader, metricsRegistry)}
+func NewHandler(reader *domainflights.Reader, lookup *gameliveries.Lookup, metricsRegistry *metrics.Registry) *Handler {
+	return &Handler{svc: NewService(reader, lookup, metricsRegistry)}
 }
 
 func (h *Handler) GetActiveFlight(w http.ResponseWriter, r *http.Request, flightID openapi_types.UUID) {

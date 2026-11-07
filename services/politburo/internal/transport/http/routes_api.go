@@ -164,6 +164,35 @@ func (h apiHandler) PingVALiveConnection(w stdhttp.ResponseWriter, r *stdhttp.Re
 	})).ServeHTTP(w, r)
 }
 
+func (h apiHandler) ListVALiveOrganizationAircraft(w stdhttp.ResponseWriter, r *stdhttp.Request, organizationID openapi_types.UUID) {
+	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.ListOrganizationAircraft(w, r, organizationID)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) ListVALiveOrganizationSchedules(
+	w stdhttp.ResponseWriter,
+	r *stdhttp.Request,
+	organizationID openapi_types.UUID,
+	params politburoapi.ListVALiveOrganizationSchedulesParams,
+) {
+	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.ListOrganizationSchedules(w, r, organizationID, params)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) ListVALiveAircraftFlights(
+	w stdhttp.ResponseWriter,
+	r *stdhttp.Request,
+	organizationID openapi_types.UUID,
+	aircraftID openapi_types.UUID,
+	params politburoapi.ListVALiveAircraftFlightsParams,
+) {
+	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.ListAircraftFlights(w, r, organizationID, aircraftID, params)
+	})).ServeHTTP(w, r)
+}
+
 func writeParameterError(w stdhttp.ResponseWriter, _ *stdhttp.Request, err error) {
 	response.WriteError(w, stdhttp.StatusBadRequest, "INVALID_QUERY_FILTER", err.Error())
 }

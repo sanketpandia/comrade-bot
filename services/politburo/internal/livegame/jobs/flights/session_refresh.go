@@ -57,8 +57,8 @@ func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session
 		}
 
 		tracks[item.FlightID] = gameflights.MotionFromUpstream(item)
-		pilotStateCounts[resolved.Record.Derived.Normalized.PilotState]++
-		if fs := resolved.Record.Derived.FlightState; fs != nil {
+		pilotStateCounts[gameflights.NameForPilotState(resolved.Record.Raw.PilotState)]++
+		if fs := resolved.Record.Analytics.FlightState; fs != nil {
 			phaseCounts[string(fs.Phase)]++
 			qualityCounts[string(fs.DataQuality)]++
 			if fs.APPlus.Candidate {
@@ -134,7 +134,7 @@ func (j *Job) applyResolvedFlight(ctx context.Context, session infiniteflight.Se
 		j.metrics.FlightStateTransitionsTotal.WithLabelValues(server, string(resolved.Transition.From), string(resolved.Transition.To)).Inc()
 		confidence := 0.0
 		reasons := []string(nil)
-		if fs := resolved.Record.Derived.FlightState; fs != nil {
+		if fs := resolved.Record.Analytics.FlightState; fs != nil {
 			confidence = fs.Confidence
 			reasons = fs.Reasons
 		}

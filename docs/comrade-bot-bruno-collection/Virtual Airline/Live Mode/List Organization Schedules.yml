@@ -1,0 +1,34 @@
+info:
+  name: List Organization Schedules
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: "{{politburo-base-url}}/api/v1/va/live/organizations/{{live-organization-id}}/schedules?page=1&pageSize=100"
+  params:
+    - name: page
+      value: "1"
+      type: query
+      description: 1-based page number
+    - name: pageSize
+      value: "100"
+      type: query
+      description: Page size (max 100)
+    - name: aircraftId
+      value: "{{live-aircraft-id}}"
+      type: query
+      description: Optional persistent aircraft id filter (omit value for all aircraft)
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  `listVALiveOrganizationSchedules` — one page of open schedules (excludes Cancelled and Arrived).
+  Enable the `aircraftId` query param to filter to one aircraft. Repeat `aircraftId` for multiple ids (max 100).

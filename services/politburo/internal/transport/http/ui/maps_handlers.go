@@ -90,7 +90,7 @@ func (h *Handler) MapFlightDetailPartial(w http.ResponseWriter, r *http.Request)
 		}
 		return
 	}
-	rec := recordViewFromDomain(record)
+	rec := recordViewFromDomain(record, h.liveryLookup)
 	view.Record = &rec
 	if err := h.renderer.Render(w, "maps-flight-detail", view); err != nil {
 		slog.Error("render map flight detail", "error", err)

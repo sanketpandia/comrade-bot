@@ -33,8 +33,8 @@ against `:8082`.
 
 The map consumes the game JSON APIs with the session cookie. `FlightMap`
 still knows how to draw altitude-colored routes; the rewrite never feeds it
-waypoints because flight-plan sync is stubbed (`fplSyncRequired` is always
-false).
+waypoints because flight-plan sync is stubbed (`actions.fplSync.required` is
+only set when due; `RunFPLSync` is still a no-op).
 
 ### Jobs
 
@@ -105,7 +105,7 @@ VA link uses `POST /api/v1/memberships/link` (OpenAPI) from `/register`; no sepa
 | `livery_airtable_mappings` | IF aircraft/airline names → VA labels | Keep |
 | `pilot_at_synced`, `pirep_at_synced`, `route_at_synced` | Copies of Airtable rows | Default: do not re-adopt |
 | `aircraft_liveries` | Postgres copy of IF liveries | Redis already owns this |
-| `airports` | ICAO/IATA geo | Unused; discuss if maps/events need it |
+| `airports` | ICAO/IATA geo and coordinates | Reference table, seeded from OurAirports (`006` / `007`) |
 
 Enums already in the baseline: `va_role` (`pilot`, `staff`, `admin`),
 `pilot_type` (`regular`, `career_mode`), `validation_status`.

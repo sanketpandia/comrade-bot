@@ -52,7 +52,7 @@ func NormalizeFilterStrings(userName, callSign string) (string, string) {
 // MatchesFilters reports whether a flight record passes the filter query.
 func MatchesFilters(record Record, query FilterQuery, pilotStateSeen map[string]struct{}) bool {
 	if len(query.PilotStates) > 0 {
-		if _, exists := pilotStateSeen[record.Derived.Normalized.PilotState]; !exists {
+		if _, exists := pilotStateSeen[NameForPilotState(record.Raw.PilotState)]; !exists {
 			return false
 		}
 	}

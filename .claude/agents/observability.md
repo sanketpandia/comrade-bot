@@ -55,7 +55,6 @@ Dashboards (same file names in both envs where noted, **maintained separately** 
 | `politburo_jobs_last_success_timestamp_seconds` | gauge | `job` |
 | `politburo_livegame_flights_active` | gauge | `server` |
 | `politburo_livegame_flights_by_pilot_state` | gauge | `server`, `pilot_state` |
-| `politburo_livegame_livery_resolve_total` | counter | `outcome` |
 | `politburo_livegame_flights_filtered_total` | counter | `server`, `endpoint` |
 
 Job names come from each job's `Name()` (e.g. `infinite-flight-sessions` in `internal/livegame/jobs/sessions/job.go`).

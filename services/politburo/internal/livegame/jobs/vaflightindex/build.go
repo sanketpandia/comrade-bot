@@ -23,7 +23,7 @@ func BuildVAFlightIndex(input BuildInput) map[string][]string {
 			if !ok {
 				continue
 			}
-			for _, match := range record.Derived.MatchedVirtualAirlines {
+			for _, match := range record.Links.VirtualAirlines {
 				if match.VAID == "" {
 					continue
 				}

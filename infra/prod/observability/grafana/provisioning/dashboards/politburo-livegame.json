@@ -360,7 +360,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
       "id": 300,
       "panels": [],
-      "title": "Livery and HTTP filters",
+      "title": "HTTP filters",
       "type": "row"
     },
     {
@@ -380,41 +380,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
-      "id": 7,
-      "interval": "5m",
-      "options": {
-        "legend": { "displayMode": "table", "placement": "right", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "targets": [
-        {
-          "expr": "sum by (outcome) (increase(politburo_livegame_livery_resolve_total[15m]))",
-          "legendFormat": "{{outcome}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Livery resolve outcomes per 15m",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "lineWidth": 1,
-            "pointSize": 5,
-            "showPoints": "auto",
-            "stacking": { "group": "A", "mode": "none" }
-          },
-          "mappings": [],
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 32 },
       "id": 8,
       "interval": "15m",
       "options": {

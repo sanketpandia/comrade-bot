@@ -20,8 +20,8 @@ const (
 	// PrefixGameFlightsActive namespaces per-server active-flight snapshots.
 	PrefixGameFlightsActive = PrefixGameFlights + "active:"
 
-	// PrefixGameFlightsRecord namespaces per-flight enriched flight records (v2 split raw/derived).
-	PrefixGameFlightsRecord = PrefixGameFlights + "record:v2:"
+	// PrefixGameFlightsRecord namespaces per-flight enriched flight records (v3 sectioned raw/analytics/actions/links/history).
+	PrefixGameFlightsRecord = PrefixGameFlights + "record:v3:"
 
 	// PrefixGameFlightsHistory namespaces per-flight temporal estimator history.
 	PrefixGameFlightsHistory = PrefixGameFlights + "history:"

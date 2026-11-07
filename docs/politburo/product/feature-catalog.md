@@ -52,7 +52,7 @@ Decided in [identity-membership.md](identity-membership.md). Old
 | Per-flight Redis history | Jobs / Redis | Rewrite (stored) | Not exposed as its own API |
 | Livery name cache | Jobs / Redis | Rewrite | Feeds flight payloads |
 | VA-filtered live flights (`/live`) | Discord | Bot-only | Old `GET /api/v1/flights/va` — filter by VA callsign / VO |
-| Live flight plans / waypoints | Jobs, Portal | Leftover | `PathSync` stub; map can draw routes; IF route API not in spec |
+| Live flight plans / waypoints | Jobs, Portal | Leftover | `actions.fplSync` stub; map can draw routes; IF route API not in spec |
 | Flight phase (climb/cruise/…) | Discord, old Portal | Bot-only | Rewrite exposes IF `pilotState`, not derived phase |
 | Origin / destination on live flights | Discord, old Portal | Bot-only | Needs FPL or world/route data |
 | Periodic Discord webhook snapshots | Jobs, Portal | Leftover | `va_webhooks` table idle |
@@ -118,7 +118,7 @@ sync flags. Links resolved inside Politburo.
 | Event coordination (planning, sign-up, who is flying the leg) | Portal, Discord | Open | Stated direction for the new portal; old product was admin CRUD + Discord list |
 | Career-mode as a PIREP mode | Discord | Parked | Fourth Airtable module later; not designed |
 | Search over our summaries | JSON, Portal | Open | Only if we define summaries |
-| Airports reference | Postgres | Leftover | Unused `airports` table |
+| Airports reference | Postgres | Seeded | `airports` loaded from OurAirports (`006` / `007`) |
 
 ---
 

@@ -154,7 +154,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	userRepo := users.NewRepository(db)
 	vaRepo := virtualairlines.NewRepository(db)
 	vaInit := virtualairlines.NewService(db, userRepo, vaRepo)
-	vaWebhookDispatch := webhooks.NewJob(cacheStore, db, metricsRegistry)
+	vaWebhookDispatch := webhooks.NewJob(cacheStore, liveryLookup, db, metricsRegistry)
 	vaConfigRepo := vaconfig.NewRepository(db)
 	membershipRepo := membership.NewRepository(db)
 	reportRepo := reports.NewRepository(db)

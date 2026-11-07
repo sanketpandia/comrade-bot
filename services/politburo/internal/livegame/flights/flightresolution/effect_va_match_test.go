@@ -29,7 +29,7 @@ func TestResolveFlightVAMatchOnExpertSession(t *testing.T) {
 	ctx.LiveVACatalog = expertIECatalog()
 
 	out := ResolveFlight(ctx, upstream, nil, flightstate.History{})
-	if len(out.Record.Derived.MatchedVirtualAirlines) != 1 || out.Record.Derived.MatchedVirtualAirlines[0].VAID != "va-1" {
+	if len(out.Record.Links.VirtualAirlines) != 1 || out.Record.Links.VirtualAirlines[0].VAID != "va-1" {
 		t.Fatalf("record = %#v", out.Record)
 	}
 }
@@ -44,7 +44,7 @@ func TestResolveFlightVANoMatchOnWrongSession(t *testing.T) {
 	ctx.LiveVACatalog = expertIECatalog()
 
 	out := ResolveFlight(ctx, upstream, nil, flightstate.History{})
-	if len(out.Record.Derived.MatchedVirtualAirlines) != 0 {
+	if len(out.Record.Links.VirtualAirlines) != 0 {
 		t.Fatalf("record = %#v", out.Record)
 	}
 }
@@ -55,8 +55,7 @@ func TestResolveFlightVAMatchUpdatesWhenCallsignChangesDespiteUnchangedMotion(t 
 		LastReport: "2026-08-15 05:09:53Z",
 	}
 	prior := &flights.Record{
-		Raw:     flights.Observation{FlightID: "f1", Callsign: "OTHER", Speed: 100},
-		Derived: flights.Derived{},
+		Raw: flights.Observation{FlightID: "f1", Callsign: "OTHER", Speed: 100},
 	}
 	motion := flights.MotionFromUpstream(upstream)
 	now := time.Date(2026, 8, 15, 6, 0, 0, 0, time.UTC)
@@ -67,7 +66,7 @@ func TestResolveFlightVAMatchUpdatesWhenCallsignChangesDespiteUnchangedMotion(t 
 	if !out.Outcome.UpdateFlightRecord {
 		t.Fatal("expected record update when VA matches change")
 	}
-	if len(out.Record.Derived.MatchedVirtualAirlines) != 1 {
+	if len(out.Record.Links.VirtualAirlines) != 1 {
 		t.Fatalf("record = %#v", out.Record)
 	}
 }

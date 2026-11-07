@@ -6,6 +6,7 @@ import (
 
 	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
+	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	"infinite-experiment/politburo/internal/metrics"
 	"infinite-experiment/politburo/internal/transport/http/api/cachedresponse"
 
@@ -15,11 +16,12 @@ import (
 // Service loads active flight data from cache and shapes API responses.
 type Service struct {
 	reader  *domainflights.Reader
+	lookup  *gameliveries.Lookup
 	metrics *metrics.Registry
 }
 
-func NewService(reader *domainflights.Reader, metricsRegistry *metrics.Registry) *Service {
-	return &Service{reader: reader, metrics: metricsRegistry}
+func NewService(reader *domainflights.Reader, lookup *gameliveries.Lookup, metricsRegistry *metrics.Registry) *Service {
+	return &Service{reader: reader, lookup: lookup, metrics: metricsRegistry}
 }
 
 func (s *Service) GetActiveFlight(ctx context.Context, flightID openapi_types.UUID) (politburoapi.ActiveFlightRecordResponse, error) {
@@ -31,7 +33,7 @@ func (s *Service) GetActiveFlight(ctx context.Context, flightID openapi_types.UU
 	if err != nil {
 		return politburoapi.ActiveFlightRecordResponse{}, err
 	}
-	record := activeFlightRecordFromDomain(flight, flightID)
+	record := activeFlightRecordFromDomain(flight, flightID, s.lookup)
 	enrichActiveFlightStateFeatures(&record, history)
 	return politburoapi.ActiveFlightRecordResponse{Data: record}, nil
 }

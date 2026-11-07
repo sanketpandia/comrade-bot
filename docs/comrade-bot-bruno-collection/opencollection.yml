@@ -35,6 +35,10 @@ request:
       value: ""
     - name: oauth-state
       value: ""
+    - name: live-organization-id
+      value: 258538ec-ffb1-4583-9665-2f3975bef4a7
+    - name: live-aircraft-id
+      value: d05599b6-c70a-46e3-bf5d-d9d9959d9498
 bundled: false
 extensions:
   bruno:

@@ -1,0 +1,96 @@
+get:
+  operationId: listVALiveOrganizationSchedules
+  summary: List open schedules for a linked Live org
+  description: |
+    Returns one page of **open** schedules (not Cancelled or Arrived) for a linked organisation.
+    Uses the VA's Infinite Flight OAuth grant. Requires VA staff role (`bourgeoisie` or `administrator`).
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: organizationId
+      in: path
+      required: true
+      description: Infinite Flight Live organisation id
+      schema:
+        type: string
+        format: uuid
+    - name: aircraftId
+      in: query
+      required: false
+      description: |
+        Persistent organization aircraft id. Repeat for multiple aircraft
+        (`?aircraftId=<id_1>&aircraftId=<id_2>`). Maximum 100 values. Omit for all aircraft.
+      style: form
+      explode: true
+      schema:
+        type: array
+        maxItems: 100
+        items:
+          type: string
+          format: uuid
+    - name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    - name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 100
+  responses:
+    "200":
+      description: Schedule page
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/LiveOrganizationSchedulesResponse.yaml"
+    "401":
+      description: Missing or inactive API key or session cookie
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Caller is not VA staff (bourgeoisie or administrator)
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: VA context or organisation link not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "409":
+      description: VA Live OAuth grant missing or needs reconnect
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "502":
+      description: Infinite Flight Live API request failed
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "503":
+      description: Infinite Flight Live API is not configured
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Internal error
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

@@ -52,6 +52,8 @@ Add `001_<slug>.sql`, `002_<slug>.sql`, … as transactional deltas.
 
 `004_contact_submissions.sql` adds append-only `contact_submissions` (public `/contact` form: IFC username + message).
 
+`006_airports.sql` adds reference table `airports`. `007_airports_seed.sql` loads it from the [OurAirports airport-codes](https://raw.githubusercontent.com/datasets/airport-codes/refs/heads/main/data/airport-codes.csv) dataset. The CSV `coordinates` field (`latitude, longitude`) is stored as `coordinates_lat` and `coordinates_long` (`double precision`), the same numeric shape as live flight positions. Apply both files with psql. To refresh the dataset, re-run `migrations/scripts/generate_airports_seed.py` and commit the new seed; do not run that script in deployed environments.
+
 Test on:
 
 1. A fresh DB from `000_core_schema.sql` plus all new files.

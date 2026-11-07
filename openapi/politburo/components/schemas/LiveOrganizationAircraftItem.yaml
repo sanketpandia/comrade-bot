@@ -1,0 +1,41 @@
+type: object
+required:
+  - id
+  - aircraftId
+  - organizationId
+  - registration
+  - status
+  - visibility
+  - fleetRank
+  - isFleetActiveSlot
+  - createdAt
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Persistent organization aircraft id
+  aircraftId:
+    type: string
+    description: Infinite Flight content aircraft identifier
+  organizationId:
+    type: string
+    format: uuid
+  registration:
+    type: string
+  status:
+    type: integer
+  visibility:
+    type: integer
+  fleetPriority:
+    type: integer
+    nullable: true
+  fleetRank:
+    type: integer
+  isFleetActiveSlot:
+    type: boolean
+  createdAt:
+    type: string
+    format: date-time
+  aircraftName:
+    type: string
+    description: Resolved display name from the livery catalog when available

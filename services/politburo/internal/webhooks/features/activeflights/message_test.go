@@ -8,8 +8,22 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/livegame/flights"
+	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	"infinite-experiment/politburo/internal/webhooks/discord"
 )
+
+func testMessageLookup() *gameliveries.Lookup {
+	return gameliveries.NewStaticLookup(
+		map[string]gameliveries.AircraftLivery{
+			"livery-1": {
+				LiveryID:            "livery-1",
+				DisplayAircraftName: "A320",
+				DisplayLiveryName:   "House",
+			},
+		},
+		nil,
+	)
+}
 
 func TestBuildPostsPagination(t *testing.T) {
 	at := time.Date(2026, 10, 20, 14, 30, 0, 0, time.UTC)
@@ -23,7 +37,7 @@ func TestBuildPostsPagination(t *testing.T) {
 	posts := BuildPosts(SnapshotInput{
 		At: at, Servers: []string{"expert"}, Matched: 26, Reported: 26,
 		Frequency: "30m", Filters: json.RawMessage(`{}`), Flights: loaded,
-	})
+	}, nil)
 	if len(posts) != 3 {
 		t.Fatalf("posts = %d, want summary + 2 flight pages", len(posts))
 	}
@@ -44,6 +58,7 @@ func TestBuildPostsPagination(t *testing.T) {
 func TestBuildPostsSummaryAndFlightField(t *testing.T) {
 	username := "alice"
 	at := time.Date(2026, 10, 20, 14, 30, 0, 0, time.UTC)
+	lookup := testMessageLookup()
 	posts := BuildPosts(SnapshotInput{
 		At:        at,
 		Servers:   []string{"expert", "casual"},
@@ -58,17 +73,14 @@ func TestBuildPostsSummaryAndFlightField(t *testing.T) {
 				Callsign:    "IE123",
 				Username:    &username,
 				UserID:      "u1",
+				LiveryID:    "livery-1",
 				Altitude:    35000,
 				Speed:       450,
+				PilotState:  flights.PilotStateActive,
 				IsConnected: true,
 			},
-			Derived: flights.Derived{
-				AircraftName: "A320",
-				LiveryName:   "House",
-				Normalized:   flights.Normalized{Speed: "450 kts", PilotState: "active"},
-			},
 		}},
-	})
+	}, lookup)
 
 	summary := posts[0]
 	if summary.Title != "Active Flights — Summary" {

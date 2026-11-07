@@ -9,7 +9,6 @@ type Facts struct {
 	IsNew         bool
 	MotionChanged bool
 	FPLDue        bool
-	LiveryChanged bool
 	HistoryPush   string
 }
 
@@ -23,16 +22,11 @@ func computeFacts(ctx ComputeContext, raw flights.Observation, prior *flights.Re
 		facts.MotionChanged = true
 	}
 
-	var priorPathSync flights.PathSync
+	var priorFPL flights.FPLSyncAction
 	if prior != nil {
-		priorPathSync = prior.Derived.PathSync
-		if prior.Raw.AircraftID != raw.AircraftID || prior.Raw.LiveryID != raw.LiveryID {
-			facts.LiveryChanged = true
-		}
-	} else {
-		facts.LiveryChanged = true
+		priorFPL = prior.Actions.FPLSync
 	}
 
-	facts.FPLDue = flights.FPLSyncDue(raw.PilotState, priorPathSync, ctx.RefreshedAt)
+	facts.FPLDue = flights.FPLSyncDue(raw.PilotState, priorFPL, ctx.RefreshedAt)
 	return facts
 }

@@ -29,6 +29,15 @@ func TestMapsActivePageURLMinimal(t *testing.T) {
 	}
 }
 
+func TestMapsActivePageURLFlightID(t *testing.T) {
+	req := httptest.NewRequest("GET", routes.MapsFlightsActiveFlights+"?serverId=expert&flightId=c34118e7-cbdd-4e22-8751-0cda93e41d75", nil)
+	got := mapsActivePageURL(req)
+	want := routes.MapsFlightsActive + "?flightId=c34118e7-cbdd-4e22-8751-0cda93e41d75&serverId=expert"
+	if got != want {
+		t.Fatalf("mapsActivePageURL() = %q, want %q", got, want)
+	}
+}
+
 func TestMapsActivePageURLShowCallsignsZero(t *testing.T) {
 	req := httptest.NewRequest("GET", routes.MapsFlightsActiveFlights+"?serverId=casual&showCallsigns=0", nil)
 	got := mapsActivePageURL(req)

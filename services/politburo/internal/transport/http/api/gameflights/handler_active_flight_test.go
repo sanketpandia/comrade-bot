@@ -34,7 +34,7 @@ func TestGetActiveFlightReturnsRecord(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode body: %v", err)
 	}
-	if body.Data.Callsign != "Swiss 39 Heavy" || body.Data.Normalized.PilotState != politburoapi.Active {
+	if body.Data.Raw.Callsign != "Swiss 39 Heavy" || body.Data.Normalized.PilotState != politburoapi.Active {
 		t.Fatalf("data = %#v", body.Data)
 	}
 }

@@ -1,6 +1,15 @@
 type: object
 required: [speed, verticalSpeed, pilotState, isConnected]
 properties:
+  normalizedCallsign:
+    type: string
+    description: Callsign with Infinite Flight weight/formation trailers removed for VA affix matching.
+  aircraftName:
+    type: string
+    description: Display aircraft name from the livery catalog.
+  liveryName:
+    type: string
+    description: Display livery name from the livery catalog.
   speed:
     type: string
     description: Display-formatted ground speed (for example "186 kts").
