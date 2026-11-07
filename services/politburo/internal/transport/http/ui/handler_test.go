@@ -832,6 +832,7 @@ func TestLiveModeBookingsTabForBourgeoisie(t *testing.T) {
 	for _, want := range []string{
 		`href="/live/bookings" aria-current="page"`,
 		`id="live-bookings"`,
+		`id="live-org-select"`,
 		`/static/js/live/bookings.mjs`,
 	} {
 		if !strings.Contains(body, want) {

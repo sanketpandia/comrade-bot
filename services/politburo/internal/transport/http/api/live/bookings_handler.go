@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
 
@@ -16,7 +18,15 @@ func (h *ConnectionsHandler) ListVALiveScheduleBookings(w http.ResponseWriter, r
 		response.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "live action history is not configured")
 		return
 	}
-	rows, err := h.actions.ListCrewAssignments(r.Context(), vaID)
+	var liveOrgFilter *string
+	if raw := strings.TrimSpace(r.URL.Query().Get("organizationId")); raw != "" {
+		if _, err := uuid.Parse(raw); err != nil {
+			response.WriteError(w, http.StatusBadRequest, "VALIDATION_ERROR", "organizationId must be a UUID")
+			return
+		}
+		liveOrgFilter = &raw
+	}
+	rows, err := h.actions.ListCrewAssignments(r.Context(), vaID, liveOrgFilter)
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "could not load booking history")
 		return

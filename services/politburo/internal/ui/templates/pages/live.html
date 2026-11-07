@@ -5,14 +5,12 @@
     {{if and (eq .LiveTab "schedules") .IsAdministrator}}
     <button type="button" class="btn btn--primary" id="live-schedule-add" disabled>Add schedule</button>
     {{end}}
-    {{if ne .LiveTab "bookings"}}
     <div class="field">
       <label class="field__label" for="live-org-select">Organisation</label>
       <select class="select" id="live-org-select" name="organizationId" disabled>
         <option value="">Loading…</option>
       </select>
     </div>
-    {{end}}
   </div>
 </header>
 <p id="live-org-status" class="panel-message" role="status" hidden></p>
@@ -159,7 +157,7 @@
   {{else if eq .LiveTab "bookings"}}
   <div class="section-layout__main stack">
     <div id="live-bookings" class="stack" aria-live="polite">
-      <p class="panel-lead">Loading bookings…</p>
+      <p class="panel-lead">Select an organisation to load bookings.</p>
     </div>
   </div>
   {{end}}

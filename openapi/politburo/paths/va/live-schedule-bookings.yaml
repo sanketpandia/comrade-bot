@@ -8,6 +8,14 @@ get:
   security:
     - ApiKeyAuth: []
     - CookieAuth: []
+  parameters:
+    - name: organizationId
+      in: query
+      required: false
+      description: When set, only rows for this Infinite Flight live organisation are returned.
+      schema:
+        type: string
+        format: uuid
   responses:
     "200":
       description: Booking history

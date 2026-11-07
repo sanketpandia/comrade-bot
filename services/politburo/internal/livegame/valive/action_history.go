@@ -90,19 +90,23 @@ type CrewAssignmentRow struct {
 	Meta               map[string]any
 }
 
-func (r *ActionHistoryRepository) ListCrewAssignments(ctx context.Context, vaID string) ([]CrewAssignmentRow, error) {
+func (r *ActionHistoryRepository) ListCrewAssignments(ctx context.Context, vaID string, liveOrganizationID *string) ([]CrewAssignmentRow, error) {
 	if r == nil || r.db == nil {
 		return nil, fmt.Errorf("action history repository is not configured")
 	}
-	rows, err := r.db.QueryContext(ctx, `
+	query := `
 SELECT h.id, h.started_at, h.outcome, h.upstream_status, h.error_message, h.meta,
        h.live_organization_id::text, u.username, u.if_community_id
 FROM public.live_api_v3_action_history h
 LEFT JOIN public.users u ON u.id = h.actor_user_id
-WHERE h.va_id = $1 AND h.action_name = $2
-ORDER BY h.started_at DESC`,
-		vaID, ActionAssignScheduleCrew,
-	)
+WHERE h.va_id = $1 AND h.action_name = $2`
+	args := []any{vaID, ActionAssignScheduleCrew}
+	if liveOrganizationID != nil && strings.TrimSpace(*liveOrganizationID) != "" {
+		query += ` AND h.live_organization_id = $3`
+		args = append(args, strings.TrimSpace(*liveOrganizationID))
+	}
+	query += ` ORDER BY h.started_at DESC`
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list crew assignment history: %w", err)
 	}
