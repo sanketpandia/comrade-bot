@@ -1,0 +1,9 @@
+type: object
+required: [role]
+properties:
+  role:
+    type: string
+    enum:
+      - proletariat
+      - bourgeoisie
+      - administrator

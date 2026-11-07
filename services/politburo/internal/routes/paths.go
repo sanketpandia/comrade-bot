@@ -32,7 +32,9 @@ const (
 	Admin         = "/admin"
 	AdminGeneral  = "/admin/general"
 	AdminWebhooks = "/admin/webhooks"
-	AdminLive     = "/admin/live"
+	AdminLive            = "/admin/live"
+	AdminMembers         = "/admin/members"
+	AdminMembersDeleted  = "/admin/members/deleted"
 
 	Live          = "/live"
 	LiveAircraft  = "/live/aircraft"
@@ -83,6 +85,8 @@ const (
 	VALiveOrganizationAircraft        = "/api/v1/va/live/organizations/{organizationId}/aircraft"
 	VALiveOrganizationSchedules       = "/api/v1/va/live/organizations/{organizationId}/schedules"
 	VALiveOrganizationAircraftFlights = "/api/v1/va/live/organizations/{organizationId}/aircraft/{aircraftId}/flights"
+	VAMembers                         = "/api/v1/va/members"
+	VAMember                          = "/api/v1/va/members/{userId}"
 
 	UserStatus                = "/api/v1/user/status"
 	MembershipsLink           = "/api/v1/memberships/link"
@@ -118,4 +122,6 @@ var OpenAPIPaths = []string{
 	VALiveOrganizationAircraft,
 	VALiveOrganizationSchedules,
 	VALiveOrganizationAircraftFlights,
+	VAMembers,
+	VAMember,
 }

@@ -1,0 +1,29 @@
+type: object
+required: [userId, role, joinedAt, updatedAt]
+properties:
+  userId:
+    type: string
+    format: uuid
+    description: Internal Politburo user id.
+  ifCommunityId:
+    type: string
+    description: Linked Infinite Flight Community username.
+  username:
+    type: string
+    description: Stored display username when present.
+  role:
+    type: string
+    enum:
+      - proletariat
+      - bourgeoisie
+      - administrator
+  callsign:
+    type: string
+    description: VA callsign used for live matching.
+  joinedAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time
+    description: Last membership change, including removal.

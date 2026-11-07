@@ -68,6 +68,10 @@ paths:
     $ref: "./paths/admin/ban-user.yaml"
   /api/v1/va:
     $ref: "./paths/va/get.yaml"
+  /api/v1/va/members:
+    $ref: "./paths/va/members.yaml"
+  /api/v1/va/members/{userId}:
+    $ref: "./paths/va/member-by-id.yaml"
   /api/v1/va/config:
     $ref: "./paths/va/config.yaml"
   /api/v1/va/webhook/trigger:
@@ -219,6 +223,12 @@ components:
       $ref: "./components/schemas/VAWebhookTriggerData.yaml"
     VAWebhookTriggerResponse:
       $ref: "./components/schemas/VAWebhookTriggerResponse.yaml"
+    VAMember:
+      $ref: "./components/schemas/VAMember.yaml"
+    VAMembersResponse:
+      $ref: "./components/schemas/VAMembersResponse.yaml"
+    VAMemberRoleUpdateRequest:
+      $ref: "./components/schemas/VAMemberRoleUpdateRequest.yaml"
     CurrentUser:
       $ref: "./components/schemas/CurrentUser.yaml"
     CurrentUserResponse:

@@ -47,7 +47,7 @@ func newHandlers(application *app.App) handlers {
 			application.Registration, application.Membership, application.VAInit, application.Status,
 			application.Reports, application.Operator, application.VirtualAirlines,
 		),
-		va:    vaapi.NewHandler(application.VirtualAirlines, application.VAConfigs, application.Users, application.VAWebhookJob),
+		va:    vaapi.NewHandler(application.VirtualAirlines, application.VAConfigs, application.Users, application.VAWebhookJob, application.Membership),
 		user:  userHandler,
 		oauth: oauthapi.NewHandler(
 			application.IFOAuth,

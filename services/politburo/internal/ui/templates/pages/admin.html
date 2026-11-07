@@ -4,11 +4,46 @@
 </header>
 <div class="section-layout">
   <nav class="tabs tabs--nav" aria-label="Admin sections">
+    {{if .IsAdministrator}}
     <a class="tabs__tab" href="/admin/general"{{if eq .AdminTab "general"}} aria-current="page"{{end}}>General</a>
     <a class="tabs__tab" href="/admin/webhooks"{{if eq .AdminTab "webhooks"}} aria-current="page"{{end}}>Webhooks</a>
+    {{end}}
+    <a class="tabs__tab" href="/admin/members"{{if eq .AdminTab "members"}} aria-current="page"{{end}}>Members</a>
+    <a class="tabs__tab" href="/admin/members/deleted"{{if eq .AdminTab "members-deleted"}} aria-current="page"{{end}}>Deleted</a>
     <a class="tabs__tab" href="/admin/live"{{if eq .AdminTab "live"}} aria-current="page"{{end}}>Live Mode</a>
   </nav>
-  {{if eq .AdminTab "webhooks"}}
+  {{if or (eq .AdminTab "members") (eq .AdminTab "members-deleted")}}
+  <section class="panel stack" aria-labelledby="admin-members-heading">
+    <header class="panel__header">
+      <h2 class="panel-heading" id="admin-members-heading">{{if eq .AdminTab "members-deleted"}}Deleted members{{else}}Members{{end}}</h2>
+    </header>
+    <p class="panel-lead">{{if eq .AdminTab "members-deleted"}}Pilots and staff removed from this virtual airline.{{else}}Registered pilots and staff for this virtual airline.{{end}}</p>
+    <p id="admin-members-status" class="panel-message" role="status" hidden></p>
+    <section class="section">
+      <h3 class="section__title">Roster</h3>
+      <div class="data-table-wrap">
+        <table class="data-table" id="admin-members-table" aria-describedby="admin-members-heading"
+               data-members-mode="{{if eq .AdminTab "members-deleted"}}deleted{{else}}active{{end}}"
+               {{if .IsAdministrator}}data-can-edit-roles="true" data-can-remove-staff="true"{{end}}>
+          <thead>
+            <tr>
+              <th scope="col">User</th>
+              <th scope="col">IFC</th>
+              <th scope="col">Role</th>
+              <th scope="col">Callsign</th>
+              <th scope="col">Joined</th>
+              <th scope="col">Updated</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-members-body">
+            <tr><td colspan="7">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+  {{else if eq .AdminTab "webhooks"}}
   <section class="panel stack" aria-labelledby="admin-webhooks-heading">
     <header class="panel__header">
       <h2 class="panel-heading" id="admin-webhooks-heading">Webhooks</h2>
@@ -96,7 +131,7 @@
       {{end}}
     </section>
   </section>
-  {{else}}
+  {{else if eq .AdminTab "general"}}
   <section class="panel stack" aria-labelledby="admin-general-heading">
     <header class="panel__header">
       <h2 class="panel-heading" id="admin-general-heading">General</h2>

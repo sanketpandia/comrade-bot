@@ -443,15 +443,26 @@ func TestDashboardShowsAdminNavForAdministrator(t *testing.T) {
 	}
 }
 
-func TestAdminRedirect(t *testing.T) {
+func TestAdminRedirectAdministrator(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
 	recorder := httptest.NewRecorder()
-	handler.AdminRedirect(recorder, httptest.NewRequest(http.MethodGet, routes.Admin, nil))
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.Admin, nil), auth.Claims{Role: "administrator"})
+	handler.AdminRedirect(recorder, req)
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d, want 303", recorder.Code)
 	}
 	if loc := recorder.Header().Get("Location"); loc != routes.AdminGeneral {
 		t.Fatalf("location = %q, want /admin/general", loc)
+	}
+}
+
+func TestAdminRedirectStaffToMembers(t *testing.T) {
+	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
+	recorder := httptest.NewRecorder()
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.Admin, nil), auth.Claims{Role: "bourgeoisie"})
+	handler.AdminRedirect(recorder, req)
+	if loc := recorder.Header().Get("Location"); loc != routes.AdminMembers {
+		t.Fatalf("location = %q, want /admin/members", loc)
 	}
 }
 
@@ -470,6 +481,8 @@ func TestAdminRendersShell(t *testing.T) {
 		`>General</a>`,
 		`>Webhooks</a>`,
 		`>Live Mode</a>`,
+		`>Members</a>`,
+		`>Deleted</a>`,
 		`class="section__title"`,
 		`id="va-code"`,
 		`readonly`,
@@ -617,13 +630,61 @@ func TestAdminLiveOmitsLinkWhenOAuthDisabled(t *testing.T) {
 	}
 }
 
-func TestAdminForbiddenForNonAdmin(t *testing.T) {
+func TestAdminForbiddenForNonStaff(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminGeneral, nil), auth.Claims{Role: "proletariat"})
 	recorder := httptest.NewRecorder()
 	handler.Admin(recorder, req)
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403", recorder.Code)
+	}
+}
+
+func TestAdminGeneralForbiddenForStaff(t *testing.T) {
+	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminGeneral, nil), auth.Claims{Role: "bourgeoisie"})
+	recorder := httptest.NewRecorder()
+	handler.Admin(recorder, req)
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", recorder.Code)
+	}
+}
+
+func TestAdminMembersRendersForStaff(t *testing.T) {
+	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminMembers, nil), auth.Claims{Role: "bourgeoisie"})
+	recorder := httptest.NewRecorder()
+	handler.Admin(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		`href="/admin/members" aria-current="page"`,
+		`id="admin-members-table"`,
+		`/static/js/admin/members.mjs`,
+		`href="/admin/live"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q in %s", want, body)
+		}
+	}
+	if strings.Contains(body, `href="/admin/general"`) {
+		t.Fatalf("staff should not see general tab: %s", body)
+	}
+	if strings.Contains(body, "soft delete") {
+		t.Fatal("members UI must not mention soft delete")
+	}
+}
+
+func TestAdminDeletedMembersRendersForStaff(t *testing.T) {
+	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminMembersDeleted, nil), auth.Claims{Role: "bourgeoisie"})
+	recorder := httptest.NewRecorder()
+	handler.Admin(recorder, req)
+	body := recorder.Body.String()
+	if !strings.Contains(body, `data-members-mode="deleted"`) {
+		t.Fatalf("expected deleted members mode: %s", body)
 	}
 }
 

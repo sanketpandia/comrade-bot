@@ -106,6 +106,24 @@ func (h apiHandler) GetVA(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	})).ServeHTTP(w, r)
 }
 
+func (h apiHandler) ListVAMembers(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.ListVAMembersParams) {
+	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.ListVAMembers(w, r, params)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) UpdateVAMemberRole(w stdhttp.ResponseWriter, r *stdhttp.Request, userID openapi_types.UUID) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.UpdateVAMemberRole(w, r, userID)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) RemoveVAMember(w stdhttp.ResponseWriter, r *stdhttp.Request, userID openapi_types.UUID) {
+	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.RemoveVAMember(w, r, userID)
+	})).ServeHTTP(w, r)
+}
+
 func (h apiHandler) GetVAConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.GetVAConfigParams) {
 	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		if !params.ConfigType.Valid() {
