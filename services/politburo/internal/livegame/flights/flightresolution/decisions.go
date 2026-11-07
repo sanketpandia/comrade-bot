@@ -11,8 +11,8 @@ type EffectDecision struct {
 
 var flightEffects = []EffectDecision{
 	flightUsersEffect,
-	flightStateEffect,
 	vaMatchEffect,
-	liveryResolveMetricEffect,
+	liveModeCheckEffect,
+	flightStateEffect,
 	fplSyncUpdateEffect,
 }

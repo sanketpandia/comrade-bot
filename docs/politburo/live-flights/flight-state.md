@@ -13,6 +13,18 @@ Active flights are stored as `flights.Record` with immutable upstream `raw` (`Ob
 
 History is written every refresh tick. The record is written only when persisted sections change (motion, new flight, or `Record.StoredSectionsEqual` mismatch). The API adds a serve-time `normalized` block and joins flight-state window features from the history key on read.
 
+## Resolution effect order
+
+Each refresh tick runs `flightresolution.ResolveFlight` with this effect sequence (see `flightEffects` in `flightresolution/decisions.go`):
+
+1. **FlightUsers** — append distinct operator user IDs to `links.users`.
+2. **VAMatch** — update `links.virtualAirlines` from callsign affix rules.
+3. **LiveModeCheck** — no-op stub for future Live organization aircraft matching by `raw.aircraftId`.
+4. **FlightState** — write `analytics.flightState` and advance the temporal estimator.
+5. **FPLSyncUpdate** — set `actions.fplSync` when an active pilot is due for flight-plan sync.
+
+Display strings (callsign, speed, pilot state, aircraft/livery names, etc.) are **not** produced in the job. They are built at serve time via `flights.Normalize` when the API, map UI, or webhooks map a cached record.
+
 ## Phases
 
 `spawned_in`, `taxiing`, `takeoff`, `climbing`, `cruise`, `descending`, `landing`, `parked`, `awaiting_ap_plus_resumption`, `unknown`.
@@ -31,9 +43,9 @@ Inject overrides through `flightresolution.ComputeDeps.FlightState` for tests or
 - AP+ detection is a **candidate** flag, not confirmation of autopilot state.
 - `confidence` is evidence strength (0–1), not a calibrated probability. Values are quantized to 0.05 on the stored record summary to avoid spurious cache writes.
 
-## Livery enrichment
+## Livery display names
 
-Aircraft and livery display names come from the in-memory livery catalog when serving (`Normalize`). The sync job only increments `politburo_livegame_livery_resolve_total` when the flight is new or the livery/aircraft identity changes.
+Aircraft and livery display names come from the in-memory livery catalog when serving (`Normalize`), not from a sync-job enrichment step.
 
 ## Tuning loop
 

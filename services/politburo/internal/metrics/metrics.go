@@ -16,7 +16,6 @@ type Registry struct {
 	JobLastSuccess               *prometheus.GaugeVec
 	FlightsActive                *prometheus.GaugeVec
 	FlightsByPilotState          *prometheus.GaugeVec
-	LiveryResolveTotal           *prometheus.CounterVec
 	FlightsFilteredTotal         *prometheus.CounterVec
 	FlightsComputeTotal          *prometheus.CounterVec
 	FlightsFPLSyncScheduledTotal *prometheus.CounterVec
@@ -112,12 +111,6 @@ func NewRegistry() *Registry {
 		Name:      "flights_by_pilot_state",
 		Help:      "Active flights in the latest upstream poll grouped by pilot state.",
 	}, []string{"server", "pilot_state"})
-	liveryResolveTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "politburo",
-		Subsystem: "livegame",
-		Name:      "livery_resolve_total",
-		Help:      "Livery catalog match outcomes while mapping live flights.",
-	}, []string{"outcome"})
 	flightsFilteredTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "politburo",
 		Subsystem: "livegame",
@@ -226,7 +219,7 @@ func NewRegistry() *Registry {
 		requests, duration,
 		cacheOperations, cacheDuration, cachePayloadBytes, cacheInserts,
 		jobRuns, jobDuration, jobRunning, jobLastSuccess,
-		flightsActive, flightsByPilotState, liveryResolveTotal, flightsFilteredTotal,
+		flightsActive, flightsByPilotState, flightsFilteredTotal,
 		flightsComputeTotal, flightsFPLSyncScheduledTotal, flightsRecordUpdateTotal, flightsRecordCacheMissTotal,
 		flightsByPhase, flightStateTransitionsTotal, flightsAPPlusCandidates, flightsByDataQuality,
 		vaActiveFlights,
@@ -240,7 +233,7 @@ func NewRegistry() *Registry {
 		JobRuns: jobRuns, JobDuration: jobDuration, JobRunning: jobRunning,
 		JobLastSuccess: jobLastSuccess,
 		FlightsActive:  flightsActive, FlightsByPilotState: flightsByPilotState,
-		LiveryResolveTotal: liveryResolveTotal, FlightsFilteredTotal: flightsFilteredTotal,
+		FlightsFilteredTotal: flightsFilteredTotal,
 		FlightsComputeTotal: flightsComputeTotal, FlightsFPLSyncScheduledTotal: flightsFPLSyncScheduledTotal,
 		FlightsRecordUpdateTotal: flightsRecordUpdateTotal, FlightsRecordCacheMissTotal: flightsRecordCacheMissTotal,
 		FlightsByPhase: flightsByPhase, FlightStateTransitionsTotal: flightStateTransitionsTotal,
