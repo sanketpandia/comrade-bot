@@ -21,6 +21,8 @@ func mountUI(router chi.Router, h handlers, application *app.App) {
 		ui.Get(routes.Admin+"/", h.ui.AdminRedirect)
 		ui.Get(routes.AdminGeneral, h.ui.Admin)
 		ui.Get(routes.AdminGeneral+"/", h.ui.Admin)
+		ui.Get(routes.AdminWebhooks, h.ui.Admin)
+		ui.Get(routes.AdminWebhooks+"/", h.ui.Admin)
 		ui.Get(routes.AdminLive, h.ui.Admin)
 		ui.Get(routes.AdminLive+"/", h.ui.Admin)
 		ui.Get(routes.Live, h.ui.LiveRedirect)

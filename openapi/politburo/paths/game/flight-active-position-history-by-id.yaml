@@ -1,0 +1,37 @@
+get:
+  operationId: getActiveFlightPositionHistory
+  summary: Read the cached position trail for one active flight
+  tags: [Game]
+  parameters:
+    - name: flightId
+      in: path
+      required: true
+      description: Infinite Flight flight identifier (UUID).
+      schema:
+        type: string
+        format: uuid
+  responses:
+    "200":
+      description: The ordered position fixes collected for the flight
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ActiveFlightPositionHistoryResponse.yaml"
+    "400":
+      description: An invalid flight identifier was supplied
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: No position trail exists for the flight
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: The cache entry could not be read
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

@@ -323,3 +323,48 @@ html, body.maps-page {
     bottom: var(--chrome-inset);
   }
 }
+
+/* Route tab: compact waypoint list inside the detail panel */
+.maps-detail-panel .route-plan-table {
+  min-width: 0;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.maps-detail-panel .route-plan-table thead th {
+  font-size: var(--text-xs);
+}
+
+.maps-detail-panel .route-plan-table__alt-h,
+.maps-detail-panel .route-plan-table__alt {
+  width: 3.25rem;
+  max-width: 3.25rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.maps-detail-panel .route-plan-table tbody th[scope="row"] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.maps-detail-panel .route-plan-table__pos {
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.maps-detail-panel .route-plan-table__pos .data-link {
+  font-variant-numeric: tabular-nums;
+}
+
+.maps-detail-panel .route-plan-footnote {
+  margin: 0.35rem 0 0;
+  font-size: var(--text-xs);
+}
+
+.maps-detail-panel .route-plan-footnote__mark {
+  margin-right: 0.2rem;
+  color: var(--text-muted);
+}

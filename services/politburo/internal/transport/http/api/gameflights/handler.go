@@ -16,14 +16,32 @@ type Handler struct {
 	svc *Service
 }
 
-func NewHandler(reader *domainflights.Reader, lookup *gameliveries.Lookup, metricsRegistry *metrics.Registry) *Handler {
-	return &Handler{svc: NewService(reader, lookup, metricsRegistry)}
+func NewHandler(reader *domainflights.Reader, planFetcher *domainflights.PlanFetcher, lookup *gameliveries.Lookup, metricsRegistry *metrics.Registry) *Handler {
+	return &Handler{svc: NewService(reader, planFetcher, lookup, metricsRegistry)}
 }
 
 func (h *Handler) GetActiveFlight(w http.ResponseWriter, r *http.Request, flightID openapi_types.UUID) {
 	resp, err := h.svc.GetActiveFlight(r.Context(), flightID)
 	if err != nil {
 		writeGetActiveFlightError(w, flightID.String(), err)
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) GetActiveFlightPlan(w http.ResponseWriter, r *http.Request, flightID openapi_types.UUID) {
+	resp, err := h.svc.GetActiveFlightPlan(r.Context(), flightID)
+	if err != nil {
+		writeGetActiveFlightPlanError(w, flightID.String(), err)
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) GetActiveFlightPositionHistory(w http.ResponseWriter, r *http.Request, flightID openapi_types.UUID) {
+	resp, err := h.svc.GetActiveFlightPositionHistory(r.Context(), flightID)
+	if err != nil {
+		writeGetActiveFlightPositionHistoryError(w, flightID.String(), err)
 		return
 	}
 	response.WriteJSON(w, http.StatusOK, resp)

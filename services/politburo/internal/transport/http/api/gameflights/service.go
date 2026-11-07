@@ -15,13 +15,14 @@ import (
 
 // Service loads active flight data from cache and shapes API responses.
 type Service struct {
-	reader  *domainflights.Reader
-	lookup  *gameliveries.Lookup
-	metrics *metrics.Registry
+	reader      *domainflights.Reader
+	planFetcher *domainflights.PlanFetcher
+	lookup      *gameliveries.Lookup
+	metrics     *metrics.Registry
 }
 
-func NewService(reader *domainflights.Reader, lookup *gameliveries.Lookup, metricsRegistry *metrics.Registry) *Service {
-	return &Service{reader: reader, lookup: lookup, metrics: metricsRegistry}
+func NewService(reader *domainflights.Reader, planFetcher *domainflights.PlanFetcher, lookup *gameliveries.Lookup, metricsRegistry *metrics.Registry) *Service {
+	return &Service{reader: reader, planFetcher: planFetcher, lookup: lookup, metrics: metricsRegistry}
 }
 
 func (s *Service) GetActiveFlight(ctx context.Context, flightID openapi_types.UUID) (politburoapi.ActiveFlightRecordResponse, error) {
@@ -29,13 +30,35 @@ func (s *Service) GetActiveFlight(ctx context.Context, flightID openapi_types.UU
 	if err != nil {
 		return politburoapi.ActiveFlightRecordResponse{}, err
 	}
-	history, err := s.reader.GetFlightHistory(ctx, flightID.String())
-	if err != nil {
-		return politburoapi.ActiveFlightRecordResponse{}, err
-	}
 	record := activeFlightRecordFromDomain(flight, flightID, s.lookup)
-	enrichActiveFlightStateFeatures(&record, history)
+	enrichActiveFlightStateFeatures(&record, flight.History)
 	return politburoapi.ActiveFlightRecordResponse{Data: record}, nil
+}
+
+func (s *Service) GetActiveFlightPlan(ctx context.Context, flightID openapi_types.UUID) (politburoapi.ActiveFlightPlanResponse, error) {
+	if s.planFetcher == nil {
+		return politburoapi.ActiveFlightPlanResponse{}, domainflights.ErrCacheRead
+	}
+	flight, err := s.reader.GetActiveFlight(ctx, flightID.String())
+	if err != nil {
+		return politburoapi.ActiveFlightPlanResponse{}, err
+	}
+	plan, err := s.planFetcher.GetOrFetch(ctx, flight.Raw.SessionID, flightID.String())
+	if err != nil {
+		return politburoapi.ActiveFlightPlanResponse{}, err
+	}
+	if plan.Absent {
+		return politburoapi.ActiveFlightPlanResponse{}, domainflights.ErrCacheMiss
+	}
+	return politburoapi.ActiveFlightPlanResponse{Data: activeFlightPlanFromDomain(plan)}, nil
+}
+
+func (s *Service) GetActiveFlightPositionHistory(ctx context.Context, flightID openapi_types.UUID) (politburoapi.ActiveFlightPositionHistoryResponse, error) {
+	trail, err := s.reader.GetPositionTrail(ctx, flightID.String())
+	if err != nil {
+		return politburoapi.ActiveFlightPositionHistoryResponse{}, err
+	}
+	return politburoapi.ActiveFlightPositionHistoryResponse{Data: activeFlightPositionHistoryFromDomain(trail)}, nil
 }
 
 func (s *Service) ListActiveTracks(ctx context.Context, input domainflights.ListActiveTracksInput) (cachedresponse.Response[activeFlightTrack], error) {

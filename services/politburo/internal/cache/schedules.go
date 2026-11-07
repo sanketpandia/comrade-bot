@@ -4,6 +4,8 @@ package cache
 const (
 	ScheduleSessionsSync = "0 */5 * * * *"
 	ScheduleFlightsSync  = "0 * * * * *"
+	// ScheduleFlightPlansSync runs 20s after each flights sync so due entries are fresh.
+	ScheduleFlightPlansSync = "20 * * * * *"
 	// ScheduleVAFlightIndexSync runs 30s after each flights sync so it reads that tick's records.
 	ScheduleVAFlightIndexSync = "30 * * * * *"
 	ScheduleLiveriesSync      = "0 */30 * * * *"

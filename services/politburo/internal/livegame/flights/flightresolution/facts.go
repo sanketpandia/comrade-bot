@@ -8,7 +8,6 @@ import (
 type Facts struct {
 	IsNew         bool
 	MotionChanged bool
-	FPLDue        bool
 	HistoryPush   string
 }
 
@@ -22,11 +21,5 @@ func computeFacts(ctx ComputeContext, raw flights.Observation, prior *flights.Re
 		facts.MotionChanged = true
 	}
 
-	var priorFPL flights.FPLSyncAction
-	if prior != nil {
-		priorFPL = prior.Actions.FPLSync
-	}
-
-	facts.FPLDue = flights.FPLSyncDue(raw.PilotState, priorFPL, ctx.RefreshedAt)
 	return facts
 }

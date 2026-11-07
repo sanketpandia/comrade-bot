@@ -141,6 +141,7 @@ type Handler struct {
 	tickets        ticketConsumer
 	lister         sessionLister
 	flights        *domainflights.Reader
+	planFetcher    *domainflights.PlanFetcher
 	liveryLookup   *gameliveries.Lookup
 	reports        *reports.Repository
 	contact        contactSubmitter
@@ -162,13 +163,14 @@ func NewHandler(
 	platformOperators []string,
 	lister sessionLister,
 	flightsReader *domainflights.Reader,
+	planFetcher *domainflights.PlanFetcher,
 	liveryLookup *gameliveries.Lookup,
 	ifOAuthEnabled bool,
 	vaLiveGrants vaLiveGrantReader,
 ) *Handler {
 	return &Handler{
 		renderer: renderer, sessions: sessions, tickets: tickets, lister: lister,
-		flights: flightsReader, liveryLookup: liveryLookup,
+		flights: flightsReader, planFetcher: planFetcher, liveryLookup: liveryLookup,
 		reports: reportRepo, contact: contactRepo, contactLimiter: contactLimiter,
 		operator: operatorService, operators: platformOperators,
 		ifOAuthEnabled: ifOAuthEnabled,
@@ -372,6 +374,8 @@ func (h *Handler) AdminRedirect(w http.ResponseWriter, r *http.Request) {
 
 func adminTab(path string) string {
 	switch strings.TrimSuffix(path, "/") {
+	case routes.AdminWebhooks:
+		return "webhooks"
 	case routes.AdminLive:
 		return "live"
 	default:
@@ -401,10 +405,10 @@ func (h *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	data := basePageData(r, "Admin", "admin-content", map[string]any{
-		"AdminTab":          tab,
-		"IFOAuthEnabled":    h.ifOAuthEnabled,
-		"OAuthStatus":       oauthQuery,
-		"LiveGrantStatus":   liveGrantStatus,
+		"AdminTab":        tab,
+		"IFOAuthEnabled":  h.ifOAuthEnabled,
+		"OAuthStatus":     oauthQuery,
+		"LiveGrantStatus": liveGrantStatus,
 	})
 	if err := h.renderer.Render(w, "base", data); err != nil {
 		http.Error(w, "template render failed", http.StatusInternalServerError)

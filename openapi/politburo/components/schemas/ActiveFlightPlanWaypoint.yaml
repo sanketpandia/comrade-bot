@@ -1,0 +1,13 @@
+type: object
+required: [name, latitude, longitude, altitude]
+properties:
+  name:
+    type: string
+  latitude:
+    type: number
+    format: double
+  longitude:
+    type: number
+    format: double
+  altitude:
+    type: integer

@@ -209,7 +209,7 @@ func computeFleetStats(reported []flights.Record, lookup *gameliveries.Lookup) f
 	pilots := map[string]struct{}{}
 
 	for _, flight := range reported {
-		livery := strings.TrimSpace(flights.Normalize(flight.Raw, lookup).LiveryName)
+		livery := strings.TrimSpace(flights.NormalizeRecord(flight, lookup).LiveryName)
 		if livery != "" {
 			liveryCounts[livery]++
 		}
@@ -295,21 +295,37 @@ func flightFieldValue(flight flights.Record, lookup *gameliveries.Lookup) string
 	if pilot == "" {
 		pilot = "—"
 	}
-	norm := flights.Normalize(flight.Raw, lookup)
+	norm := flights.NormalizeRecord(flight, lookup)
 	speed := strings.TrimSpace(norm.Speed)
 	flightID := strings.TrimSpace(flight.Raw.FlightID)
 	if flightID == "" {
 		flightID = "—"
 	}
 	return fmt.Sprintf(
-		"Pilot: %s\nState: %s\nAircraft: %s\nAltitude: %d ft\nSpeed: %s\nRoute: —\nFlight ID: %s",
+		"Pilot: %s\nState: %s\nAircraft: %s\nAltitude: %d ft\nSpeed: %s\nRoute: %s\nFlight ID: %s",
 		pilot,
 		formatFlightState(flight),
 		formatAircraft(norm.AircraftName, norm.LiveryName),
 		flights.RoundedAltitude(flight.Raw.Altitude),
 		speed,
+		formatRoute(norm.Departure, norm.Destination),
 		flightID,
 	)
+}
+
+func formatRoute(departure, destination string) string {
+	departure = strings.TrimSpace(departure)
+	destination = strings.TrimSpace(destination)
+	switch {
+	case departure != "" && destination != "":
+		return departure + " → " + destination
+	case departure != "":
+		return departure
+	case destination != "":
+		return destination
+	default:
+		return "—"
+	}
 }
 
 func formatFlightState(flight flights.Record) string {

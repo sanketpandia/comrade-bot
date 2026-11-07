@@ -1,0 +1,18 @@
+type: object
+required: [at, latitude, longitude, altitude, speed]
+properties:
+  at:
+    type: string
+    format: date-time
+  latitude:
+    type: number
+    format: double
+  longitude:
+    type: number
+    format: double
+  altitude:
+    type: number
+    format: double
+  speed:
+    type: number
+    format: double

@@ -58,6 +58,14 @@ func (h apiHandler) GetActiveFlight(w stdhttp.ResponseWriter, r *stdhttp.Request
 	h.handlers.flights.GetActiveFlight(w, r, flightID)
 }
 
+func (h apiHandler) GetActiveFlightPlan(w stdhttp.ResponseWriter, r *stdhttp.Request, flightID openapi_types.UUID) {
+	h.handlers.flights.GetActiveFlightPlan(w, r, flightID)
+}
+
+func (h apiHandler) GetActiveFlightPositionHistory(w stdhttp.ResponseWriter, r *stdhttp.Request, flightID openapi_types.UUID) {
+	h.handlers.flights.GetActiveFlightPositionHistory(w, r, flightID)
+}
+
 func (h apiHandler) GenerateSignedLink(w stdhttp.ResponseWriter, r *stdhttp.Request, _ politburoapi.GenerateSignedLinkParams) {
 	h.handlers.signedLink.GenerateSignedLink(w, r)
 }

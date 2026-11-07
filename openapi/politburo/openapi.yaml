@@ -42,6 +42,10 @@ paths:
     $ref: "./paths/game/flights-active.yaml"
   /api/v1/game/flight/active/{flightId}:
     $ref: "./paths/game/flight-active-by-id.yaml"
+  /api/v1/game/flight/active/{flightId}/flight-plan:
+    $ref: "./paths/game/flight-active-plan-by-id.yaml"
+  /api/v1/game/flight/active/{flightId}/position-history:
+    $ref: "./paths/game/flight-active-position-history-by-id.yaml"
   /api/v1/signed-link:
     $ref: "./paths/auth/signed-link.yaml"
   /api/v1/live/organizations:
@@ -139,6 +143,18 @@ components:
       $ref: "./components/schemas/ActiveFlightLinks.yaml"
     ActiveFlightHistory:
       $ref: "./components/schemas/ActiveFlightHistory.yaml"
+    ActiveFlightPlanResponse:
+      $ref: "./components/schemas/ActiveFlightPlanResponse.yaml"
+    ActiveFlightPlanData:
+      $ref: "./components/schemas/ActiveFlightPlanData.yaml"
+    ActiveFlightPlanWaypoint:
+      $ref: "./components/schemas/ActiveFlightPlanWaypoint.yaml"
+    ActiveFlightPositionHistoryResponse:
+      $ref: "./components/schemas/ActiveFlightPositionHistoryResponse.yaml"
+    ActiveFlightPositionHistoryData:
+      $ref: "./components/schemas/ActiveFlightPositionHistoryData.yaml"
+    ActiveFlightPositionFix:
+      $ref: "./components/schemas/ActiveFlightPositionFix.yaml"
     ActiveFlightVirtualAirlineMatch:
       $ref: "./components/schemas/ActiveFlightVirtualAirlineMatch.yaml"
     Pagination:

@@ -34,11 +34,28 @@ type mapsFlightsPartialView struct {
 }
 
 type mapsFlightDetailView struct {
-	FlightID    string
-	Tab         string
-	NotFound    bool
-	GoneMessage string
-	Record      *mapFlightRecordView
+	FlightID     string
+	Tab          string
+	NotFound     bool
+	GoneMessage  string
+	RouteMessage string
+	Record       *mapFlightRecordView
+	Route        *mapFlightRouteView
+}
+
+type mapFlightRouteView struct {
+	FetchedAt    string
+	FetchedAtISO string
+	PlanType     string
+	Waypoints    []mapFlightWaypointView
+}
+
+type mapFlightWaypointView struct {
+	Seq        int
+	Name       string
+	AltitudeFt int
+	Latitude   float64
+	Longitude  float64
 }
 
 type mapFlightRecordView struct {
@@ -217,9 +234,45 @@ func relativeTime(at time.Time) string {
 	}
 }
 
+func routeViewFromPlan(plan domainflights.CachedFlightPlan) mapFlightRouteView {
+	view := mapFlightRouteView{
+		FetchedAt:    formatUTC(plan.FetchedAt),
+		FetchedAtISO: plan.FetchedAt.UTC().Format(time.RFC3339),
+	}
+	if plan.FlightPlanType != nil {
+		switch *plan.FlightPlanType {
+		case 0:
+			view.PlanType = "VFR"
+		case 1:
+			view.PlanType = "IFR"
+		default:
+			view.PlanType = fmt.Sprintf("Type %d", *plan.FlightPlanType)
+		}
+	}
+	view.Waypoints = make([]mapFlightWaypointView, 0, len(plan.Waypoints))
+	for i, wp := range plan.Waypoints {
+		name := strings.TrimSpace(wp.Name)
+		if name == "" {
+			name = fmt.Sprintf("Waypoint %d", i+1)
+		}
+		altFt := -1
+		if wp.Altitude >= 0 {
+			altFt = wp.Altitude
+		}
+		view.Waypoints = append(view.Waypoints, mapFlightWaypointView{
+			Seq:        i + 1,
+			Name:       name,
+			AltitudeFt: altFt,
+			Latitude:   wp.Latitude,
+			Longitude:  wp.Longitude,
+		})
+	}
+	return view
+}
+
 func recordViewFromDomain(record domainflights.Record, lookup *gameliveries.Lookup) mapFlightRecordView {
 	raw := record.Raw
-	norm := domainflights.Normalize(raw, lookup)
+	norm := domainflights.NormalizeRecord(record, lookup)
 	vsTrend, vsClass := verticalTrend(raw.VerticalSpeed)
 	pilotLabel := strings.ReplaceAll(strings.ToUpper(strings.TrimSpace(norm.PilotState)), "_", " ")
 	if pilotLabel == "" {

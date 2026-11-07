@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"infinite-experiment/politburo/internal/community/virtualairlines"
 	"infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/livegame/flights/flightstate"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
@@ -40,6 +41,7 @@ func TestResolveFlightSkipsRecordWriteWhenMotionUnchanged(t *testing.T) {
 		Analytics: warm.Record.Analytics.Clone(),
 		Actions:   warm.Record.Actions.Clone(),
 		Links:     warm.Record.Links.Clone(),
+		History:   warm.NextHistory,
 	}
 
 	out := ResolveFlight(ctx, upstream, prior, warm.NextHistory)
@@ -51,17 +53,21 @@ func TestResolveFlightSkipsRecordWriteWhenMotionUnchanged(t *testing.T) {
 func TestResolveFlightFPLSchedulesSyncDespiteUnchangedMotion(t *testing.T) {
 	now := time.Date(2026, 8, 15, 6, 0, 0, 0, time.UTC)
 	upstream := infiniteflight.Flight{
-		FlightID: "f1", Speed: 100, PilotState: flights.PilotStateActive, LastReport: "2026-08-15 05:09:53Z",
+		FlightID: "f1", Callsign: "IE123", Speed: 100, PilotState: flights.PilotStateActive, LastReport: "2026-08-15 05:09:53Z",
 	}
 	prior := &flights.Record{
-		Raw: flights.Observation{FlightID: "f1", Speed: 100, PilotState: flights.PilotStateActive},
-		Actions: flights.Actions{
-			FPLSync: flights.FPLSyncAction{LastAt: now.Add(-flights.FPLSyncInterval)},
+		Raw: flights.Observation{FlightID: "f1", Callsign: "IE123", Speed: 100, PilotState: flights.PilotStateActive},
+		Links: flights.Links{
+			VirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1", VACode: "IE"}},
 		},
 	}
 	motion := flights.MotionFromUpstream(upstream)
 
 	ctx := testComputeContext(infiniteflight.Session{NormalizedName: "casual"}, motion, true, now)
+	ctx.LiveVACatalog = virtualairlines.LiveVACatalog{
+		Rules:         []virtualairlines.CallsignAffix{{VAID: "va-1", VACode: "IE", Prefix: "IE"}},
+		UnscopedVAIDs: []string{"va-1"},
+	}
 	out := ResolveFlight(ctx, upstream, prior, flightstate.History{})
 	if !out.Outcome.UpdateFlightRecord {
 		t.Fatal("expected record update for FPL tick")
@@ -101,19 +107,57 @@ func TestResolveFlightUpdatesRecordWhenOnlyUserIDChanges(t *testing.T) {
 	}
 }
 
+func TestResolveFlightStoresRouteEndpointsFromCachedPlan(t *testing.T) {
+	now := time.Date(2026, 8, 15, 6, 0, 0, 0, time.UTC)
+	upstream := infiniteflight.Flight{
+		FlightID: "f1", Callsign: "IE123", Speed: 100, PilotState: flights.PilotStateActive, LastReport: "2026-08-15 05:09:53Z",
+	}
+	motion := flights.MotionFromUpstream(upstream)
+	ctx := testComputeContext(infiniteflight.Session{NormalizedName: "casual"}, motion, true, now)
+	ctx.PlanLoaded = true
+	ctx.PlanFetchedAt = now
+	ctx.Plan = flights.CachedFlightPlan{
+		FetchedAt: now,
+		Waypoints: []flights.PlanWaypoint{
+			{Name: "EGLL"},
+			{Name: "KJFK"},
+		},
+	}
+
+	prior := &flights.Record{
+		Raw: flights.Observation{FlightID: "f1", Callsign: "IE123", Speed: 100, PilotState: flights.PilotStateActive},
+	}
+
+	out := ResolveFlight(ctx, upstream, prior, flightstate.History{})
+	if out.Record.Normalized.Departure != "EGLL" || out.Record.Normalized.Destination != "KJFK" {
+		t.Fatalf("normalized route = %#v", out.Record.Normalized)
+	}
+	if !out.Outcome.UpdateFlightRecord {
+		t.Fatal("expected record write when route endpoints change")
+	}
+}
+
 func TestResolveFlightFPLSyncRequiredResetsAfterSync(t *testing.T) {
 	now := time.Date(2026, 8, 15, 6, 0, 0, 0, time.UTC)
 	upstream := infiniteflight.Flight{
-		FlightID: "f1", Speed: 100, PilotState: flights.PilotStateActive, LastReport: "2026-08-15 05:09:53Z",
+		FlightID: "f1", Callsign: "IE123", Speed: 100, PilotState: flights.PilotStateActive, LastReport: "2026-08-15 05:09:53Z",
 	}
 	motion := flights.MotionFromUpstream(upstream)
 	ctx := testComputeContext(infiniteflight.Session{NormalizedName: "casual"}, motion, true, now)
 
 	duePrior := &flights.Record{
-		Raw: flights.Observation{FlightID: "f1", Speed: 100, PilotState: flights.PilotStateActive, ObservedAt: now},
+		Raw: flights.Observation{FlightID: "f1", Callsign: "IE123", Speed: 100, PilotState: flights.PilotStateActive, ObservedAt: now},
+		Links: flights.Links{
+			VirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1", VACode: "IE"}},
+		},
 		Actions: flights.Actions{
 			FPLSync: flights.FPLSyncAction{Required: true, LastAt: now},
 		},
+	}
+	ctx.PlanFetchedAt = now
+	ctx.LiveVACatalog = virtualairlines.LiveVACatalog{
+		Rules:         []virtualairlines.CallsignAffix{{VAID: "va-1", VACode: "IE", Prefix: "IE"}},
+		UnscopedVAIDs: []string{"va-1"},
 	}
 	out := ResolveFlight(ctx, upstream, duePrior, flightstate.History{})
 	if out.Record.Actions.FPLSync.Required {

@@ -9,11 +9,18 @@ import (
 
 // Record is the per-flight cache entry: upstream observation plus effect-owned sections.
 type Record struct {
-	Raw       Observation `json:"raw"`
-	Analytics Analytics   `json:"analytics"`
-	Actions   Actions     `json:"actions"`
-	Links     Links       `json:"links"`
-	History   History     `json:"history"`
+	Raw         Observation      `json:"raw"`
+	Analytics   Analytics        `json:"analytics"`
+	Actions     Actions          `json:"actions"`
+	Links       Links            `json:"links"`
+	History     flightstate.History `json:"history"`
+	Normalized  RecordNormalized `json:"normalized"`
+}
+
+// RecordNormalized holds normalized fields persisted from background sync (for example route endpoints from a cached flight plan).
+type RecordNormalized struct {
+	Departure   string `json:"departure,omitempty"`
+	Destination string `json:"destination,omitempty"`
 }
 
 // Analytics holds temporal estimation and other derived analysis stored on the record.
@@ -38,14 +45,13 @@ type Links struct {
 	Users           []string                              `json:"users,omitempty"`
 }
 
-// History is a reserved section on the record; content is empty for now.
-type History struct{}
-
-// Normalized is the serve-time display envelope (not stored in Redis).
+// Normalized is the serve-time display envelope (motion fields are derived from raw; route endpoints come from the cached record).
 type Normalized struct {
 	NormalizedCallsign string `json:"normalizedCallsign,omitempty"`
 	AircraftName       string `json:"aircraftName,omitempty"`
 	LiveryName         string `json:"liveryName,omitempty"`
+	Departure          string `json:"departure,omitempty"`
+	Destination        string `json:"destination,omitempty"`
 	Speed              string `json:"speed"`
 	VerticalSpeed      string `json:"verticalSpeed"`
 	PilotState         string `json:"pilotState"`
@@ -56,7 +62,14 @@ type Normalized struct {
 func (r Record) StoredSectionsEqual(other Record) bool {
 	return r.Analytics.Equal(other.Analytics) &&
 		r.Actions.Equal(other.Actions) &&
-		r.Links.Equal(other.Links)
+		r.Links.Equal(other.Links) &&
+		r.History.Equal(other.History) &&
+		r.Normalized.Equal(other.Normalized)
+}
+
+// Equal reports whether two stored normalized snapshots are identical for cache dirty checks.
+func (n RecordNormalized) Equal(other RecordNormalized) bool {
+	return n == other
 }
 
 // Clone returns a deep copy of analytics.

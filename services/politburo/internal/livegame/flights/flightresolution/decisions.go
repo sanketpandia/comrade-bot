@@ -14,5 +14,6 @@ var flightEffects = []EffectDecision{
 	vaMatchEffect,
 	liveModeCheckEffect,
 	flightStateEffect,
+	positionTrailEffect,
 	fplSyncUpdateEffect,
 }

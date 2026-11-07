@@ -1,0 +1,19 @@
+type: object
+required: [fetchedAt]
+properties:
+  fetchedAt:
+    type: string
+    format: date-time
+  flightPlanId:
+    type: string
+    format: uuid
+  flightPlanType:
+    type: integer
+    description: "VFR=0, IFR=1."
+  absent:
+    type: boolean
+    description: Upstream reported no filed plan for this flight.
+  waypoints:
+    type: array
+    items:
+      $ref: "./ActiveFlightPlanWaypoint.yaml"

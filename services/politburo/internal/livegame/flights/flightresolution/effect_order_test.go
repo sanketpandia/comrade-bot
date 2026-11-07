@@ -12,6 +12,7 @@ func TestFlightEffectsOrder(t *testing.T) {
 		"VAMatch",
 		"LiveModeCheck",
 		"FlightState",
+		"PositionTrail",
 		"FPLSyncUpdate",
 	}
 	if len(flightEffects) != len(want) {
