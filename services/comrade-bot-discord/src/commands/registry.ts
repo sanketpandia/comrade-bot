@@ -11,6 +11,10 @@ import * as register from "./register";
 import * as logbook from "./logbook";
 import * as initserver from "./initServer";
 import * as live from "./live";
+import * as assignToMe from "./assign-to-me";
+import * as aircrafts from "./aircrafts";
+import * as schedules from "./schedules";
+import * as history from "./history";
 import * as rollout from "./rollout";
 import * as stats from "./stats";
 import * as log from "./log";
@@ -50,6 +54,10 @@ export const commandRegistry: CommandRegistryEntry[] = [
     entry(logbook, "user"),
     entry(initserver, "admin"),
     entry(live, "operations"),
+    entry(assignToMe, "operations"),
+    entry(aircrafts, "operations"),
+    entry(schedules, "operations"),
+    entry(history, "operations"),
     entry(rollout, "admin"),
     entry(stats, "user"),
     entry(log, "operations"),

@@ -1,0 +1,11 @@
+type: object
+required:
+  - registration
+  - route
+properties:
+  registration:
+    type: string
+    description: Organization aircraft registration (e.g. PH-ZNB).
+  route:
+    type: string
+    description: Origin and destination ICAO pair as ORIG-DEST (e.g. EHAM-CYYZ).

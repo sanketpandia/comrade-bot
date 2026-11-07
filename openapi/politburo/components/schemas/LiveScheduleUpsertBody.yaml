@@ -1,0 +1,29 @@
+type: object
+description: |
+  Partial schedule fields forwarded to Infinite Flight Live API v3.
+  All properties are optional; omitted keys are not sent upstream.
+properties:
+  status:
+    $ref: "./LiveScheduleStatusName.yaml"
+  callsign:
+    type: string
+  flightType:
+    $ref: "./LiveScheduleFlightTypeName.yaml"
+  originIcao:
+    type: string
+  destinationIcao:
+    type: string
+  isTimeless:
+    type: boolean
+  scheduledDepartureUtc:
+    type: string
+    format: date-time
+  scheduledArrivalUtc:
+    type: string
+    format: date-time
+  briefing:
+    type: string
+    nullable: true
+  debriefing:
+    type: string
+    nullable: true

@@ -971,3 +971,33 @@ textarea.input {
   color: var(--status-error);
   font-size: var(--text-sm);
 }
+
+.live-schedule-dialog {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0;
+  max-width: min(36rem, calc(100vw - 2rem));
+  width: 100%;
+  background: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-3);
+}
+
+.live-schedule-dialog::backdrop {
+  background: var(--dialog-backdrop);
+}
+
+.live-schedule-dialog .panel {
+  margin: 0;
+  box-shadow: none;
+  border: none;
+}
+
+.live-schedule-dialog .form-stack {
+  max-width: none;
+}
+
+.live-schedule-dialog textarea.input {
+  resize: vertical;
+  min-height: 4rem;
+}

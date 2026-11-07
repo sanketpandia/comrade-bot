@@ -68,6 +68,9 @@ func (j *Job) Run(ctx context.Context) error {
 			continue
 		}
 		for _, entry := range entries {
+			if !webhookconfig.Schedulable(entry.Key) {
+				continue
+			}
 			if !webhookconfig.Due(entry.Frequency, tick) {
 				continue
 			}

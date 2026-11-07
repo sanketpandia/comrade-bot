@@ -1,0 +1,83 @@
+post:
+  operationId: createVALiveAircraftSchedule
+  summary: Create a schedule on a fleet aircraft
+  description: |
+    Proxies Infinite Flight Public API v3 `POST /live/aircraft/{aircraftId}/schedules`.
+    The aircraft must belong to the linked organisation's fleet. Uses the VA's OAuth grant
+    (requires `live:schedules.write`). Requires VA administrator role (`administrator`).
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: organizationId
+      in: path
+      required: true
+      description: Infinite Flight Live organisation id
+      schema:
+        type: string
+        format: uuid
+    - name: aircraftId
+      in: path
+      required: true
+      description: Persistent organization aircraft id
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/LiveScheduleUpsertBody.yaml"
+  responses:
+    "204":
+      description: Schedule created upstream
+    "400":
+      description: Empty or invalid body
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "401":
+      description: Missing or inactive API key or session cookie
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Caller is not a VA administrator
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: VA context, organisation link, or aircraft not found in fleet
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "409":
+      description: VA Live OAuth grant missing or needs reconnect
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "502":
+      description: Infinite Flight Live API request failed
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "503":
+      description: Infinite Flight Live API is not configured
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Internal error
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

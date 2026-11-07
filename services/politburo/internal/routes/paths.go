@@ -79,12 +79,18 @@ const (
 	VA                                = "/api/v1/va"
 	VAConfig                          = "/api/v1/va/config"
 	VAWebhookTrigger                  = "/api/v1/va/webhook/trigger"
+	VALiveScheduleEnums               = "/api/v1/va/live/schedule-enums"
 	VALiveConnections                 = "/api/v1/va/live/connections"
 	VALiveConnection                  = "/api/v1/va/live/connections/{organizationId}"
 	VALiveConnectionPing              = "/api/v1/va/live/connections/{organizationId}/ping"
 	VALiveOrganizationAircraft        = "/api/v1/va/live/organizations/{organizationId}/aircraft"
-	VALiveOrganizationSchedules       = "/api/v1/va/live/organizations/{organizationId}/schedules"
+	VALiveOrganizationSchedules           = "/api/v1/va/live/organizations/{organizationId}/schedules"
+	VALiveOrganizationSchedulesAssignMe   = "/api/v1/va/live/organizations/{organizationId}/schedules/assign-me"
+	VALiveOrganizationSchedule            = "/api/v1/va/live/organizations/{organizationId}/schedules/{scheduleId}"
+	VALiveOrganizationScheduleFlightPlan = "/api/v1/va/live/organizations/{organizationId}/schedules/{scheduleId}/flightplan"
+	VALiveOrganizationAircraftSchedules  = "/api/v1/va/live/organizations/{organizationId}/aircraft/{aircraftId}/schedules"
 	VALiveOrganizationAircraftFlights = "/api/v1/va/live/organizations/{organizationId}/aircraft/{aircraftId}/flights"
+	VALiveOrganizationFlights         = "/api/v1/va/live/organizations/{organizationId}/flights"
 	VAMembers                         = "/api/v1/va/members"
 	VAMember                          = "/api/v1/va/members/{userId}"
 
@@ -116,12 +122,18 @@ var OpenAPIPaths = []string{
 	VA,
 	VAConfig,
 	VAWebhookTrigger,
+	VALiveScheduleEnums,
 	VALiveConnections,
 	VALiveConnection,
 	VALiveConnectionPing,
 	VALiveOrganizationAircraft,
 	VALiveOrganizationSchedules,
+	VALiveOrganizationSchedulesAssignMe,
+	VALiveOrganizationSchedule,
+	VALiveOrganizationScheduleFlightPlan,
+	VALiveOrganizationAircraftSchedules,
 	VALiveOrganizationAircraftFlights,
+	VALiveOrganizationFlights,
 	VAMembers,
 	VAMember,
 }

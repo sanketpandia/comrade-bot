@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,6 +33,11 @@ type liveDataStub struct {
 	aircraftErr    error
 	schedErr       error
 	flightErr      error
+	createErr      error
+	updateErr      error
+	updateFPLErr   error
+	lastCreateBody json.RawMessage
+	lastUpdateBody json.RawMessage
 	lastSchedPage  int
 	lastSchedSize  int
 	lastSchedIDs   []string
@@ -69,6 +75,26 @@ func (s *liveDataStub) ListAircraftFlights(_ context.Context, _, _ string, page,
 	return s.flightPage, nil
 }
 
+func (s *liveDataStub) CreateAircraftSchedule(_ context.Context, _, _ string, body json.RawMessage) error {
+	s.lastCreateBody = append(json.RawMessage(nil), body...)
+	if s.createErr != nil {
+		return s.createErr
+	}
+	return nil
+}
+
+func (s *liveDataStub) UpdateSchedule(_ context.Context, _, _ string, body json.RawMessage) error {
+	s.lastUpdateBody = append(json.RawMessage(nil), body...)
+	if s.updateErr != nil {
+		return s.updateErr
+	}
+	return nil
+}
+
+func (s *liveDataStub) UpdateScheduleFlightPlan(context.Context, string, string, json.RawMessage) error {
+	return s.updateFPLErr
+}
+
 type orgConnectionsRepoStub struct {
 	conn *valive.Connection
 }
@@ -95,6 +121,10 @@ func (s tokenStub) AccessToken(context.Context, string) (string, error) {
 		return "", s.err
 	}
 	return s.token, nil
+}
+
+func (s tokenStub) Write(ctx context.Context, _ string, _ *string, _ *string, _ string, fn func(accessToken string) error) error {
+	return fn(s.token)
 }
 
 func staffClaims() auth.Claims {
@@ -220,6 +250,40 @@ func TestListAircraftFlightsReturnsPage(t *testing.T) {
 	}
 	if len(body.Data) != 1 {
 		t.Fatalf("data len = %d", len(body.Data))
+	}
+}
+
+func TestCreateVALiveAircraftScheduleProxiesBody(t *testing.T) {
+	live := &liveDataStub{aircraft: []infiniteflight.LiveAircraft{{ID: testAcID}}}
+	handler := linkedHandler(live)
+	body := `{"callsign":"TST001"}`
+	req := withClaims(
+		httptest.NewRequest(http.MethodPost, "/api/v1/va/live/organizations/"+testOrgID+"/aircraft/"+testAcID+"/schedules", strings.NewReader(body)),
+		staffClaims(),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	handler.CreateVALiveAircraftSchedule(rec, req, testUUID(t, testOrgID), testUUID(t, testAcID))
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if string(live.lastCreateBody) != body {
+		t.Fatalf("upstream body = %q, want %q", live.lastCreateBody, body)
+	}
+}
+
+func TestCreateVALiveAircraftScheduleRejectsEmptyObject(t *testing.T) {
+	live := &liveDataStub{aircraft: []infiniteflight.LiveAircraft{{ID: testAcID}}}
+	handler := linkedHandler(live)
+	req := withClaims(
+		httptest.NewRequest(http.MethodPost, "/api/v1/va/live/organizations/"+testOrgID+"/aircraft/"+testAcID+"/schedules", strings.NewReader("{}")),
+		staffClaims(),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	handler.CreateVALiveAircraftSchedule(rec, req, testUUID(t, testOrgID), testUUID(t, testAcID))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
 	}
 }
 

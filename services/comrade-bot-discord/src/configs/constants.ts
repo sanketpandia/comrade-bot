@@ -9,4 +9,6 @@ export const CUSTOM_IDS = {
     TOUR_FILE_PIREP_BUTTON: "tour_file_pirep",
     TOUR_LEG_FILE_PIREP_BUTTON: "tour_leg_file_pirep",
     REPORT_OCCUPIED_IFC_PREFIX: "report_occupied_ifc:",
+    ASSIGN_TO_ME_SELECT_PREFIX: "assign_to_me:",
+    LIVE_ORG_SELECT_PREFIX: "live_org:",
 }

@@ -1,0 +1,22 @@
+type: object
+required:
+  - scheduleId
+  - organizationId
+  - registration
+  - originIcao
+  - destinationIcao
+properties:
+  scheduleId:
+    type: string
+    format: uuid
+  organizationId:
+    type: string
+    format: uuid
+  callsign:
+    type: string
+  registration:
+    type: string
+  originIcao:
+    type: string
+  destinationIcao:
+    type: string

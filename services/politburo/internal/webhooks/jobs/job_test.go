@@ -23,6 +23,7 @@ import (
 func TestRunDispatchesDueFeaturesOnly(t *testing.T) {
 	raw := json.RawMessage(`{
 		"active_flights": {"url":"https://discord.com/api/webhooks/1/token","frequency":"30m","filters":{}},
+		"live_mode_assignment": {"url":"https://discord.com/api/webhooks/1/token"},
 		"hourly": {"url":"https://discord.com/api/webhooks/1/token","frequency":"60m","filters":{}},
 		"mystery": {"url":"https://discord.com/api/webhooks/1/token","frequency":"30m","filters":{}}
 	}`)
@@ -59,6 +60,9 @@ func TestRunDispatchesDueFeaturesOnly(t *testing.T) {
 	}
 	if _, ok := outcomes["hourly"]; ok {
 		t.Fatal("60m feature should not run at minute 30")
+	}
+	if _, ok := outcomes["live_mode_assignment"]; ok {
+		t.Fatal("live_mode_assignment should not run on the scheduler")
 	}
 	if outcomes[activeflights.FeatureKey].Outcome != dispatch.OutcomeSuccess || outcomes[activeflights.FeatureKey].DiscordMessages != 1 {
 		t.Fatalf("active_flights = %+v", outcomes[activeflights.FeatureKey])

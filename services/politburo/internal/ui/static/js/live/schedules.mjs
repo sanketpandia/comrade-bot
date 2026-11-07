@@ -4,9 +4,13 @@ import {
   displayOrDash,
   formatRoute,
   formatUtcDateTime,
+  formatCrew,
+  liveEnumLabel,
   scheduleStatusBadge,
   vaLiveAPIPath,
 } from "./format.mjs";
+import { initScheduleEditor, openScheduleEditor, setScheduleAddEnabled } from "./schedules-editor.mjs";
+import { initFlightPlanEditor, openFlightPlanEditor } from "./schedules-flightplan-editor.mjs";
 
 const schedulesTarget = document.getElementById("live-schedules");
 const filterWrap = document.getElementById("live-schedules-aircraft-filter-wrap");
@@ -19,6 +23,7 @@ let activeRow = null;
 let copyResetTimer = null;
 let catalog = [];
 let currentOrgId = "";
+const schedulesById = new Map();
 
 function pageParams() {
   return new URLSearchParams(window.location.search);
@@ -240,15 +245,22 @@ function renderSchedules(payload) {
         <th scope="col">Aircraft</th>
         <th scope="col">Callsign</th>
         <th scope="col">Route</th>
+        <th scope="col">Flight type</th>
         <th scope="col">Status</th>
+        <th scope="col">Crew</th>
         <th scope="col">Departure</th>
       </tr>
     </thead>
   `;
+  schedulesById.clear();
   const tbody = document.createElement("tbody");
   for (const sched of rows) {
+    if (sched.id) {
+      schedulesById.set(sched.id, sched);
+    }
     const ac = aircraftByID(sched.aircraftId);
     const statusBadge = scheduleStatusBadge(sched.status);
+    const flightTypeLabel = liveEnumLabel(sched.flightType);
     const tr = document.createElement("tr");
     tr.className = "data-table__row data-table__row--selectable";
     tr.dataset.scheduleId = sched.id;
@@ -269,7 +281,9 @@ function renderSchedules(payload) {
       <td>${displayOrDash(ac?.aircraftName)}</td>
       <td>${displayOrDash(sched.callsign)}</td>
       <td>${formatRoute(sched.originIcao, sched.destinationIcao)}</td>
+      <td>${displayOrDash(flightTypeLabel === "—" ? "" : flightTypeLabel)}</td>
       <td><span class="badge ${statusBadge.className}">${statusBadge.label}</span></td>
+      <td>${formatCrew(sched.crew)}</td>
     `;
     tr.appendChild(depCell);
     tbody.appendChild(tr);
@@ -294,8 +308,10 @@ async function loadSchedules(organizationId, { page = readPage(), aircraftId = r
     if (filterWrap) {
       filterWrap.hidden = true;
     }
+    setScheduleAddEnabled(false);
     return;
   }
+  setScheduleAddEnabled(true);
   currentOrgId = organizationId;
   setQueryState({ organizationId, aircraftId, page });
   schedulesTarget.replaceChildren();
@@ -342,6 +358,30 @@ function onOrgChanged(event) {
 }
 
 if (schedulesTarget) {
+  const reloadAfterSave = async () => {
+    const orgSelect = document.getElementById("live-org-select");
+    const orgId = orgSelect?.value?.trim() ?? currentOrgId;
+    await loadSchedules(orgId, { page: readPage(), aircraftId: readAircraftFilter() });
+    const status = document.getElementById("live-org-status");
+    if (status) {
+      status.hidden = false;
+      status.textContent = "Schedules updated.";
+      status.classList.remove("panel-message--error");
+    }
+  };
+
+  const editorOptions = {
+    getOrganizationId: () => {
+      const orgSelect = document.getElementById("live-org-select");
+      return orgSelect?.value?.trim() ?? currentOrgId;
+    },
+    getCatalog: () => catalog,
+    onSaved: reloadAfterSave,
+  };
+
+  initScheduleEditor(editorOptions);
+  initFlightPlanEditor(editorOptions);
+
   document.addEventListener("live-org-changed", onOrgChanged);
   document.addEventListener("live-aircraft-catalog", (event) => {
     if (event.detail?.organizationId !== currentOrgId) {
@@ -371,6 +411,18 @@ if (schedulesTarget) {
     }
     event.stopPropagation();
     const action = item.dataset.action;
+    if (action === "edit-schedule") {
+      const scheduleId = rowMenu.dataset.scheduleId ?? "";
+      closeRowMenu();
+      void openScheduleEditor(schedulesById.get(scheduleId));
+      return;
+    }
+    if (action === "edit-flightplan") {
+      const scheduleId = rowMenu.dataset.scheduleId ?? "";
+      closeRowMenu();
+      openFlightPlanEditor(schedulesById.get(scheduleId));
+      return;
+    }
     if (action === "copy-aircraft-id") {
       copyMenuValue('[data-action="copy-aircraft-id"]', rowMenu.dataset.aircraftId ?? "", "Copy Aircraft ID");
       return;

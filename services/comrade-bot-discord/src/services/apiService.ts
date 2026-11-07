@@ -200,6 +200,128 @@ export class ApiService {
         }
     }
 
+    static async listVALiveConnections(meta: MetaInfo) {
+        const apiPath = "/api/v1/va/live/connections";
+        try {
+            const client = getPolitburoClient(getPolitburoApiUrl());
+            return await client.listVALiveConnections(meta);
+        } catch (err) {
+            if (PolitburoApiError.isPolitburoApiError(err)) {
+                this.logUpstreamAPIFailure(
+                    "list_va_live_connections",
+                    "GET",
+                    apiPath,
+                    err.httpStatus,
+                    String(err.code),
+                    err,
+                );
+                if (err.httpStatus === 401) {
+                    throw new UnauthorizedError(err.message);
+                }
+                if (err.httpStatus === 403) {
+                    throw new PermissionDeniedError(err.message);
+                }
+                throw err;
+            }
+            logger.error("api_request_failed", {
+                operation: "list_va_live_connections",
+                method: "GET",
+                api_path: apiPath,
+                ...errorFields(err),
+            });
+            throw err;
+        }
+    }
+
+    static async listVALiveOrganizationAircraft(meta: MetaInfo, organizationId: string) {
+        const apiPath = `/api/v1/va/live/organizations/${organizationId}/aircraft`;
+        try {
+            const client = getPolitburoClient(getPolitburoApiUrl());
+            return await client.listVALiveOrganizationAircraft(meta, organizationId);
+        } catch (err) {
+            return ApiService.mapVaLiveListError("list_va_live_organization_aircraft", "GET", apiPath, err);
+        }
+    }
+
+    static async listVALiveOrganizationSchedules(
+        meta: MetaInfo,
+        organizationId: string,
+        query: { registration: string; page: number; pageSize: number },
+    ) {
+        const apiPath = `/api/v1/va/live/organizations/${organizationId}/schedules`;
+        try {
+            const client = getPolitburoClient(getPolitburoApiUrl());
+            return await client.listVALiveOrganizationSchedules(meta, organizationId, query);
+        } catch (err) {
+            return ApiService.mapVaLiveListError("list_va_live_organization_schedules", "GET", apiPath, err);
+        }
+    }
+
+    static async listVALiveOrganizationFlights(
+        meta: MetaInfo,
+        organizationId: string,
+        query: { registration: string; page: number; pageSize: number },
+    ) {
+        const apiPath = `/api/v1/va/live/organizations/${organizationId}/flights`;
+        try {
+            const client = getPolitburoClient(getPolitburoApiUrl());
+            return await client.listVALiveOrganizationFlights(meta, organizationId, query);
+        } catch (err) {
+            return ApiService.mapVaLiveListError("list_va_live_organization_flights", "GET", apiPath, err);
+        }
+    }
+
+    private static mapVaLiveListError(operation: string, method: string, apiPath: string, err: unknown): never {
+        if (PolitburoApiError.isPolitburoApiError(err)) {
+            this.logUpstreamAPIFailure(operation, method, apiPath, err.httpStatus, String(err.code), err);
+            if (err.httpStatus === 401) {
+                throw new UnauthorizedError(err.message);
+            }
+            if (err.httpStatus === 403) {
+                throw new PermissionDeniedError(err.message);
+            }
+            throw err;
+        }
+        logger.error("api_request_failed", { operation, method, api_path: apiPath, ...errorFields(err) });
+        throw err;
+    }
+
+    static async assignLiveScheduleToMe(
+        meta: MetaInfo,
+        organizationId: string,
+        body: { registration: string; route: string },
+    ) {
+        const apiPath = `/api/v1/va/live/organizations/${organizationId}/schedules/assign-me`;
+        try {
+            const client = getPolitburoClient(getPolitburoApiUrl());
+            return await client.assignLiveScheduleToMe(meta, organizationId, body);
+        } catch (err) {
+            if (PolitburoApiError.isPolitburoApiError(err)) {
+                this.logUpstreamAPIFailure(
+                    "assign_va_live_schedule_to_me",
+                    "POST",
+                    apiPath,
+                    err.httpStatus,
+                    String(err.code),
+                    err,
+                );
+                if (err.httpStatus === 401) {
+                    throw new UnauthorizedError(err.message);
+                }
+                if (err.httpStatus === 403) {
+                    throw new PermissionDeniedError(err.message);
+                }
+                throw err;
+            }
+            logger.error("api_request_failed", {
+                operation: "assign_va_live_schedule_to_me",
+                method: "POST",
+                api_path: apiPath,
+                ...errorFields(err),
+            });
+            throw err;
+        }
+    }
 
     static async getUserLogbook(meta: MetaInfo, ifcId: string, page: number): Promise<FlightHistoryPage & { response_time: string }> {
         return ApiService.rejectStub(`GET /api/v1/user/${ifcId}/flights?page=${page}`);

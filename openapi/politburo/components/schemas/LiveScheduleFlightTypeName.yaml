@@ -1,0 +1,16 @@
+type: string
+description: Persistent flight type (`PersistentFlightType` in Infinite Flight Live API).
+enum:
+  - None
+  - Commercial
+  - Charter
+  - Cargo
+  - Training
+  - TestFlight
+  - MedicalEmergency
+  - Military
+  - VIPExecutive
+  - HumanitarianRelief
+  - GeneralAviation
+  - Airshow
+  - Other

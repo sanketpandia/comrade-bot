@@ -37,6 +37,8 @@ import (
 	"infinite-experiment/politburo/internal/scheduler"
 	"infinite-experiment/politburo/internal/ui"
 	"infinite-experiment/politburo/internal/webhooks"
+	"infinite-experiment/politburo/internal/webhooks/discord"
+	"infinite-experiment/politburo/internal/webhooks/features/livemodeassignment"
 	webhookjobs "infinite-experiment/politburo/internal/webhooks/jobs"
 )
 
@@ -74,8 +76,10 @@ type App struct {
 	IFLive          *infiniteflight.LiveClient
 	VALiveGrants    *valive.GrantsRepository
 	VALiveConnections *valive.ConnectionsRepository
-	VALiveTokens    *valive.TokenProvider
-	closeOnce       sync.Once
+	VALiveTokens      *valive.TokenProvider
+	VALiveAssignCaptain   *valive.AssignCaptainService
+	VALiveAssignmentWebhook *livemodeassignment.Notifier
+	closeOnce             sync.Once
 }
 
 func New(ctx context.Context, cfg config.Config) (*App, error) {
@@ -165,6 +169,12 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		ifUsers = infiniteFlightClient
 	}
 
+	var vaLiveAssignCaptain *valive.AssignCaptainService
+	if ifLive != nil && vaLiveTokens != nil {
+		vaLiveAssignCaptain = valive.NewAssignCaptainService(vaLiveConnections, vaLiveTokens, ifLive)
+	}
+	vaLiveAssignmentWebhook := livemodeassignment.New(vaConfigRepo, discord.NewClient(metricsRegistry))
+
 	application := &App{
 		Config: cfg, StartedAt: time.Now().UTC(), DB: db, Cache: cacheStore,
 		APIKeys: apikeys.NewLookup(apikeys.NewRepository(db), cacheStore),
@@ -191,8 +201,10 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		IFOAuth:           ifOAuth,
 		IFLive:            ifLive,
 		VALiveGrants:      vaLiveGrants,
-		VALiveConnections: vaLiveConnections,
-		VALiveTokens:      vaLiveTokens,
+		VALiveConnections:   vaLiveConnections,
+		VALiveTokens:        vaLiveTokens,
+		VALiveAssignCaptain:     vaLiveAssignCaptain,
+		VALiveAssignmentWebhook: vaLiveAssignmentWebhook,
 	}
 	slog.Info("application initialized", "environment", cfg.Environment, "jobs_enabled", cfg.Jobs.Enabled)
 	return application, nil

@@ -1,0 +1,11 @@
+type: object
+required: [userId, role]
+properties:
+  userId:
+    type: string
+    format: uuid
+  username:
+    type: string
+    nullable: true
+  role:
+    $ref: "./LiveScheduleCrewRoleName.yaml"

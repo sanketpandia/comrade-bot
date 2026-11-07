@@ -1,6 +1,7 @@
 package infiniteflight
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -32,19 +33,33 @@ type LiveAircraft struct {
 	CreatedAt         time.Time  `json:"createdAt"`
 }
 
+// LiveScheduleCrewMember is an assigned crew row on a Live schedule.
+type LiveScheduleCrewMember struct {
+	UserID   string  `json:"userId"`
+	Username *string `json:"username"`
+	Role     int     `json:"role"`
+}
+
 // LiveSchedule is a row from GET /live/organizations/{organizationId}/schedules.
 type LiveSchedule struct {
-	ID                    string    `json:"id"`
-	Status                int       `json:"status"`
-	Callsign              string    `json:"callsign"`
-	OrganizationID        string    `json:"organizationId"`
-	AircraftID            string    `json:"aircraftId"`
-	FlightType            int       `json:"flightType"`
-	OriginIcao            string    `json:"originIcao"`
-	DestinationIcao       string    `json:"destinationIcao"`
-	IsTimeless            bool      `json:"isTimeless"`
-	ScheduledDepartureUtc time.Time `json:"scheduledDepartureUtc"`
-	Sequence              int       `json:"sequence"`
+	ID                    string                 `json:"id"`
+	Status                int                    `json:"status"`
+	Callsign              string                 `json:"callsign"`
+	OrganizationID        string                 `json:"organizationId"`
+	AircraftID            string                 `json:"aircraftId"`
+	FlightType            int                    `json:"flightType"`
+	OriginIcao            string                 `json:"originIcao"`
+	DestinationIcao       string                 `json:"destinationIcao"`
+	IsTimeless            bool                   `json:"isTimeless"`
+	ScheduledDepartureUtc time.Time              `json:"scheduledDepartureUtc"`
+	ScheduledArrivalUtc   time.Time              `json:"scheduledArrivalUtc"`
+	Briefing              *string                `json:"briefing"`
+	Debriefing            *string                `json:"debriefing"`
+	FlightPlan            *string                `json:"flightPlan"`
+	Crew                  []LiveScheduleCrewMember `json:"crew"`
+	CreatedAt             time.Time              `json:"createdAt"`
+	UpdatedAt             time.Time              `json:"updatedAt"`
+	Sequence              int                    `json:"sequence"`
 }
 
 // LiveSchedulePage is the paged result for organization schedules.
@@ -126,10 +141,14 @@ type liveEnvelope[T any] struct {
 const defaultLiveResponseLimit = 1 << 20
 
 func (c *LiveClient) getLive(ctx context.Context, accessToken, path, action string, notFound error) ([]byte, error) {
-	return c.getLiveWithLimit(ctx, accessToken, path, action, notFound, defaultLiveResponseLimit)
+	return c.requestLive(ctx, http.MethodGet, accessToken, path, action, notFound, defaultLiveResponseLimit, nil)
 }
 
 func (c *LiveClient) getLiveWithLimit(ctx context.Context, accessToken, path, action string, notFound error, maxBody int64) ([]byte, error) {
+	return c.requestLive(ctx, http.MethodGet, accessToken, path, action, notFound, maxBody, nil)
+}
+
+func (c *LiveClient) requestLive(ctx context.Context, method, accessToken, path, action string, notFound error, maxBody int64, body []byte) ([]byte, error) {
 	accessToken = strings.TrimSpace(accessToken)
 	if accessToken == "" {
 		return nil, fmt.Errorf("access token is required")
@@ -137,12 +156,19 @@ func (c *LiveClient) getLiveWithLimit(ctx context.Context, accessToken, path, ac
 	if maxBody <= 0 {
 		maxBody = defaultLiveResponseLimit
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	var bodyReader io.Reader
+	if len(body) > 0 {
+		bodyReader = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bodyReader)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/json")
+	if len(body) > 0 {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -160,6 +186,17 @@ func (c *LiveClient) getLiveWithLimit(ctx context.Context, accessToken, path, ac
 		return nil, fmt.Errorf("%s: HTTP %d", action, resp.StatusCode)
 	}
 	return payload, nil
+}
+
+func decodeLiveVoid(payload []byte, action string) error {
+	var parsed liveEnvelope[json.RawMessage]
+	if err := json.Unmarshal(payload, &parsed); err != nil {
+		return fmt.Errorf("decode %s response: %w", action, err)
+	}
+	if parsed.ErrorCode != upstreamErrorCodeOK {
+		return fmt.Errorf("%s: errorCode %d", action, parsed.ErrorCode)
+	}
+	return nil
 }
 
 func decodeLive[T any](payload []byte, action string) (T, error) {
@@ -180,6 +217,10 @@ const listOrganizationAircraftAction = "list Infinite Flight organization aircra
 const listOrganizationSchedulesAction = "list Infinite Flight organization schedules"
 const listAircraftSchedulesAction = "list Infinite Flight aircraft schedules"
 const listAircraftFlightsAction = "list Infinite Flight aircraft flights"
+const createAircraftScheduleAction = "create Infinite Flight aircraft schedule"
+const updateScheduleAction = "update Infinite Flight schedule"
+const updateScheduleFlightPlanAction = "update Infinite Flight schedule flight plan"
+const assignScheduleCrewAction = "assign Infinite Flight schedule crew"
 
 const scheduleResponseLimit = 4 << 20
 
@@ -291,4 +332,76 @@ func (c *LiveClient) ListAircraftFlights(ctx context.Context, accessToken, aircr
 		return LiveAircraftFlightPage{}, err
 	}
 	return decodeLive[LiveAircraftFlightPage](payload, listAircraftFlightsAction)
+}
+
+// CreateAircraftSchedule proxies POST /live/aircraft/{aircraftId}/schedules.
+func (c *LiveClient) CreateAircraftSchedule(ctx context.Context, accessToken, aircraftID string, body json.RawMessage) error {
+	aircraftID = strings.TrimSpace(aircraftID)
+	if aircraftID == "" {
+		return fmt.Errorf("aircraft id is required")
+	}
+	if len(body) == 0 {
+		return fmt.Errorf("request body is required")
+	}
+	path := "/live/aircraft/" + aircraftID + "/schedules"
+	payload, err := c.requestLive(ctx, http.MethodPost, accessToken, path, createAircraftScheduleAction, ErrLiveOrganizationNotFound, defaultLiveResponseLimit, body)
+	if err != nil {
+		return err
+	}
+	return decodeLiveVoid(payload, createAircraftScheduleAction)
+}
+
+// UpdateSchedule proxies PUT /live/schedules/{scheduleId}.
+func (c *LiveClient) UpdateSchedule(ctx context.Context, accessToken, scheduleID string, body json.RawMessage) error {
+	scheduleID = strings.TrimSpace(scheduleID)
+	if scheduleID == "" {
+		return fmt.Errorf("schedule id is required")
+	}
+	if len(body) == 0 {
+		return fmt.Errorf("request body is required")
+	}
+	path := "/live/schedules/" + scheduleID
+	payload, err := c.requestLive(ctx, http.MethodPut, accessToken, path, updateScheduleAction, ErrLiveOrganizationNotFound, defaultLiveResponseLimit, body)
+	if err != nil {
+		return err
+	}
+	return decodeLiveVoid(payload, updateScheduleAction)
+}
+
+// UpdateScheduleFlightPlan proxies PUT /live/schedules/{scheduleId}/flightplan.
+func (c *LiveClient) UpdateScheduleFlightPlan(ctx context.Context, accessToken, scheduleID string, body json.RawMessage) error {
+	scheduleID = strings.TrimSpace(scheduleID)
+	if scheduleID == "" {
+		return fmt.Errorf("schedule id is required")
+	}
+	if len(body) == 0 {
+		return fmt.Errorf("request body is required")
+	}
+	path := "/live/schedules/" + scheduleID + "/flightplan"
+	payload, err := c.requestLive(ctx, http.MethodPut, accessToken, path, updateScheduleFlightPlanAction, ErrLiveOrganizationNotFound, defaultLiveResponseLimit, body)
+	if err != nil {
+		return err
+	}
+	return decodeLiveVoid(payload, updateScheduleFlightPlanAction)
+}
+
+// AssignScheduleCrew proxies PUT /live/schedules/{scheduleId}/crew/{userId}.
+func (c *LiveClient) AssignScheduleCrew(ctx context.Context, accessToken, scheduleID, userID string, body json.RawMessage) error {
+	scheduleID = strings.TrimSpace(scheduleID)
+	userID = strings.TrimSpace(userID)
+	if scheduleID == "" {
+		return fmt.Errorf("schedule id is required")
+	}
+	if userID == "" {
+		return fmt.Errorf("user id is required")
+	}
+	if len(body) == 0 {
+		return fmt.Errorf("request body is required")
+	}
+	path := "/live/schedules/" + scheduleID + "/crew/" + userID
+	payload, err := c.requestLive(ctx, http.MethodPut, accessToken, path, assignScheduleCrewAction, ErrLiveOrganizationNotFound, defaultLiveResponseLimit, body)
+	if err != nil {
+		return err
+	}
+	return decodeLiveVoid(payload, assignScheduleCrewAction)
 }

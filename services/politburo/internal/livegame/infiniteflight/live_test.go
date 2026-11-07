@@ -350,3 +350,106 @@ func TestLiveClientListAircraftFlightsSuccess(t *testing.T) {
 		t.Fatalf("page meta = %+v", page)
 	}
 }
+
+func TestLiveClientCreateAircraftScheduleSuccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/live/aircraft/ac-1/schedules" {
+			t.Fatalf("method %s path %q", r.Method, r.URL.Path)
+		}
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		if body["callsign"] != "TST001" {
+			t.Fatalf("body = %+v", body)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"errorCode": 0, "result": map[string]any{}})
+	}))
+	defer server.Close()
+
+	client, err := NewLiveClient(server.URL, time.Second)
+	if err != nil {
+		t.Fatalf("NewLiveClient() error = %v", err)
+	}
+	err = client.CreateAircraftSchedule(context.Background(), "token", "ac-1", json.RawMessage(`{"callsign":"TST001"}`))
+	if err != nil {
+		t.Fatalf("CreateAircraftSchedule() error = %v", err)
+	}
+}
+
+func TestLiveClientUpdateScheduleNonZeroErrorCode(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"errorCode": 2, "result": map[string]any{}})
+	}))
+	defer server.Close()
+
+	client, err := NewLiveClient(server.URL, time.Second)
+	if err != nil {
+		t.Fatalf("NewLiveClient() error = %v", err)
+	}
+	err = client.UpdateSchedule(context.Background(), "token", "sched-1", json.RawMessage(`{"callsign":"X"}`))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestLiveClientUpdateScheduleFlightPlanSuccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || r.URL.Path != "/live/schedules/sched-1/flightplan" {
+			t.Fatalf("method %s path %q", r.Method, r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"errorCode": 0, "result": nil})
+	}))
+	defer server.Close()
+
+	client, err := NewLiveClient(server.URL, time.Second)
+	if err != nil {
+		t.Fatalf("NewLiveClient() error = %v", err)
+	}
+	err = client.UpdateScheduleFlightPlan(context.Background(), "token", "sched-1", json.RawMessage(`{"flightPlan":"DCT"}`))
+	if err != nil {
+		t.Fatalf("UpdateScheduleFlightPlan() error = %v", err)
+	}
+}
+
+func TestLiveClientAssignScheduleCrewSuccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || r.URL.Path != "/live/schedules/sched-1/crew/user-1" {
+			t.Fatalf("method %s path %q", r.Method, r.URL.Path)
+		}
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		if body["role"] != float64(0) && body["role"] != 0 {
+			t.Fatalf("body role = %+v", body)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"errorCode": 0, "result": nil})
+	}))
+	defer server.Close()
+
+	client, err := NewLiveClient(server.URL, time.Second)
+	if err != nil {
+		t.Fatalf("NewLiveClient() error = %v", err)
+	}
+	err = client.AssignScheduleCrew(context.Background(), "token", "sched-1", "user-1", json.RawMessage(`{"role":0}`))
+	if err != nil {
+		t.Fatalf("AssignScheduleCrew() error = %v", err)
+	}
+}
+
+func TestLiveClientAssignScheduleCrewNonZeroErrorCode(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"errorCode": 2, "result": nil})
+	}))
+	defer server.Close()
+
+	client, err := NewLiveClient(server.URL, time.Second)
+	if err != nil {
+		t.Fatalf("NewLiveClient() error = %v", err)
+	}
+	err = client.AssignScheduleCrew(context.Background(), "token", "sched-1", "user-1", json.RawMessage(`{"role":0}`))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}

@@ -65,6 +65,8 @@ func newHandlers(application *app.App) handlers {
 			application.VALiveTokens,
 			userHandler,
 			application.LiveryLookup,
+			application.VALiveAssignCaptain,
+			application.VALiveAssignmentWebhook,
 		),
 		ui: uihttp.NewHandler(
 			application.UI, application.Sessions, application.Tickets, application.Reports, application.Contact, application.Cache,

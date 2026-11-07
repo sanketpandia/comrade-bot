@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	FeatureActiveFlights = "active_flights"
+	FeatureActiveFlights       = "active_flights"
+	FeatureLiveModeAssignment  = "live_mode_assignment"
 
 	Frequency30m  = "30m"
 	Frequency60m  = "60m"
@@ -44,11 +45,15 @@ func Validate(raw json.RawMessage) error {
 		if !jsonObject(value) {
 			return fmt.Errorf("%s must be an object", key)
 		}
-		if key != FeatureActiveFlights {
-			continue
-		}
-		if err := validateActiveFlights(value); err != nil {
-			return fmt.Errorf("%s: %w", key, err)
+		switch key {
+		case FeatureActiveFlights:
+			if err := validateActiveFlights(value); err != nil {
+				return fmt.Errorf("%s: %w", key, err)
+			}
+		case FeatureLiveModeAssignment:
+			if err := validateLiveModeAssignment(value); err != nil {
+				return fmt.Errorf("%s: %w", key, err)
+			}
 		}
 	}
 	return nil
@@ -111,6 +116,11 @@ func FormatFrequencyDisplay(frequency string) string {
 	}
 }
 
+// Schedulable reports whether a WEBHOOKS feature participates in the timed dispatcher.
+func Schedulable(featureKey string) bool {
+	return strings.TrimSpace(featureKey) != FeatureLiveModeAssignment
+}
+
 // Due reports whether a feature frequency should run at the given instant.
 // The clock is converted to UTC. 30m is every tick, 60m only at minute 0,
 // and 120m only at minute 0 of an even hour.
@@ -164,6 +174,30 @@ func validateActiveFlights(raw json.RawMessage) error {
 		return errors.New("filters is required")
 	}
 	return validateActiveFlightFilters(filtersRaw)
+}
+
+func validateLiveModeAssignment(raw json.RawMessage) error {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return errors.New("must be an object")
+	}
+	urlRaw, ok := fields["url"]
+	if !ok {
+		return errors.New("url is required")
+	}
+	var webhookURL string
+	if err := json.Unmarshal(urlRaw, &webhookURL); err != nil {
+		return errors.New("url must be a string")
+	}
+	if !ValidDiscordWebhookURL(webhookURL) {
+		return errors.New("url must be https://discord.com/api/webhooks/{id}/{token} or https://discordapp.com/api/webhooks/{id}/{token}")
+	}
+	for _, forbidden := range []string{"frequency", "filters"} {
+		if _, ok := fields[forbidden]; ok {
+			return fmt.Errorf("%s is not allowed", forbidden)
+		}
+	}
+	return nil
 }
 
 func validateActiveFlightFilters(raw json.RawMessage) error {
