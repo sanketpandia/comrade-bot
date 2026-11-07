@@ -144,6 +144,9 @@ function closeDetailPanel({ updateURL = true } = {}) {
   if (!detailPanel || !shell) return;
   shell.classList.remove('maps-shell--detail-open');
   detailPanel.hidden = true;
+  map.clearRoute();
+  map.clearPath('flown');
+  map.clearPath('plan');
   selectedFlightId = '';
   if (updateURL) {
     syncFlightIdToURL('');
@@ -161,6 +164,67 @@ function setActiveTab(tab) {
   }
 }
 
+function waypointsFromPlan(data) {
+  if (!data?.waypoints?.length) return [];
+  return data.waypoints
+    .filter((wp) => wp.latitude != null && wp.longitude != null)
+    .map((wp) => ({
+      latitude: wp.latitude,
+      longitude: wp.longitude,
+      altitude: wp.altitude ?? 0,
+      name: wp.name || '',
+    }));
+}
+
+function waypointsFromTrail(data) {
+  if (!data?.fixes?.length) return [];
+  return data.fixes
+    .filter((fix) => fix.latitude != null && fix.longitude != null)
+    .map((fix) => ({
+      latitude: fix.latitude,
+      longitude: fix.longitude,
+      altitude: fix.altitude ?? 0,
+    }));
+}
+
+async function loadFlightOverlays(flightId) {
+  map.clearRoute();
+  map.clearPath('flown');
+  map.clearPath('plan');
+  if (!flightId) return;
+  const base = `/api/v1/game/flight/active/${encodeURIComponent(flightId)}`;
+  const [planResp, trailResp] = await Promise.all([
+    fetch(`${base}/flight-plan`, { credentials: 'same-origin' }),
+    fetch(`${base}/position-history`, { credentials: 'same-origin' }),
+  ]);
+  if (planResp.ok) {
+    const payload = await planResp.json();
+    const planPoints = waypointsFromPlan(payload.data);
+    if (planPoints.length >= 2) {
+      map.addPath('plan', planPoints, { color: '#60a5fa', dashArray: '6 8', weight: 3 });
+    }
+  }
+  if (trailResp.ok) {
+    const payload = await trailResp.json();
+    const flownPoints = waypointsFromTrail(payload.data);
+    if (flownPoints.length >= 2) {
+      map.addPath('flown', flownPoints, { color: '#d5c4a1', weight: 3 });
+    }
+  }
+}
+
+function formatRoutePlanTable(root) {
+  if (!root) return;
+  for (const link of root.querySelectorAll('[data-route-position]')) {
+    const lat = Number(link.dataset.lat);
+    const lon = Number(link.dataset.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    const label = `${lat.toFixed(1)}, ${lon.toFixed(1)}`;
+    link.textContent = label;
+    link.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=10/${lat}/${lon}`;
+  }
+}
+
 async function loadFlightDetail(flightId, tab = 'flight', { updateURL = true } = {}) {
   if (!flightId || !detailEnabled()) return;
   selectedFlightId = flightId;
@@ -174,9 +238,15 @@ async function loadFlightDetail(flightId, tab = 'flight', { updateURL = true } =
     ? `/maps/flights/active/flights/${encodeURIComponent(flightId)}`
     : `/maps/flights/active/flights/${encodeURIComponent(flightId)}?tab=${encodeURIComponent(tab)}`;
   try {
-    const response = await fetch(url, { credentials: 'same-origin' });
+    const [response] = await Promise.all([
+      fetch(url, { credentials: 'same-origin' }),
+      loadFlightOverlays(flightId),
+    ]);
     const html = await response.text();
-    if (detailBody) detailBody.innerHTML = html;
+    if (detailBody) {
+      detailBody.innerHTML = html;
+      formatRoutePlanTable(detailBody);
+    }
     if (response.ok) {
       map.focusFlight(flightId, { markerColor: MARKER_COLOR });
     }

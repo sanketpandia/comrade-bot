@@ -198,6 +198,84 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/game/flight/active/{flightId}/flight-plan:
+    get:
+      operationId: getActiveFlightPlan
+      summary: Read or refresh the cached flight plan for one active flight
+      tags:
+        - Game
+      parameters:
+        - name: flightId
+          in: path
+          required: true
+          description: Infinite Flight flight identifier (UUID).
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The latest cached or freshly fetched flight plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveFlightPlanResponse'
+        '400':
+          description: An invalid flight identifier was supplied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No active flight or flight plan is available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: The cache entry or upstream fetch failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/game/flight/active/{flightId}/position-history:
+    get:
+      operationId: getActiveFlightPositionHistory
+      summary: Read the cached position trail for one active flight
+      tags:
+        - Game
+      parameters:
+        - name: flightId
+          in: path
+          required: true
+          description: Infinite Flight flight identifier (UUID).
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The ordered position fixes collected for the flight
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveFlightPositionHistoryResponse'
+        '400':
+          description: An invalid flight identifier was supplied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No position trail exists for the flight
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: The cache entry could not be read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/signed-link:
     post:
       operationId: generateSignedLink
@@ -1902,6 +1980,12 @@ components:
         liveryName:
           type: string
           description: Display livery name from the livery catalog.
+        departure:
+          type: string
+          description: Departure fix from the cached flight plan (first waypoint), when available.
+        destination:
+          type: string
+          description: Destination or arrival fix from the cached flight plan (last waypoint), when available.
         speed:
           type: string
           description: Display-formatted ground speed (for example "186 kts").
@@ -1958,6 +2042,92 @@ components:
       type: object
       description: Reserved section on the flight record; empty for now.
       additionalProperties: false
+    ActiveFlightPlanResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ActiveFlightPlanData'
+    ActiveFlightPlanData:
+      type: object
+      required:
+        - fetchedAt
+      properties:
+        fetchedAt:
+          type: string
+          format: date-time
+        flightPlanId:
+          type: string
+          format: uuid
+        flightPlanType:
+          type: integer
+          description: VFR=0, IFR=1.
+        absent:
+          type: boolean
+          description: Upstream reported no filed plan for this flight.
+        waypoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActiveFlightPlanWaypoint'
+    ActiveFlightPlanWaypoint:
+      type: object
+      required:
+        - name
+        - latitude
+        - longitude
+        - altitude
+      properties:
+        name:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        altitude:
+          type: integer
+    ActiveFlightPositionHistoryResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ActiveFlightPositionHistoryData'
+    ActiveFlightPositionHistoryData:
+      type: object
+      required:
+        - fixes
+      properties:
+        fixes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActiveFlightPositionFix'
+    ActiveFlightPositionFix:
+      type: object
+      required:
+        - at
+        - latitude
+        - longitude
+        - altitude
+        - speed
+      properties:
+        at:
+          type: string
+          format: date-time
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        altitude:
+          type: number
+          format: double
+        speed:
+          type: number
+          format: double
     ActiveFlightVirtualAirlineMatch:
       type: object
       required:

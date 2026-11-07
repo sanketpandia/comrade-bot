@@ -4,12 +4,14 @@ package flights
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"infinite-experiment/politburo/internal/cache"
 	"infinite-experiment/politburo/internal/community/virtualairlines"
 	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
+	gameflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
@@ -75,16 +77,21 @@ func (j *Job) Run(ctx context.Context) error {
 	refreshedAt := j.now().UTC()
 	liveVACatalog := j.loadLiveVACatalog(ctx)
 	totalFlights := 0
+	dueAll := make([]gameflights.FPLDueEntry, 0, 32)
 	for _, session := range sessionsSnapshot.Result {
 		if session.ID == "" || session.NormalizedName == "" {
 			continue
 		}
-		count, err := j.refreshSession(ctx, session, refreshedAt, liveVACatalog)
+		count, due, err := j.refreshSession(ctx, session, refreshedAt, liveVACatalog)
 		if err != nil {
 			slog.Error("failed to refresh session flights", "sessionId", session.ID, "server", session.NormalizedName, "error", err)
 			continue
 		}
 		totalFlights += count
+		dueAll = append(dueAll, due...)
+	}
+	if err := j.cache.SetJSON(ctx, cache.KeyFPLDueList, dueAll, cache.ActiveFlightsTTL); err != nil {
+		return fmt.Errorf("cache fpl due list: %w", err)
 	}
 	slog.Info("Infinite Flight flights refreshed",
 		"sessions", len(sessionsSnapshot.Result),

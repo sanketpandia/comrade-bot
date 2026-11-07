@@ -23,8 +23,14 @@ const (
 	// PrefixGameFlightsRecord namespaces per-flight enriched flight records (v3 sectioned raw/analytics/actions/links/history).
 	PrefixGameFlightsRecord = PrefixGameFlights + "record:v3:"
 
-	// PrefixGameFlightsHistory namespaces per-flight temporal estimator history.
+	// PrefixGameFlightsHistory namespaces per-flight position trail (ordered fixes).
 	PrefixGameFlightsHistory = PrefixGameFlights + "history:"
+
+	// PrefixGameFlightsPlan namespaces cached Infinite Flight flight plans.
+	PrefixGameFlightsPlan = PrefixGameFlights + "plan:"
+
+	// KeyFPLDueList is the latest batch of VA flights due for background plan sync.
+	KeyFPLDueList = PrefixGameFlights + "fpl_due"
 
 	// PrefixGameFlightsVA namespaces per-VA active flight ID lists.
 	PrefixGameFlightsVA = PrefixGameFlights + "va:"
@@ -88,6 +94,10 @@ func KeyFlightRecord(flightID string) string {
 
 func KeyFlightHistory(flightID string) string {
 	return PrefixGameFlightsHistory + flightID
+}
+
+func KeyFlightPlan(flightID string) string {
+	return PrefixGameFlightsPlan + flightID
 }
 
 func KeyVAActiveFlights(vaID string) string {

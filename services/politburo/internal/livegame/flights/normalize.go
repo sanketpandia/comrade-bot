@@ -6,7 +6,15 @@ import (
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 )
 
-// Normalize builds serve-time display strings from a cached record and the livery catalog.
+// NormalizeRecord builds the full serve-time display envelope from a cached record.
+func NormalizeRecord(record Record, lookup *gameliveries.Lookup) Normalized {
+	out := Normalize(record.Raw, lookup)
+	out.Departure = record.Normalized.Departure
+	out.Destination = record.Normalized.Destination
+	return out
+}
+
+// Normalize builds serve-time display strings from an observation and the livery catalog.
 func Normalize(raw Observation, lookup *gameliveries.Lookup) Normalized {
 	speed := RoundedSpeed(raw.Speed)
 	verticalSpeed := RoundedVerticalSpeed(raw.VerticalSpeed)

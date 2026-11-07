@@ -45,6 +45,38 @@ func writeListActiveTracksError(w http.ResponseWriter, server string, query doma
 	}
 }
 
+func writeGetActiveFlightPlanError(w http.ResponseWriter, flightID string, err error) {
+	switch {
+	case errors.Is(err, domainflights.ErrInvalidFilter):
+		response.WriteError(w, http.StatusBadRequest, "INVALID_QUERY_FILTER", err.Error())
+	case errors.Is(err, domainflights.ErrCacheMiss):
+		slog.Warn("active flight plan unavailable", "flightId", flightID)
+		response.WriteError(w, http.StatusNotFound, "ACTIVE_FLIGHT_PLAN_NOT_FOUND", "active flight plan not found")
+	case errors.Is(err, domainflights.ErrCacheRead):
+		slog.Error("read active flight plan", "error", err, "flightId", flightID)
+		response.WriteError(w, http.StatusInternalServerError, "ACTIVE_FLIGHT_PLAN_UNAVAILABLE", "active flight plan is unavailable")
+	default:
+		slog.Error("get active flight plan", "error", err, "flightId", flightID)
+		response.WriteError(w, http.StatusInternalServerError, "ACTIVE_FLIGHT_PLAN_UNAVAILABLE", "active flight plan is unavailable")
+	}
+}
+
+func writeGetActiveFlightPositionHistoryError(w http.ResponseWriter, flightID string, err error) {
+	switch {
+	case errors.Is(err, domainflights.ErrInvalidFilter):
+		response.WriteError(w, http.StatusBadRequest, "INVALID_QUERY_FILTER", err.Error())
+	case errors.Is(err, domainflights.ErrCacheMiss):
+		slog.Warn("active flight position history miss", "flightId", flightID)
+		response.WriteError(w, http.StatusNotFound, "ACTIVE_FLIGHT_POSITION_HISTORY_NOT_FOUND", "active flight position history not found")
+	case errors.Is(err, domainflights.ErrCacheRead):
+		slog.Error("read active flight position history", "error", err, "flightId", flightID)
+		response.WriteError(w, http.StatusInternalServerError, "ACTIVE_FLIGHT_POSITION_HISTORY_UNAVAILABLE", "active flight position history is unavailable")
+	default:
+		slog.Error("get active flight position history", "error", err, "flightId", flightID)
+		response.WriteError(w, http.StatusInternalServerError, "ACTIVE_FLIGHT_POSITION_HISTORY_UNAVAILABLE", "active flight position history is unavailable")
+	}
+}
+
 func writeListActiveTracksRequestError(w http.ResponseWriter, err error) {
 	if isInvalidListRequest(err) {
 		msg := err.Error()

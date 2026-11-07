@@ -61,20 +61,20 @@ func (h *Handler) MapFlightDetailPartial(w http.ResponseWriter, r *http.Request)
 	}
 
 	view := mapsFlightDetailView{FlightID: flightID, Tab: tab}
-	if tab != "flight" {
+	if tab == "user" {
 		if err := h.renderer.Render(w, "maps-flight-detail", view); err != nil {
 			slog.Error("render map flight detail", "error", err)
 		}
 		return
 	}
+
 	if h.flights == nil || flightID == "" {
 		view.GoneMessage = "This flight is no longer active."
 		w.WriteHeader(http.StatusNotFound)
-		if err := h.renderer.Render(w, "maps-flight-detail", view); err != nil {
-			slog.Error("render map flight detail", "error", err)
-		}
+		h.renderMapFlightDetail(w, view)
 		return
 	}
+
 	record, err := h.flights.GetActiveFlight(r.Context(), flightID)
 	if err != nil {
 		view.GoneMessage = "This flight is no longer active."
@@ -85,13 +85,49 @@ func (h *Handler) MapFlightDetailPartial(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			view.GoneMessage = "Failed to load flight details."
 		}
-		if err := h.renderer.Render(w, "maps-flight-detail", view); err != nil {
-			slog.Error("render map flight detail", "error", err)
-		}
+		h.renderMapFlightDetail(w, view)
 		return
 	}
+
 	rec := recordViewFromDomain(record, h.liveryLookup)
 	view.Record = &rec
+
+	switch tab {
+	case "flight":
+		h.renderMapFlightDetail(w, view)
+	case "route":
+		h.renderMapFlightRoute(w, r, view, record)
+	default:
+		h.renderMapFlightDetail(w, view)
+	}
+}
+
+func (h *Handler) renderMapFlightRoute(w http.ResponseWriter, r *http.Request, view mapsFlightDetailView, record domainflights.Record) {
+	if h.planFetcher == nil {
+		view.RouteMessage = "Flight plan is unavailable."
+		w.WriteHeader(http.StatusServiceUnavailable)
+		h.renderMapFlightDetail(w, view)
+		return
+	}
+	plan, err := h.planFetcher.GetOrFetch(r.Context(), record.Raw.SessionID, view.FlightID)
+	if err != nil {
+		slog.Warn("map flight plan", "error", err, "flightId", view.FlightID)
+		view.RouteMessage = "Failed to load flight plan."
+		w.WriteHeader(http.StatusServiceUnavailable)
+		h.renderMapFlightDetail(w, view)
+		return
+	}
+	if plan.Absent || len(plan.Waypoints) == 0 {
+		view.RouteMessage = "No filed flight plan for this flight."
+		h.renderMapFlightDetail(w, view)
+		return
+	}
+	route := routeViewFromPlan(plan)
+	view.Route = &route
+	h.renderMapFlightDetail(w, view)
+}
+
+func (h *Handler) renderMapFlightDetail(w http.ResponseWriter, view mapsFlightDetailView) {
 	if err := h.renderer.Render(w, "maps-flight-detail", view); err != nil {
 		slog.Error("render map flight detail", "error", err)
 	}

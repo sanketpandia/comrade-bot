@@ -1,0 +1,7 @@
+type: object
+required: [fixes]
+properties:
+  fixes:
+    type: array
+    items:
+      $ref: "./ActiveFlightPositionFix.yaml"

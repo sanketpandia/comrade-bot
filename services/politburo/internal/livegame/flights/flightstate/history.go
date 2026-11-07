@@ -8,6 +8,26 @@ type History struct {
 	State   State    `json:"state"`
 }
 
+// Equal reports whether two histories match for cache dirty checks.
+func (h History) Equal(other History) bool {
+	if h.State.Phase != other.State.Phase ||
+		h.State.Activity != other.State.Activity ||
+		h.State.DataQuality != other.State.DataQuality ||
+		h.State.Confidence != other.State.Confidence ||
+		h.State.GroundRefAltFt != other.State.GroundRefAltFt {
+		return false
+	}
+	if len(h.Samples) != len(other.Samples) {
+		return false
+	}
+	for i := range h.Samples {
+		if h.Samples[i].LastReport != other.Samples[i].LastReport {
+			return false
+		}
+	}
+	return true
+}
+
 // Push appends a sample when it advances lastReport; returns a copy and an optional reject reason.
 func (h History) Push(sample Sample, cfg Config) (History, string) {
 	out := h.clone()

@@ -67,6 +67,7 @@ type App struct {
 	IFUsers         infiniteflight.UsersClient
 	LiveryLookup    *gameliveries.Lookup
 	FlightsReader   *gameflights.Reader
+	PlanFetcher     *gameflights.PlanFetcher
 	SessionsReader  *gamesessions.Reader
 	VAWebhookJob    *webhookjobs.Job
 	IFOAuth         *infiniteflight.OAuthClient
@@ -184,6 +185,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		IFUsers:         ifUsers,
 		LiveryLookup:    liveryLookup,
 		FlightsReader:   gameflights.NewReader(cacheStore),
+		PlanFetcher:     gameflights.NewPlanFetcher(infiniteFlightClient, cacheStore),
 		SessionsReader:  gamesessions.NewReader(cacheStore),
 		VAWebhookJob:    vaWebhookDispatch,
 		IFOAuth:           ifOAuth,

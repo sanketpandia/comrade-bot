@@ -953,6 +953,10 @@ textarea.input {
   max-width: 20rem;
 }
 
+.form-stack--wide {
+  max-width: 40rem;
+}
+
 .count-primary {
   color: var(--text-primary);
   font-weight: 600;

@@ -10,6 +10,12 @@ properties:
   liveryName:
     type: string
     description: Display livery name from the livery catalog.
+  departure:
+    type: string
+    description: Departure fix from the cached flight plan (first waypoint), when available.
+  destination:
+    type: string
+    description: Destination or arrival fix from the cached flight plan (last waypoint), when available.
   speed:
     type: string
     description: Display-formatted ground speed (for example "186 kts").

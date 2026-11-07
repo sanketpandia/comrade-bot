@@ -5,9 +5,70 @@
 <div class="section-layout">
   <nav class="tabs tabs--nav" aria-label="Admin sections">
     <a class="tabs__tab" href="/admin/general"{{if eq .AdminTab "general"}} aria-current="page"{{end}}>General</a>
+    <a class="tabs__tab" href="/admin/webhooks"{{if eq .AdminTab "webhooks"}} aria-current="page"{{end}}>Webhooks</a>
     <a class="tabs__tab" href="/admin/live"{{if eq .AdminTab "live"}} aria-current="page"{{end}}>Live Mode</a>
   </nav>
-  {{if eq .AdminTab "live"}}
+  {{if eq .AdminTab "webhooks"}}
+  <section class="panel stack" aria-labelledby="admin-webhooks-heading">
+    <header class="panel__header">
+      <h2 class="panel-heading" id="admin-webhooks-heading">Webhooks</h2>
+    </header>
+    <p class="panel-lead">Discord posts for active flights on this virtual airline.</p>
+    <p id="admin-webhooks-status" class="panel-message" role="status" hidden></p>
+    <section class="section">
+      <h3 class="section__title">Active flights</h3>
+      <form class="form-stack form-stack--wide" id="admin-webhooks-form">
+        <div class="field">
+          <label class="field__label" for="webhook-url">Discord webhook URL</label>
+          <input class="input" id="webhook-url" name="url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="Loading…" disabled required>
+          <p class="panel-message">HTTPS URL from a Discord channel, on discord.com or discordapp.com.</p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="webhook-frequency">Frequency</label>
+          <select class="select" id="webhook-frequency" name="frequency" disabled required>
+            <option value="">Choose a frequency</option>
+            <option value="30m">Every 30 minutes</option>
+            <option value="60m">Every hour</option>
+            <option value="120m">Every 2 hours</option>
+          </select>
+        </div>
+        <div class="field">
+          <span class="field__label">Pilot state</span>
+          <div class="multiselect" id="webhook-pilot-state" data-empty="Any pilot state" data-all="All pilot states">
+            <button type="button" class="multiselect__trigger" id="webhook-pilot-state-trigger" aria-expanded="false" aria-controls="webhook-pilot-state-panel" disabled>
+              <span class="multiselect__value" id="webhook-pilot-state-label">Any pilot state</span>
+              <span class="multiselect__chevron" aria-hidden="true"></span>
+            </button>
+            <div class="multiselect__panel" id="webhook-pilot-state-panel" hidden role="group" aria-label="Pilot state">
+              <label class="multiselect__option multiselect__option--active">
+                <input type="checkbox" name="pilotState" value="active" disabled> Active
+              </label>
+              <label class="multiselect__option multiselect__option--away-flight">
+                <input type="checkbox" name="pilotState" value="away_in_flight" disabled> Away in flight
+              </label>
+              <label class="multiselect__option multiselect__option--away-parked">
+                <input type="checkbox" name="pilotState" value="away_parked" disabled> Away parked
+              </label>
+              <label class="multiselect__option multiselect__option--background">
+                <input type="checkbox" name="pilotState" value="in_background" disabled> In background
+              </label>
+            </div>
+          </div>
+          <p class="panel-message">Leave empty to include every pilot state.</p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="webhook-va-code">VA code</label>
+          <input class="input" id="webhook-va-code" name="vaCode" type="text" autocomplete="off" spellcheck="false" placeholder="Optional" disabled>
+          <p class="panel-message">Limit the report to flights with this airline code.</p>
+        </div>
+        <div class="link-row">
+          <button type="submit" class="btn btn--primary" id="webhook-save" disabled>Save</button>
+          <button type="button" class="btn" id="webhook-send" disabled>Send now</button>
+        </div>
+      </form>
+    </section>
+  </section>
+  {{else if eq .AdminTab "live"}}
   <section class="panel stack" aria-labelledby="admin-live-heading">
     <header class="panel__header">
       <h2 class="panel-heading" id="admin-live-heading">Live Mode</h2>

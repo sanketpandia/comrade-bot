@@ -1,0 +1,37 @@
+get:
+  operationId: getActiveFlightPlan
+  summary: Read or refresh the cached flight plan for one active flight
+  tags: [Game]
+  parameters:
+    - name: flightId
+      in: path
+      required: true
+      description: Infinite Flight flight identifier (UUID).
+      schema:
+        type: string
+        format: uuid
+  responses:
+    "200":
+      description: The latest cached or freshly fetched flight plan
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ActiveFlightPlanResponse.yaml"
+    "400":
+      description: An invalid flight identifier was supplied
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: No active flight or flight plan is available
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: The cache entry or upstream fetch failed
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

@@ -28,6 +28,10 @@ type ComputeContext struct {
 	PriorMotion    flights.FlightMotion
 	HasPriorMotion bool
 	LiveVACatalog  virtualairlines.LiveVACatalog
+	PlanFetchedAt  time.Time
+	Plan           flights.CachedFlightPlan
+	PlanLoaded     bool
+	PositionTrail  flights.PositionTrail
 }
 
 // EffectInput is the read-only input passed to each resolution effect.
@@ -44,6 +48,10 @@ type Outcome struct {
 	UpdateFlightRecord bool
 	FPLSyncScheduled   bool
 	NextFlightState    *flightstate.State
+	NextPositionTrail  flights.PositionTrail
+	PositionTrailDirty   bool
+	NormalizedDirty      bool
+	NormalizedEndpoints  flights.RecordNormalized
 }
 
 // PhaseTransition describes a committed phase change for metrics and logs.
@@ -54,10 +62,12 @@ type PhaseTransition struct {
 
 // ResolvedFlight is the enriched flight record plus job-oriented outcome flags.
 type ResolvedFlight struct {
-	Record      flights.Record
-	Outcome     Outcome
-	NextHistory flightstate.History
-	Transition  *PhaseTransition
+	Record             flights.Record
+	Outcome            Outcome
+	NextHistory        flightstate.History
+	NextPositionTrail  flights.PositionTrail
+	PositionTrailDirty bool
+	Transition         *PhaseTransition
 }
 
 // ResolveFlight runs composable effect decisions for one upstream flight tick.
@@ -75,13 +85,15 @@ func ResolveFlight(ctx ComputeContext, upstream infiniteflight.Flight, prior *fl
 	analytics := flights.Analytics{}
 	actions := flights.Actions{}
 	links := flights.Links{}
+	normalized := flights.RecordNormalized{}
 	if prior != nil {
 		analytics = prior.Analytics.Clone()
 		actions = prior.Actions.Clone()
 		links = prior.Links.Clone()
+		normalized = prior.Normalized
 	}
 
-	outcome := Outcome{}
+	outcome := Outcome{NextPositionTrail: ctx.PositionTrail}
 	in := EffectInput{
 		Ctx:     ctx,
 		Raw:     raw,
@@ -96,13 +108,26 @@ func ResolveFlight(ctx ComputeContext, upstream infiniteflight.Flight, prior *fl
 		}
 	}
 
-	record := flights.Record{
-		Raw:       raw,
-		Analytics: analytics,
-		Actions:   actions,
-		Links:     links,
-		History:   flights.History{},
+	if outcome.NormalizedDirty {
+		normalized = outcome.NormalizedEndpoints
 	}
+
+	var nextHistory flightstate.History
+	if outcome.NextFlightState != nil {
+		nextHistory = pushed.WithState(*outcome.NextFlightState)
+	} else {
+		nextHistory = pushed
+	}
+
+	record := flights.Record{
+		Raw:         raw,
+		Analytics:   analytics,
+		Actions:     actions,
+		Links:       links,
+		History:     nextHistory,
+		Normalized:  normalized,
+	}
+
 	var priorRecord flights.Record
 	if prior != nil {
 		priorRecord = *prior
@@ -115,17 +140,19 @@ func ResolveFlight(ctx ComputeContext, upstream infiniteflight.Flight, prior *fl
 			UpdateFlightRecord: updateRecord,
 			FPLSyncScheduled:   outcome.FPLSyncScheduled,
 			NextFlightState:    outcome.NextFlightState,
+			NextPositionTrail:  outcome.NextPositionTrail,
+			PositionTrailDirty: outcome.PositionTrailDirty,
 		},
+		NextHistory:        nextHistory,
+		NextPositionTrail:  outcome.NextPositionTrail,
+		PositionTrailDirty: outcome.PositionTrailDirty,
 	}
 
 	if outcome.NextFlightState != nil {
-		resolved.NextHistory = pushed.WithState(*outcome.NextFlightState)
 		prevPhase := pushed.State.Phase
 		if prevPhase != outcome.NextFlightState.Phase {
 			resolved.Transition = &PhaseTransition{From: prevPhase, To: outcome.NextFlightState.Phase}
 		}
-	} else {
-		resolved.NextHistory = pushed
 	}
 
 	return resolved

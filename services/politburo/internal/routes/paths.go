@@ -28,13 +28,14 @@ const (
 	AuthLogin  = "/auth/login"
 	AuthLogout = "/auth/logout"
 
-	Dashboard    = "/dashboard"
-	Admin        = "/admin"
-	AdminGeneral = "/admin/general"
-	AdminLive    = "/admin/live"
+	Dashboard     = "/dashboard"
+	Admin         = "/admin"
+	AdminGeneral  = "/admin/general"
+	AdminWebhooks = "/admin/webhooks"
+	AdminLive     = "/admin/live"
 
-	Live         = "/live"
-	LiveAircraft = "/live/aircraft"
+	Live          = "/live"
+	LiveAircraft  = "/live/aircraft"
 	LiveSchedules = "/live/schedules"
 	LiveFlights   = "/live/flights"
 
@@ -60,30 +61,32 @@ const (
 
 	OAuthCallback = "/oauth/callback"
 
-	GameSessionsActive  = "/api/v1/game/sessions/active"
-	GameFlightsActive   = "/api/v1/game/flights/active/{normalizedServerName}"
-	GameFlightActive    = "/api/v1/game/flight/active/{flightId}"
-	SignedLink          = "/api/v1/signed-link"
-	LiveOrganizations   = "/api/v1/live/organizations"
-	OAuthInfiniteFlight = "/api/v1/oauth/infinite-flight"
-	UserMe              = "/api/v1/user/me"
-	UsersCreate         = "/api/v1/users"
-	ServersCreate       = "/api/v1/servers"
-	AdminVerifyGod      = "/api/v1/admin/verify-god"
-	AdminBanUser        = "/api/v1/admin/users/ban"
-	VA                  = "/api/v1/va"
-	VAConfig            = "/api/v1/va/config"
-	VAWebhookTrigger    = "/api/v1/va/webhook/trigger"
-	VALiveConnections   = "/api/v1/va/live/connections"
-	VALiveConnection    = "/api/v1/va/live/connections/{organizationId}"
-	VALiveConnectionPing = "/api/v1/va/live/connections/{organizationId}/ping"
+	GameSessionsActive                = "/api/v1/game/sessions/active"
+	GameFlightsActive                 = "/api/v1/game/flights/active/{normalizedServerName}"
+	GameFlightActive                  = "/api/v1/game/flight/active/{flightId}"
+	GameFlightActivePlan              = "/api/v1/game/flight/active/{flightId}/flight-plan"
+	GameFlightActivePositionHistory   = "/api/v1/game/flight/active/{flightId}/position-history"
+	SignedLink                        = "/api/v1/signed-link"
+	LiveOrganizations                 = "/api/v1/live/organizations"
+	OAuthInfiniteFlight               = "/api/v1/oauth/infinite-flight"
+	UserMe                            = "/api/v1/user/me"
+	UsersCreate                       = "/api/v1/users"
+	ServersCreate                     = "/api/v1/servers"
+	AdminVerifyGod                    = "/api/v1/admin/verify-god"
+	AdminBanUser                      = "/api/v1/admin/users/ban"
+	VA                                = "/api/v1/va"
+	VAConfig                          = "/api/v1/va/config"
+	VAWebhookTrigger                  = "/api/v1/va/webhook/trigger"
+	VALiveConnections                 = "/api/v1/va/live/connections"
+	VALiveConnection                  = "/api/v1/va/live/connections/{organizationId}"
+	VALiveConnectionPing              = "/api/v1/va/live/connections/{organizationId}/ping"
 	VALiveOrganizationAircraft        = "/api/v1/va/live/organizations/{organizationId}/aircraft"
 	VALiveOrganizationSchedules       = "/api/v1/va/live/organizations/{organizationId}/schedules"
 	VALiveOrganizationAircraftFlights = "/api/v1/va/live/organizations/{organizationId}/aircraft/{aircraftId}/flights"
 
-	UserStatus         = "/api/v1/user/status"
-	MembershipsLink    = "/api/v1/memberships/link"
-	ReportsOccupiedIFC = "/api/v1/reports/occupied-ifc"
+	UserStatus                = "/api/v1/user/status"
+	MembershipsLink           = "/api/v1/memberships/link"
+	ReportsOccupiedIFC        = "/api/v1/reports/occupied-ifc"
 	APIOperatorReports        = "/api/v1/operator/reports"
 	APIOperatorReportsResolve = "/api/v1/operator/reports/{reportID}/resolve"
 )
@@ -94,6 +97,8 @@ var OpenAPIPaths = []string{
 	GameSessionsActive,
 	GameFlightsActive,
 	GameFlightActive,
+	GameFlightActivePlan,
+	GameFlightActivePositionHistory,
 	SignedLink,
 	LiveOrganizations,
 	OAuthInfiniteFlight,

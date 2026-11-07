@@ -2,13 +2,18 @@ package flights
 
 import "time"
 
-// FPLSyncDue reports whether an active pilot is due for flight-plan sync on this tick.
-func FPLSyncDue(pilotState int, fpl FPLSyncAction, now time.Time) bool {
-	if pilotState != PilotStateActive {
+// PlanFresh reports whether a cached plan fetchedAt is younger than FPLSyncInterval.
+func PlanFresh(fetchedAt, now time.Time) bool {
+	if fetchedAt.IsZero() {
 		return false
 	}
-	if fpl.LastAt.IsZero() {
-		return true
+	return now.Sub(fetchedAt) < FPLSyncInterval
+}
+
+// PlanSyncDue reports whether a VA-linked active pilot needs a background plan fetch.
+func PlanSyncDue(vaLinked bool, pilotState int, planFetchedAt, now time.Time) bool {
+	if !vaLinked || pilotState != PilotStateActive {
+		return false
 	}
-	return now.Sub(fpl.LastAt) >= FPLSyncInterval
+	return !PlanFresh(planFetchedAt, now)
 }

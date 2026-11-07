@@ -34,7 +34,7 @@ func newHandlers(application *app.App) handlers {
 	return handlers{
 		health:   health.NewHandler(application.DB, application.Cache, application.Config.Jobs.Enabled, application.StartedAt),
 		sessions: gamesessions.NewHandler(application.SessionsReader),
-		flights:  gameflights.NewHandler(application.FlightsReader, application.LiveryLookup, application.Metrics),
+		flights:  gameflights.NewHandler(application.FlightsReader, application.PlanFetcher, application.LiveryLookup, application.Metrics),
 		signedLink: signedlink.NewHandler(
 			application.Users,
 			application.Tickets,
@@ -70,6 +70,7 @@ func newHandlers(application *app.App) handlers {
 			application.UI, application.Sessions, application.Tickets, application.Reports, application.Contact, application.Cache,
 			application.Operator, application.Config.PlatformOperatorDiscordIDs, application.SessionsReader,
 			application.FlightsReader,
+			application.PlanFetcher,
 			application.LiveryLookup,
 			application.IFOAuth != nil,
 			application.VALiveGrants,

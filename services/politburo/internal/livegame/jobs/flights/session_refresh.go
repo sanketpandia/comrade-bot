@@ -15,13 +15,14 @@ import (
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 )
 
-func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session, refreshedAt time.Time, liveVACatalog virtualairlines.LiveVACatalog) (int, error) {
+func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session, refreshedAt time.Time, liveVACatalog virtualairlines.LiveVACatalog) (int, []gameflights.FPLDueEntry, error) {
 	items, err := j.fetchUpstreamFlights(ctx, session)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
 	existing := j.loadTracksSnapshot(ctx, session.NormalizedName)
+	dueEntries := make([]gameflights.FPLDueEntry, 0, 8)
 	stats := sessionRefreshStats{}
 	tracks := make(map[string]gameflights.FlightMotion, len(items))
 	pilotStateCounts := map[string]float64{}
@@ -40,20 +41,36 @@ func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session
 	for _, item := range items {
 		prior, cacheMiss, err := j.loadPriorFlightRecord(ctx, item.FlightID)
 		if err != nil {
-			return 0, err
+			return 0, nil, err
 		}
 		if cacheMiss {
 			stats.recordCacheMisses++
 		}
 
-		history := j.loadFlightHistory(ctx, item.FlightID)
+		history := flightstate.History{}
+		if prior != nil {
+			history = prior.History
+		}
+		cachedPlan, planLoaded := j.loadCachedPlan(ctx, item.FlightID)
+		positionTrail, trailReadErr := j.loadPositionTrail(ctx, item.FlightID)
+		if trailReadErr != nil {
+			slog.Warn("failed to read position trail; skipping trail write", "flightId", item.FlightID, "error", trailReadErr)
+			positionTrail = gameflights.PositionTrail{}
+		}
 
 		computeCtx := computeBase
 		computeCtx.PriorMotion, computeCtx.HasPriorMotion = existing.Tracks[item.FlightID]
+		computeCtx.Plan = cachedPlan
+		computeCtx.PlanLoaded = planLoaded
+		computeCtx.PlanFetchedAt = cachedPlan.FetchedAt
+		computeCtx.PositionTrail = positionTrail
 
 		resolved := flightresolution.ResolveFlight(computeCtx, item, prior, history)
-		if err := j.applyResolvedFlight(ctx, session, item.FlightID, resolved, &stats); err != nil {
-			return 0, err
+		if err := j.applyResolvedFlight(ctx, session, item.FlightID, resolved, trailReadErr, &stats); err != nil {
+			return 0, nil, err
+		}
+		if resolved.Outcome.FPLSyncScheduled {
+			dueEntries = append(dueEntries, gameflights.FPLDueEntry{SessionID: session.ID, FlightID: item.FlightID})
 		}
 
 		tracks[item.FlightID] = gameflights.MotionFromUpstream(item)
@@ -67,7 +84,8 @@ func (j *Job) refreshSession(ctx context.Context, session infiniteflight.Session
 		}
 	}
 
-	return j.finalizeSession(ctx, session, items, tracks, pilotStateCounts, phaseCounts, qualityCounts, apPlusCandidates, refreshedAt, stats)
+	count, err := j.finalizeSession(ctx, session, items, tracks, pilotStateCounts, phaseCounts, qualityCounts, apPlusCandidates, refreshedAt, stats)
+	return count, dueEntries, err
 }
 
 func (j *Job) fetchUpstreamFlights(ctx context.Context, session infiniteflight.Session) ([]infiniteflight.Flight, error) {
@@ -103,18 +121,26 @@ func (j *Job) loadPriorFlightRecord(ctx context.Context, flightID string) (*game
 	return &priorFlight, false, nil
 }
 
-func (j *Job) loadFlightHistory(ctx context.Context, flightID string) flightstate.History {
-	var history flightstate.History
-	if err := j.cache.GetJSON(ctx, cache.KeyFlightHistory(flightID), &history); err != nil {
-		if !errors.Is(err, cache.ErrMiss) {
-			slog.Warn("failed to read flight history; treating as empty", "flightId", flightID, "error", err)
-		}
-		return flightstate.History{}
+func (j *Job) loadCachedPlan(ctx context.Context, flightID string) (gameflights.CachedFlightPlan, bool) {
+	var plan gameflights.CachedFlightPlan
+	if err := j.cache.GetJSON(ctx, cache.KeyFlightPlan(flightID), &plan); err != nil {
+		return gameflights.CachedFlightPlan{}, false
 	}
-	return history
+	return plan, true
 }
 
-func (j *Job) applyResolvedFlight(ctx context.Context, session infiniteflight.Session, flightID string, resolved flightresolution.ResolvedFlight, stats *sessionRefreshStats) error {
+func (j *Job) loadPositionTrail(ctx context.Context, flightID string) (gameflights.PositionTrail, error) {
+	var trail gameflights.PositionTrail
+	if err := j.cache.GetJSON(ctx, cache.KeyFlightHistory(flightID), &trail); err != nil {
+		if errors.Is(err, cache.ErrMiss) {
+			return gameflights.PositionTrail{}, nil
+		}
+		return gameflights.PositionTrail{}, err
+	}
+	return trail, nil
+}
+
+func (j *Job) applyResolvedFlight(ctx context.Context, session infiniteflight.Session, flightID string, resolved flightresolution.ResolvedFlight, trailReadErr error, stats *sessionRefreshStats) error {
 	server := session.NormalizedName
 	if resolved.Outcome.UpdateFlightRecord {
 		stats.resolved++
@@ -127,7 +153,6 @@ func (j *Job) applyResolvedFlight(ctx context.Context, session infiniteflight.Se
 	if resolved.Outcome.FPLSyncScheduled {
 		stats.fplScheduled++
 		j.metrics.FlightsFPLSyncScheduledTotal.WithLabelValues(server).Inc()
-		flightresolution.RunFPLSync(ctx, resolved.Record)
 	}
 
 	if resolved.Transition != nil {
@@ -141,8 +166,10 @@ func (j *Job) applyResolvedFlight(ctx context.Context, session infiniteflight.Se
 		flightresolution.LogPhaseTransition(flightID, *resolved.Transition, confidence, reasons)
 	}
 
-	if err := j.cache.SetJSON(ctx, cache.KeyFlightHistory(flightID), resolved.NextHistory, cache.FlightHistoryTTL); err != nil {
-		return fmt.Errorf("cache flight history %s: %w", flightID, err)
+	if resolved.PositionTrailDirty && trailReadErr == nil {
+		if err := j.cache.SetJSON(ctx, cache.KeyFlightHistory(flightID), resolved.NextPositionTrail, cache.ActiveFlightsTTL); err != nil {
+			return fmt.Errorf("cache position trail %s: %w", flightID, err)
+		}
 	}
 
 	if !resolved.Outcome.UpdateFlightRecord {

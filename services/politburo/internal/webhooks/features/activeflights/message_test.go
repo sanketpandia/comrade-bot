@@ -79,6 +79,7 @@ func TestBuildPostsSummaryAndFlightField(t *testing.T) {
 				PilotState:  flights.PilotStateActive,
 				IsConnected: true,
 			},
+			Normalized: flights.RecordNormalized{Departure: "EGLL", Destination: "KJFK"},
 		}},
 	}, lookup)
 
@@ -97,7 +98,7 @@ func TestBuildPostsSummaryAndFlightField(t *testing.T) {
 		t.Fatalf("posts = %d", len(posts))
 	}
 	value := posts[1].Fields[0].Value
-	for _, line := range []string{"Pilot: alice", "State: active", "Aircraft: A320 / House", "Altitude: 35000 ft", "Speed: 450 kts", "Route: —", "Flight ID: c34118e7-cbdd-4e22-8751-0cda93e41d75"} {
+	for _, line := range []string{"Pilot: alice", "State: active", "Aircraft: A320 / House", "Altitude: 35000 ft", "Speed: 450 kts", "Route: EGLL → KJFK", "Flight ID: c34118e7-cbdd-4e22-8751-0cda93e41d75"} {
 		if !strings.Contains(value, line) {
 			t.Fatalf("flight value missing %q:\n%s", line, value)
 		}

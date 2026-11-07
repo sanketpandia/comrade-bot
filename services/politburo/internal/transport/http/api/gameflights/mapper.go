@@ -75,7 +75,7 @@ func cachedFiltersFromDomain(filters []domainflights.AvailableFilter) []cachedre
 
 func activeFlightRecordFromDomain(record domainflights.Record, flightID openapi_types.UUID, lookup *gameliveries.Lookup) politburoapi.ActiveFlightRecord {
 	raw := record.Raw
-	norm := domainflights.Normalize(raw, lookup)
+	norm := domainflights.NormalizeRecord(record, lookup)
 	lastReport := raw.LastReport
 	if !raw.LastReportValid {
 		lastReport = raw.ObservedAt
@@ -122,6 +122,12 @@ func activeFlightRecordFromDomain(record domainflights.Record, flightID openapi_
 	}
 	if norm.LiveryName != "" {
 		apiNormalized.LiveryName = &norm.LiveryName
+	}
+	if norm.Departure != "" {
+		apiNormalized.Departure = &norm.Departure
+	}
+	if norm.Destination != "" {
+		apiNormalized.Destination = &norm.Destination
 	}
 
 	apiActions := politburoapi.ActiveFlightActions{
@@ -271,4 +277,47 @@ func matchedVirtualAirlinesFromDomain(matches []virtualairlines.VirtualAirlineMa
 		})
 	}
 	return &out
+}
+
+func activeFlightPlanFromDomain(plan domainflights.CachedFlightPlan) politburoapi.ActiveFlightPlanData {
+	out := politburoapi.ActiveFlightPlanData{
+		FetchedAt: plan.FetchedAt,
+		Absent:    &plan.Absent,
+	}
+	if plan.FlightPlanID != "" {
+		if id, err := uuid.Parse(plan.FlightPlanID); err == nil {
+			parsed := openapi_types.UUID(id)
+			out.FlightPlanId = &parsed
+		}
+	}
+	if plan.FlightPlanType != nil {
+		out.FlightPlanType = plan.FlightPlanType
+	}
+	if len(plan.Waypoints) > 0 {
+		waypoints := make([]politburoapi.ActiveFlightPlanWaypoint, 0, len(plan.Waypoints))
+		for _, wp := range plan.Waypoints {
+			waypoints = append(waypoints, politburoapi.ActiveFlightPlanWaypoint{
+				Name:      wp.Name,
+				Latitude:  wp.Latitude,
+				Longitude: wp.Longitude,
+				Altitude:  wp.Altitude,
+			})
+		}
+		out.Waypoints = &waypoints
+	}
+	return out
+}
+
+func activeFlightPositionHistoryFromDomain(trail domainflights.PositionTrail) politburoapi.ActiveFlightPositionHistoryData {
+	fixes := make([]politburoapi.ActiveFlightPositionFix, 0, len(trail.Fixes))
+	for _, fix := range trail.Fixes {
+		fixes = append(fixes, politburoapi.ActiveFlightPositionFix{
+			At:        fix.At,
+			Latitude:  fix.Latitude,
+			Longitude: fix.Longitude,
+			Altitude:  fix.Altitude,
+			Speed:     fix.Speed,
+		})
+	}
+	return politburoapi.ActiveFlightPositionHistoryData{Fixes: fixes}
 }

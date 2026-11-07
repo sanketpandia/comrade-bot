@@ -8,6 +8,7 @@ import (
 	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	flightsjob "infinite-experiment/politburo/internal/livegame/jobs/flights"
+	flightplansjob "infinite-experiment/politburo/internal/livegame/jobs/flightplans"
 	livev3tokenjob "infinite-experiment/politburo/internal/livegame/jobs/livev3token"
 	liveriesjob "infinite-experiment/politburo/internal/livegame/jobs/liveries"
 	sessionsjob "infinite-experiment/politburo/internal/livegame/jobs/sessions"
@@ -39,6 +40,9 @@ func Register(
 	}
 	flightsJob := flightsjob.New(client, cacheStore, lookup, vaconfig.NewRepository(db), metricsRegistry)
 	if err := jobScheduler.Register(flightsJob, cache.ScheduleFlightsSync); err != nil {
+		return err
+	}
+	if err := jobScheduler.Register(flightplansjob.New(client, cacheStore), cache.ScheduleFlightPlansSync); err != nil {
 		return err
 	}
 	indexJob := vaflightindexjob.New(cacheStore, virtualairlines.NewRepository(db), metricsRegistry)

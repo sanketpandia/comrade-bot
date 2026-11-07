@@ -74,7 +74,7 @@ func (s cacheStub) GetJSON(_ context.Context, key string, destination any) error
 func (cacheStub) SetJSON(context.Context, string, any, time.Duration) error { return nil }
 
 func testHandler(store cache.Store) *Handler {
-	return NewHandler(domainflights.NewReader(store), nil, metrics.NewRegistry())
+	return NewHandler(domainflights.NewReader(store), nil, nil, metrics.NewRegistry())
 }
 
 func flightsFixture(lastCached time.Time, records ...domainflights.Record) (domainflights.Snapshot, map[string]domainflights.Record) {

@@ -1,10 +1,53 @@
 {{define "maps-flight-detail"}}
 {{if .GoneMessage}}
 <p class="panel-message panel-message--error">{{.GoneMessage}}</p>
-{{else if eq .Tab "route"}}
-<p class="panel-message">Route information will appear here when flight-plan data is available.</p>
 {{else if eq .Tab "user"}}
 <p class="panel-message">User profile information is not available on the public map.</p>
+{{else if eq .Tab "route"}}
+{{if .RouteMessage}}
+<p class="panel-message">{{.RouteMessage}}</p>
+{{else if .Route}}
+<div class="stack">
+  {{if .Record}}<p class="hero-value">{{.Record.Callsign}}</p>{{end}}
+  <section class="section">
+    <h3 class="section__title">Flight plan</h3>
+    {{if .Route.FetchedAt}}
+    <p class="text-subtle">
+      Updated <time datetime="{{.Route.FetchedAtISO}}" title="{{.Route.FetchedAtISO}}">{{.Route.FetchedAt}}</time>{{if .Route.PlanType}} · {{.Route.PlanType}}{{end}}
+    </p>
+    {{end}}
+    <div class="data-table-wrap">
+      <table class="data-table route-plan-table">
+        <thead>
+          <tr>
+            <th scope="col">Fix</th>
+            <th scope="col" class="route-plan-table__alt-h">Alt</th>
+            <th scope="col">Position</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Route.Waypoints}}
+          <tr>
+            <th scope="row">{{.Seq}}. {{.Name}}</th>
+            <td class="route-plan-table__alt">{{if ge .AltitudeFt 0}}{{.AltitudeFt}}{{else}}—{{end}}</td>
+            <td class="route-plan-table__pos">
+              <a class="data-link"
+                 data-route-position
+                 data-lat="{{.Latitude}}"
+                 data-lon="{{.Longitude}}"
+                 href="https://www.openstreetmap.org/?mlat={{.Latitude}}&mlon={{.Longitude}}#map=10/{{.Latitude}}/{{.Longitude}}"
+                 target="_blank"
+                 rel="noopener noreferrer">—</a>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    <p class="route-plan-footnote text-subtle"><span class="route-plan-footnote__mark" aria-hidden="true">*</span> Altitude in feet.</p>
+  </section>
+</div>
+{{end}}
 {{else if .Record}}
 <div class="stack">
   <p class="hero-value">{{.Record.Callsign}}</p>
