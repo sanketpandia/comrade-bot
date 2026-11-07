@@ -74,8 +74,8 @@ var twoVAs = vaListerStub{{ID: "va-1", Code: "TST"}, {ID: "va-2", Code: "idle"}}
 func TestRunWritesCodeIndexAndListsForEveryActiveVA(t *testing.T) {
 	store := liveStore(gameflights.Record{
 		Raw: gameflights.Observation{FlightID: "f1"},
-		Derived: gameflights.Derived{
-			MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1", VACode: "TST"}},
+		Links: gameflights.Links{
+			VirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1", VACode: "TST"}},
 		},
 	})
 	if err := New(store, twoVAs, metrics.NewRegistry()).Run(context.Background()); err != nil {
@@ -104,8 +104,8 @@ func TestRunWritesCodeIndexAndListsForEveryActiveVA(t *testing.T) {
 func TestRunGaugeReportsZeroWhenVALosesMatches(t *testing.T) {
 	record := gameflights.Record{
 		Raw: gameflights.Observation{FlightID: "f1"},
-		Derived: gameflights.Derived{
-			MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1", VACode: "TST"}},
+		Links: gameflights.Links{
+			VirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1", VACode: "TST"}},
 		},
 	}
 	store := liveStore(record)
@@ -118,7 +118,7 @@ func TestRunGaugeReportsZeroWhenVALosesMatches(t *testing.T) {
 		t.Fatalf("gauge after match = %v", got)
 	}
 
-	record.Derived.MatchedVirtualAirlines = nil
+	record.Links.VirtualAirlines = nil
 	store.data[cache.KeyFlightRecord("f1")] = record
 	if err := job.Run(context.Background()); err != nil {
 		t.Fatalf("second Run() error = %v", err)

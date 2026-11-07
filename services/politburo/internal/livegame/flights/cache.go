@@ -12,18 +12,6 @@ const (
 	lastReportLayout     = "2006-01-02 15:04:05Z07:00"
 )
 
-type PathSync struct {
-	FPLSyncRequired bool      `json:"fplSyncRequired"`
-	LastFPLSyncAt   time.Time `json:"lastFPLSyncAt,omitempty"`
-}
-
-type Normalized struct {
-	Speed         string `json:"speed"`
-	VerticalSpeed string `json:"verticalSpeed"`
-	PilotState    string `json:"pilotState"`
-	IsConnected   string `json:"isConnected"`
-}
-
 type FlightMotion struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`

@@ -10,6 +10,7 @@ import (
 
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/livegame/flights/flightstate"
+	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 )
 
 type mapsPageView struct {
@@ -216,29 +217,23 @@ func relativeTime(at time.Time) string {
 	}
 }
 
-func recordViewFromDomain(record domainflights.Record) mapFlightRecordView {
+func recordViewFromDomain(record domainflights.Record, lookup *gameliveries.Lookup) mapFlightRecordView {
 	raw := record.Raw
-	derived := record.Derived
+	norm := domainflights.Normalize(raw, lookup)
 	vsTrend, vsClass := verticalTrend(raw.VerticalSpeed)
-	pilotLabel := strings.ReplaceAll(strings.ToUpper(strings.TrimSpace(derived.Normalized.PilotState)), "_", " ")
+	pilotLabel := strings.ReplaceAll(strings.ToUpper(strings.TrimSpace(norm.PilotState)), "_", " ")
 	if pilotLabel == "" {
 		pilotLabel = "UNKNOWN"
 	}
-	speed := derived.Normalized.Speed
-	if speed == "" {
-		speed = fmt.Sprintf("%d kts", domainflights.RoundedSpeed(raw.Speed))
-	}
-	vspeed := derived.Normalized.VerticalSpeed
-	if vspeed == "" {
-		vspeed = fmt.Sprintf("%.0f ft/min", raw.VerticalSpeed)
-	}
+	speed := norm.Speed
+	vspeed := norm.VerticalSpeed
 	lat := fmt.Sprintf("%.4f", domainflights.RoundedLatitude(raw.Latitude))
 	lon := fmt.Sprintf("%.4f", domainflights.RoundedLongitude(raw.Longitude))
 	view := mapFlightRecordView{
 		Callsign:         raw.Callsign,
 		Username:         stringOrEmpty(raw.Username),
-		AircraftName:     derived.AircraftName,
-		LiveryName:       derived.LiveryName,
+		AircraftName:     norm.AircraftName,
+		LiveryName:       norm.LiveryName,
 		Server:           serverLabel(raw.NormalizedName),
 		Speed:            speed,
 		Altitude:         fmt.Sprintf("%d ft", domainflights.RoundedAltitude(raw.Altitude)),
@@ -247,14 +242,14 @@ func recordViewFromDomain(record domainflights.Record) mapFlightRecordView {
 		VSpeedTrendClass: vsClass,
 		Track:            fmt.Sprintf("%.0f°", domainflights.RoundedTrack(raw.Track)),
 		PilotState:       pilotLabel,
-		PilotStateClass:  pilotStateBadgeClass(derived.Normalized.PilotState),
+		PilotStateClass:  pilotStateBadgeClass(norm.PilotState),
 		Position:         lat + ", " + lon,
 		Latitude:         lat,
 		Longitude:        lon,
 		DebugKeys:        debugKeysFromRecord(record),
 	}
-	if derived.FlightState != nil {
-		view.Analytics = analyticsFromSummary(*derived.FlightState)
+	if record.Analytics.FlightState != nil {
+		view.Analytics = analyticsFromSummary(*record.Analytics.FlightState)
 	}
 	return view
 }
@@ -303,13 +298,13 @@ func debugKeysFromRecord(record domainflights.Record) []mapDebugKeyView {
 		{Source: "IF", Label: "User ID", Value: raw.UserID},
 		{Source: "IF", Label: "Session ID", Value: raw.SessionID},
 	}
-	for _, userID := range record.Derived.Users {
+	for _, userID := range record.Links.Users {
 		if userID == "" || userID == raw.UserID {
 			continue
 		}
 		keys = append(keys, mapDebugKeyView{Source: "IF", Label: "Previous user ID", Value: userID})
 	}
-	for _, match := range record.Derived.MatchedVirtualAirlines {
+	for _, match := range record.Links.VirtualAirlines {
 		label := "VA ID"
 		if match.VACode != "" {
 			label = "VA ID · " + match.VACode

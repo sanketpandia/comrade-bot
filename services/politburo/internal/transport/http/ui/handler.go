@@ -17,7 +17,8 @@ import (
 	"infinite-experiment/politburo/internal/access/auth"
 	"infinite-experiment/politburo/internal/access/session"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
-	gamesessions 	"infinite-experiment/politburo/internal/livegame/sessions"
+	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
+	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
 	"infinite-experiment/politburo/internal/livegame/valive"
 	"infinite-experiment/politburo/internal/operations/contact"
 	"infinite-experiment/politburo/internal/operations/operator"
@@ -140,6 +141,7 @@ type Handler struct {
 	tickets        ticketConsumer
 	lister         sessionLister
 	flights        *domainflights.Reader
+	liveryLookup   *gameliveries.Lookup
 	reports        *reports.Repository
 	contact        contactSubmitter
 	contactLimiter contactRateLimiter
@@ -160,12 +162,13 @@ func NewHandler(
 	platformOperators []string,
 	lister sessionLister,
 	flightsReader *domainflights.Reader,
+	liveryLookup *gameliveries.Lookup,
 	ifOAuthEnabled bool,
 	vaLiveGrants vaLiveGrantReader,
 ) *Handler {
 	return &Handler{
 		renderer: renderer, sessions: sessions, tickets: tickets, lister: lister,
-		flights: flightsReader,
+		flights: flightsReader, liveryLookup: liveryLookup,
 		reports: reportRepo, contact: contactRepo, contactLimiter: contactLimiter,
 		operator: operatorService, operators: platformOperators,
 		ifOAuthEnabled: ifOAuthEnabled,

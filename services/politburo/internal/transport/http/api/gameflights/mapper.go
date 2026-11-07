@@ -10,6 +10,7 @@ import (
 	"infinite-experiment/politburo/internal/community/virtualairlines"
 	domainflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/livegame/flights/flightstate"
+	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	"infinite-experiment/politburo/internal/transport/http/api/cachedresponse"
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -72,71 +73,88 @@ func cachedFiltersFromDomain(filters []domainflights.AvailableFilter) []cachedre
 	return out
 }
 
-func activeFlightRecordFromDomain(record domainflights.Record, flightID openapi_types.UUID) politburoapi.ActiveFlightRecord {
+func activeFlightRecordFromDomain(record domainflights.Record, flightID openapi_types.UUID, lookup *gameliveries.Lookup) politburoapi.ActiveFlightRecord {
 	raw := record.Raw
-	derived := record.Derived
+	norm := domainflights.Normalize(raw, lookup)
 	lastReport := raw.LastReport
 	if !raw.LastReportValid {
 		lastReport = raw.ObservedAt
 	}
 
-	apiRecord := politburoapi.ActiveFlightRecord{
-		FlightId:           flightID,
-		Callsign:           raw.Callsign,
-		NormalizedCallsign: optionalString(derived.NormalizedCallsign),
-		Latitude:           domainflights.RoundedLatitude(raw.Latitude),
-		Longitude:          domainflights.RoundedLongitude(raw.Longitude),
-		Altitude:           domainflights.RoundedAltitude(raw.Altitude),
-		Speed:              domainflights.RoundedSpeed(raw.Speed),
-		VerticalSpeed:      domainflights.RoundedVerticalSpeed(raw.VerticalSpeed),
-		Track:              domainflights.RoundedTrack(raw.Track),
-		LastReport:         lastReport,
-		PilotState:         raw.PilotState,
-		IsConnected:        raw.IsConnected,
-		SessionId:          raw.SessionID,
-		NormalizedName:     raw.NormalizedName,
-		Normalized: politburoapi.ActiveFlightNormalized{
-			Speed:         derived.Normalized.Speed,
-			VerticalSpeed: derived.Normalized.VerticalSpeed,
-			PilotState:    politburoapi.PilotStateName(derived.Normalized.PilotState),
-			IsConnected:   politburoapi.ActiveFlightNormalizedIsConnected(derived.Normalized.IsConnected),
-		},
-		Username:            raw.Username,
+	apiRaw := politburoapi.ActiveFlightRaw{
+		FlightId:       flightID,
+		Callsign:       raw.Callsign,
+		Latitude:       domainflights.RoundedLatitude(raw.Latitude),
+		Longitude:      domainflights.RoundedLongitude(raw.Longitude),
+		Altitude:       domainflights.RoundedAltitude(raw.Altitude),
+		Speed:          domainflights.RoundedSpeed(raw.Speed),
+		VerticalSpeed:  domainflights.RoundedVerticalSpeed(raw.VerticalSpeed),
+		Track:          domainflights.RoundedTrack(raw.Track),
+		LastReport:     lastReport,
+		PilotState:     raw.PilotState,
+		IsConnected:    raw.IsConnected,
+		SessionId:      raw.SessionID,
+		NormalizedName: raw.NormalizedName,
+		Username:       raw.Username,
 		VirtualOrganization: raw.VirtualOrganization,
 	}
 	if raw.UserID != "" {
-		apiRecord.UserId = &raw.UserID
+		apiRaw.UserId = &raw.UserID
 	}
 	if raw.AircraftID != "" {
-		apiRecord.AircraftId = &raw.AircraftID
+		apiRaw.AircraftId = &raw.AircraftID
 	}
 	if raw.LiveryID != "" {
-		apiRecord.LiveryId = &raw.LiveryID
+		apiRaw.LiveryId = &raw.LiveryID
 	}
-	if derived.AircraftName != "" {
-		apiRecord.AircraftName = &derived.AircraftName
+
+	apiNormalized := politburoapi.ActiveFlightNormalized{
+		Speed:         norm.Speed,
+		VerticalSpeed: norm.VerticalSpeed,
+		PilotState:    politburoapi.PilotStateName(norm.PilotState),
+		IsConnected:   politburoapi.ActiveFlightNormalizedIsConnected(norm.IsConnected),
 	}
-	if derived.LiveryName != "" {
-		apiRecord.LiveryName = &derived.LiveryName
+	if norm.NormalizedCallsign != "" {
+		apiNormalized.NormalizedCallsign = &norm.NormalizedCallsign
 	}
-	pathSync := derived.PathSync
-	apiPathSync := politburoapi.ActiveFlightPathSync{
-		FplSyncRequired: pathSync.FPLSyncRequired,
+	if norm.AircraftName != "" {
+		apiNormalized.AircraftName = &norm.AircraftName
 	}
-	if !pathSync.LastFPLSyncAt.IsZero() {
-		apiPathSync.LastFPLSyncAt = &pathSync.LastFPLSyncAt
+	if norm.LiveryName != "" {
+		apiNormalized.LiveryName = &norm.LiveryName
 	}
-	apiRecord.PathSync = &apiPathSync
-	if len(derived.MatchedVirtualAirlines) > 0 {
-		apiRecord.MatchedVirtualAirlines = matchedVirtualAirlinesFromDomain(derived.MatchedVirtualAirlines)
+
+	apiActions := politburoapi.ActiveFlightActions{
+		FplSync: politburoapi.ActiveFlightFPLSync{
+			Required: record.Actions.FPLSync.Required,
+		},
 	}
-	if derived.FlightState != nil {
-		apiRecord.FlightState = activeFlightStateFromDomain(*derived.FlightState)
+	if !record.Actions.FPLSync.LastAt.IsZero() {
+		lastAt := record.Actions.FPLSync.LastAt
+		apiActions.FplSync.LastAt = &lastAt
 	}
-	if len(derived.Users) > 0 {
-		apiRecord.Users = &derived.Users
+
+	apiLinks := politburoapi.ActiveFlightLinks{}
+	if len(record.Links.VirtualAirlines) > 0 {
+		apiLinks.VirtualAirlines = matchedVirtualAirlinesFromDomain(record.Links.VirtualAirlines)
 	}
-	return apiRecord
+	if len(record.Links.Users) > 0 {
+		apiLinks.Users = &record.Links.Users
+	}
+
+	apiAnalytics := politburoapi.ActiveFlightAnalytics{}
+	if record.Analytics.FlightState != nil {
+		apiAnalytics.FlightState = activeFlightStateFromDomain(*record.Analytics.FlightState)
+	}
+
+	return politburoapi.ActiveFlightRecord{
+		Raw:        apiRaw,
+		Normalized: apiNormalized,
+		Analytics:  apiAnalytics,
+		Actions:    apiActions,
+		Links:      apiLinks,
+		History:    politburoapi.ActiveFlightHistory{},
+	}
 }
 
 func activeFlightStateFromDomain(state flightstate.Summary) *politburoapi.ActiveFlightState {
@@ -167,51 +185,51 @@ func activeFlightStateFromDomain(state flightstate.Summary) *politburoapi.Active
 }
 
 func enrichActiveFlightStateFeatures(record *politburoapi.ActiveFlightRecord, history flightstate.History) {
-	if record == nil || record.FlightState == nil {
+	if record == nil || record.Analytics.FlightState == nil {
 		return
 	}
 	features := history.State.Features
 	if features.ElapsedSec == 0 && features.DistanceNM == 0 && features.GapClass == "" {
 		return
 	}
-	record.FlightState.Features = flightStateFeaturesFromSnapshot(features)
+	record.Analytics.FlightState.Features = flightStateFeaturesFromSnapshot(features)
 }
 
 func flightStateFeaturesFromSnapshot(features flightstate.WindowFeatureSnapshot) *struct {
-	AltDeltaFt            *float64                           `json:"altDeltaFt,omitempty"`
-	AltStable             *bool                              `json:"altStable,omitempty"`
-	AvgVerticalFpm        *float64                           `json:"avgVerticalFpm,omitempty"`
-	DistanceNm            *float64                           `json:"distanceNm,omitempty"`
-	ElapsedSec            *float64                           `json:"elapsedSec,omitempty"`
-	Fresh                 *bool                              `json:"fresh,omitempty"`
+	AltDeltaFt            *float64                                        `json:"altDeltaFt,omitempty"`
+	AltStable             *bool                                           `json:"altStable,omitempty"`
+	AvgVerticalFpm        *float64                                        `json:"avgVerticalFpm,omitempty"`
+	DistanceNm            *float64                                        `json:"distanceNm,omitempty"`
+	ElapsedSec            *float64                                        `json:"elapsedSec,omitempty"`
+	Fresh                 *bool                                           `json:"fresh,omitempty"`
 	GapClass              *politburoapi.ActiveFlightStateFeaturesGapClass `json:"gapClass,omitempty"`
-	LastReportAdvancing   *bool                              `json:"lastReportAdvancing,omitempty"`
-	Moved                 *bool                              `json:"moved,omitempty"`
-	ProgressRatio         *float64                           `json:"progressRatio,omitempty"`
-	SpeedDeltaKt          *float64                           `json:"speedDeltaKt,omitempty"`
-	StationaryDurationSec *float64                           `json:"stationaryDurationSec,omitempty"`
-	StationarySamples     *int                               `json:"stationarySamples,omitempty"`
-	SustainedClimbCount   *int                               `json:"sustainedClimbCount,omitempty"`
-	SustainedDescentCount *int                               `json:"sustainedDescentCount,omitempty"`
-	TrackDeltaDeg         *float64                           `json:"trackDeltaDeg,omitempty"`
+	LastReportAdvancing   *bool                                           `json:"lastReportAdvancing,omitempty"`
+	Moved                 *bool                                           `json:"moved,omitempty"`
+	ProgressRatio         *float64                                        `json:"progressRatio,omitempty"`
+	SpeedDeltaKt          *float64                                        `json:"speedDeltaKt,omitempty"`
+	StationaryDurationSec *float64                                        `json:"stationaryDurationSec,omitempty"`
+	StationarySamples     *int                                            `json:"stationarySamples,omitempty"`
+	SustainedClimbCount   *int                                            `json:"sustainedClimbCount,omitempty"`
+	SustainedDescentCount *int                                            `json:"sustainedDescentCount,omitempty"`
+	TrackDeltaDeg         *float64                                        `json:"trackDeltaDeg,omitempty"`
 } {
 	return &struct {
-		AltDeltaFt            *float64                           `json:"altDeltaFt,omitempty"`
-		AltStable             *bool                              `json:"altStable,omitempty"`
-		AvgVerticalFpm        *float64                           `json:"avgVerticalFpm,omitempty"`
-		DistanceNm            *float64                           `json:"distanceNm,omitempty"`
-		ElapsedSec            *float64                           `json:"elapsedSec,omitempty"`
-		Fresh                 *bool                              `json:"fresh,omitempty"`
+		AltDeltaFt            *float64                                        `json:"altDeltaFt,omitempty"`
+		AltStable             *bool                                           `json:"altStable,omitempty"`
+		AvgVerticalFpm        *float64                                        `json:"avgVerticalFpm,omitempty"`
+		DistanceNm            *float64                                        `json:"distanceNm,omitempty"`
+		ElapsedSec            *float64                                        `json:"elapsedSec,omitempty"`
+		Fresh                 *bool                                           `json:"fresh,omitempty"`
 		GapClass              *politburoapi.ActiveFlightStateFeaturesGapClass `json:"gapClass,omitempty"`
-		LastReportAdvancing   *bool                              `json:"lastReportAdvancing,omitempty"`
-		Moved                 *bool                              `json:"moved,omitempty"`
-		ProgressRatio         *float64                           `json:"progressRatio,omitempty"`
-		SpeedDeltaKt          *float64                           `json:"speedDeltaKt,omitempty"`
-		StationaryDurationSec *float64                           `json:"stationaryDurationSec,omitempty"`
-		StationarySamples     *int                               `json:"stationarySamples,omitempty"`
-		SustainedClimbCount   *int                               `json:"sustainedClimbCount,omitempty"`
-		SustainedDescentCount *int                               `json:"sustainedDescentCount,omitempty"`
-		TrackDeltaDeg         *float64                           `json:"trackDeltaDeg,omitempty"`
+		LastReportAdvancing   *bool                                           `json:"lastReportAdvancing,omitempty"`
+		Moved                 *bool                                           `json:"moved,omitempty"`
+		ProgressRatio         *float64                                        `json:"progressRatio,omitempty"`
+		SpeedDeltaKt          *float64                                        `json:"speedDeltaKt,omitempty"`
+		StationaryDurationSec *float64                                        `json:"stationaryDurationSec,omitempty"`
+		StationarySamples     *int                                            `json:"stationarySamples,omitempty"`
+		SustainedClimbCount   *int                                            `json:"sustainedClimbCount,omitempty"`
+		SustainedDescentCount *int                                            `json:"sustainedDescentCount,omitempty"`
+		TrackDeltaDeg         *float64                                        `json:"trackDeltaDeg,omitempty"`
 	}{
 		ElapsedSec:            &features.ElapsedSec,
 		DistanceNm:            &features.DistanceNM,
@@ -238,13 +256,6 @@ func gapClassPtr(c flightstate.GapClass) *politburoapi.ActiveFlightStateFeatures
 	}
 	v := politburoapi.ActiveFlightStateFeaturesGapClass(c)
 	return &v
-}
-
-func optionalString(value string) *string {
-	if value == "" {
-		return nil
-	}
-	return &value
 }
 
 func matchedVirtualAirlinesFromDomain(matches []virtualairlines.VirtualAirlineMatch) *[]politburoapi.ActiveFlightVirtualAirlineMatch {

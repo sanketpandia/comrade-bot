@@ -2,16 +2,16 @@ package flightresolution
 
 import "infinite-experiment/politburo/internal/livegame/flights"
 
-var pathSyncUpdateEffect = EffectDecision{
-	Name:    "PathSyncUpdate",
+var fplSyncUpdateEffect = EffectDecision{
+	Name:    "FPLSyncUpdate",
 	Applies: func(EffectInput) bool { return true },
-	Apply:   applyPathSyncUpdate,
+	Apply:   applyFPLSyncUpdate,
 }
 
-func applyPathSyncUpdate(in EffectInput, out *flights.Derived, outcome *Outcome) {
-	out.PathSync.FPLSyncRequired = in.Facts.FPLDue
+func applyFPLSyncUpdate(in EffectInput, _ *flights.Analytics, actions *flights.Actions, _ *flights.Links, outcome *Outcome) {
+	actions.FPLSync.Required = in.Facts.FPLDue
 	if in.Facts.FPLDue {
-		out.PathSync.LastFPLSyncAt = in.Ctx.RefreshedAt
+		actions.FPLSync.LastAt = in.Ctx.RefreshedAt
 		outcome.FPLSyncScheduled = true
 	}
 }

@@ -72,9 +72,13 @@ func ResolveFlight(ctx ComputeContext, upstream infiniteflight.Flight, prior *fl
 	pushed, pushReason := history.Push(flights.FlightStateSample(raw), cfg)
 	facts.HistoryPush = pushReason
 
-	derived := flights.Derived{}
+	analytics := flights.Analytics{}
+	actions := flights.Actions{}
+	links := flights.Links{}
 	if prior != nil {
-		derived = prior.Derived.Clone()
+		analytics = prior.Analytics.Clone()
+		actions = prior.Actions.Clone()
+		links = prior.Links.Clone()
 	}
 
 	outcome := Outcome{}
@@ -88,12 +92,22 @@ func ResolveFlight(ctx ComputeContext, upstream infiniteflight.Flight, prior *fl
 
 	for _, effect := range flightEffects {
 		if effect.Applies(in) {
-			effect.Apply(in, &derived, &outcome)
+			effect.Apply(in, &analytics, &actions, &links, &outcome)
 		}
 	}
 
-	record := flights.Record{Raw: raw, Derived: derived}
-	updateRecord := facts.MotionChanged || facts.IsNew || !derived.Equal(priorDerived(prior))
+	record := flights.Record{
+		Raw:       raw,
+		Analytics: analytics,
+		Actions:   actions,
+		Links:     links,
+		History:   flights.History{},
+	}
+	var priorRecord flights.Record
+	if prior != nil {
+		priorRecord = *prior
+	}
+	updateRecord := facts.MotionChanged || facts.IsNew || !record.StoredSectionsEqual(priorRecord)
 
 	resolved := ResolvedFlight{
 		Record: record,
@@ -115,13 +129,6 @@ func ResolveFlight(ctx ComputeContext, upstream infiniteflight.Flight, prior *fl
 	}
 
 	return resolved
-}
-
-func priorDerived(prior *flights.Record) flights.Derived {
-	if prior == nil {
-		return flights.Derived{}
-	}
-	return prior.Derived
 }
 
 func RunFPLSync(_ context.Context, _ flights.Record) {

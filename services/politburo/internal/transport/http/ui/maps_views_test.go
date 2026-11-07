@@ -13,15 +13,14 @@ func TestRecordViewAnalyticsAndDebugKeys(t *testing.T) {
 	since := time.Date(2026, 10, 31, 20, 15, 0, 0, time.UTC)
 	record := domainflights.Record{
 		Raw: domainflights.Observation{
-			FlightID:  "flight-1",
-			UserID:    "user-1",
-			SessionID: "session-1",
-			Latitude:  52.3105,
-			Longitude: 4.7683,
+			FlightID:   "flight-1",
+			UserID:     "user-1",
+			SessionID:  "session-1",
+			PilotState: domainflights.PilotStateInBackground,
+			Latitude:   52.3105,
+			Longitude:  4.7683,
 		},
-		Derived: domainflights.Derived{
-			Users:                  []string{"user-0", "user-1"},
-			MatchedVirtualAirlines: []virtualairlines.VirtualAirlineMatch{{VAID: "va-1", VACode: "TEST"}},
+		Analytics: domainflights.Analytics{
 			FlightState: &flightstate.Summary{
 				Phase:         flightstate.PhaseAwaitingAPPlus,
 				PreviousPhase: flightstate.PhaseCruise,
@@ -36,9 +35,13 @@ func TestRecordViewAnalyticsAndDebugKeys(t *testing.T) {
 				},
 			},
 		},
+		Links: domainflights.Links{
+			Users:                  []string{"user-0", "user-1"},
+			VirtualAirlines:        []virtualairlines.VirtualAirlineMatch{{VAID: "va-1", VACode: "TEST"}},
+		},
 	}
 
-	view := recordViewFromDomain(record)
+	view := recordViewFromDomain(record, nil)
 
 	if view.Latitude != "52.3105" || view.Longitude != "4.7683" {
 		t.Fatalf("coordinates = %q, %q", view.Latitude, view.Longitude)

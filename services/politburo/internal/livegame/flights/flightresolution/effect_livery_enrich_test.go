@@ -6,10 +6,9 @@ import (
 	"infinite-experiment/politburo/internal/livegame/flights"
 )
 
-func TestLiveryEnrichApplies(t *testing.T) {
+func TestLiveryResolveMetricAppliesOnIdentityChange(t *testing.T) {
 	prior := &flights.Record{
-		Raw:     flights.Observation{AircraftID: "a1", LiveryID: "l1"},
-		Derived: flights.Derived{AircraftName: "A320"},
+		Raw: flights.Observation{AircraftID: "a1", LiveryID: "l1"},
 	}
 	raw := flights.Observation{AircraftID: "a1", LiveryID: "l1"}
 	in := EffectInput{
@@ -17,8 +16,8 @@ func TestLiveryEnrichApplies(t *testing.T) {
 		Prior: prior,
 		Facts: computeFacts(ComputeContext{}, raw, prior),
 	}
-	if liveryEnrichApplies(in) {
-		t.Fatal("expected skip when names already resolved")
+	if liveryResolveMetricApplies(in) {
+		t.Fatal("expected skip when identity unchanged")
 	}
 
 	raw = flights.Observation{AircraftID: "a2", LiveryID: "l1"}
@@ -27,15 +26,15 @@ func TestLiveryEnrichApplies(t *testing.T) {
 		Prior: prior,
 		Facts: computeFacts(ComputeContext{}, raw, prior),
 	}
-	if !liveryEnrichApplies(in) {
-		t.Fatal("expected resolve when aircraft changed")
+	if !liveryResolveMetricApplies(in) {
+		t.Fatal("expected metric when aircraft changed")
 	}
 
 	in = EffectInput{
 		Raw:   flights.Observation{AircraftID: "a1", LiveryID: "l1"},
 		Facts: computeFacts(ComputeContext{}, flights.Observation{AircraftID: "a1", LiveryID: "l1"}, nil),
 	}
-	if !liveryEnrichApplies(in) {
-		t.Fatal("expected resolve without prior")
+	if !liveryResolveMetricApplies(in) {
+		t.Fatal("expected metric without prior")
 	}
 }

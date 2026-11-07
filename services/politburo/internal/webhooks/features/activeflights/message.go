@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"infinite-experiment/politburo/internal/livegame/flights"
+	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
 	webhookconfig "infinite-experiment/politburo/internal/webhooks/config"
 	"infinite-experiment/politburo/internal/webhooks/discord"
 )
@@ -45,16 +46,16 @@ type fleetStats struct {
 }
 
 // BuildPosts returns one Discord embed per webhook post: summary first, then flight pages.
-func BuildPosts(in SnapshotInput) []discord.Embed {
+func BuildPosts(in SnapshotInput, lookup *gameliveries.Lookup) []discord.Embed {
 	at := in.At.UTC()
 	serverLabel := formatServerList(in.Servers)
 	filter := parseFilterDisplay(in.Filters)
-	stats := computeFleetStats(in.Flights)
+	stats := computeFleetStats(in.Flights, lookup)
 
 	pages := paginateFlights(in.Flights)
 	posts := []discord.Embed{buildSummaryEmbed(at, serverLabel, in, filter, stats)}
 	for i, page := range pages {
-		posts = append(posts, buildFlightPageEmbed(at, serverLabel, page, i+1, len(pages)))
+		posts = append(posts, buildFlightPageEmbed(at, serverLabel, page, i+1, len(pages), lookup))
 	}
 	return posts
 }
@@ -110,7 +111,7 @@ func buildSummaryEmbed(at time.Time, serverLabel string, in SnapshotInput, filte
 	}
 }
 
-func buildFlightPageEmbed(at time.Time, serverLabel string, page []flights.Record, pageNum, totalPages int) discord.Embed {
+func buildFlightPageEmbed(at time.Time, serverLabel string, page []flights.Record, pageNum, totalPages int, lookup *gameliveries.Lookup) discord.Embed {
 	desc := formatSnapshotLine(at)
 	if totalPages > 1 {
 		desc += fmt.Sprintf("\nPage %d of %d", pageNum, totalPages)
@@ -120,7 +121,7 @@ func buildFlightPageEmbed(at time.Time, serverLabel string, page []flights.Recor
 	for i, flight := range page {
 		fields[i] = discord.EmbedField{
 			Name:   flightFieldName(flight),
-			Value:  flightFieldValue(flight),
+			Value:  flightFieldValue(flight, lookup),
 			Inline: false,
 		}
 	}
@@ -196,7 +197,7 @@ func formatPilotStateLabel(name string) string {
 	return strings.Join(words, " ")
 }
 
-func computeFleetStats(reported []flights.Record) fleetStats {
+func computeFleetStats(reported []flights.Record, lookup *gameliveries.Lookup) fleetStats {
 	stats := fleetStats{total: len(reported)}
 	if len(reported) == 0 {
 		return stats
@@ -208,7 +209,7 @@ func computeFleetStats(reported []flights.Record) fleetStats {
 	pilots := map[string]struct{}{}
 
 	for _, flight := range reported {
-		livery := strings.TrimSpace(flight.Derived.LiveryName)
+		livery := strings.TrimSpace(flights.Normalize(flight.Raw, lookup).LiveryName)
 		if livery != "" {
 			liveryCounts[livery]++
 		}
@@ -289,15 +290,13 @@ func flightFieldName(flight flights.Record) string {
 	return callsign
 }
 
-func flightFieldValue(flight flights.Record) string {
+func flightFieldValue(flight flights.Record, lookup *gameliveries.Lookup) string {
 	pilot := strings.TrimSpace(flights.Username(flight.Raw))
 	if pilot == "" {
 		pilot = "—"
 	}
-	speed := strings.TrimSpace(flight.Derived.Normalized.Speed)
-	if speed == "" {
-		speed = fmt.Sprintf("%d kts", flights.RoundedSpeed(flight.Raw.Speed))
-	}
+	norm := flights.Normalize(flight.Raw, lookup)
+	speed := strings.TrimSpace(norm.Speed)
 	flightID := strings.TrimSpace(flight.Raw.FlightID)
 	if flightID == "" {
 		flightID = "—"
@@ -306,7 +305,7 @@ func flightFieldValue(flight flights.Record) string {
 		"Pilot: %s\nState: %s\nAircraft: %s\nAltitude: %d ft\nSpeed: %s\nRoute: —\nFlight ID: %s",
 		pilot,
 		formatFlightState(flight),
-		formatAircraft(flight.Derived.AircraftName, flight.Derived.LiveryName),
+		formatAircraft(norm.AircraftName, norm.LiveryName),
 		flights.RoundedAltitude(flight.Raw.Altitude),
 		speed,
 		flightID,
@@ -314,10 +313,7 @@ func flightFieldValue(flight flights.Record) string {
 }
 
 func formatFlightState(flight flights.Record) string {
-	state := strings.TrimSpace(flight.Derived.Normalized.PilotState)
-	if state == "" {
-		state = flights.NameForPilotState(flight.Raw.PilotState)
-	}
+	state := flights.NameForPilotState(flight.Raw.PilotState)
 	state = strings.TrimSpace(state)
 	if state == "" {
 		return "—"

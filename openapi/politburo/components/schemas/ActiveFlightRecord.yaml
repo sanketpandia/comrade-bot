@@ -1,94 +1,15 @@
 type: object
-required:
-  - flightId
-  - callsign
-  - latitude
-  - longitude
-  - altitude
-  - speed
-  - verticalSpeed
-  - track
-  - lastReport
-  - pilotState
-  - isConnected
-  - sessionId
-  - normalizedName
-  - normalized
+required: [raw, normalized, analytics, actions, links, history]
 properties:
-  flightId:
-    type: string
-    format: uuid
-    description: Infinite Flight flight identifier.
-  userId:
-    type: string
-    description: Infinite Flight user identifier.
-  aircraftId:
-    type: string
-  liveryId:
-    type: string
-  username:
-    type: string
-    nullable: true
-  virtualOrganization:
-    type: string
-    nullable: true
-  callsign:
-    type: string
-  normalizedCallsign:
-    type: string
-    description: Callsign with Infinite Flight weight/formation trailers removed for VA affix matching.
-  latitude:
-    type: number
-    format: double
-  longitude:
-    type: number
-    format: double
-  altitude:
-    type: integer
-    description: Altitude in feet.
-  speed:
-    type: integer
-    description: Ground speed in knots (rounded).
-  verticalSpeed:
-    type: number
-    format: double
-    description: Vertical speed in feet per minute.
-  track:
-    type: number
-    format: double
-    description: Ground track in degrees clockwise from north.
-  lastReport:
-    type: string
-    format: date-time
-    description: Timestamp of the latest upstream position report.
-  pilotState:
-    type: integer
-    description: Raw Infinite Flight pilot state code.
-  isConnected:
-    type: boolean
-  aircraftName:
-    type: string
-  liveryName:
-    type: string
-  sessionId:
-    type: string
-  normalizedName:
-    type: string
-    description: Normalized session name (for example casual, expert, training).
+  raw:
+    $ref: "./ActiveFlightRaw.yaml"
   normalized:
     $ref: "./ActiveFlightNormalized.yaml"
-  pathSync:
-    $ref: "./ActiveFlightPathSync.yaml"
-  matchedVirtualAirlines:
-    type: array
-    description: Virtual airlines whose BASIC callsign affix rules matched this flight on the current session.
-    items:
-      $ref: "./ActiveFlightVirtualAirlineMatch.yaml"
-  flightState:
-    $ref: "./ActiveFlightState.yaml"
-    description: Temporal flight-phase estimate when available.
-  users:
-    type: array
-    description: Distinct Infinite Flight user identifiers who have operated this flight during the current cache lifetime.
-    items:
-      type: string
+  analytics:
+    $ref: "./ActiveFlightAnalytics.yaml"
+  actions:
+    $ref: "./ActiveFlightActions.yaml"
+  links:
+    $ref: "./ActiveFlightLinks.yaml"
+  history:
+    $ref: "./ActiveFlightHistory.yaml"

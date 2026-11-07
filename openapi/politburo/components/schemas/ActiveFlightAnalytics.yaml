@@ -1,0 +1,5 @@
+type: object
+properties:
+  flightState:
+    $ref: "./ActiveFlightState.yaml"
+    description: Temporal flight-phase estimate when available.

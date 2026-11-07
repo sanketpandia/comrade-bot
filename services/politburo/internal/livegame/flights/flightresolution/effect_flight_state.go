@@ -11,13 +11,13 @@ var flightStateEffect = EffectDecision{
 	Apply:   applyFlightState,
 }
 
-func applyFlightState(in EffectInput, out *flights.Derived, outcome *Outcome) {
+func applyFlightState(in EffectInput, analytics *flights.Analytics, _ *flights.Actions, _ *flights.Links, outcome *Outcome) {
 	cfg := in.Ctx.Deps.FlightState
 	if cfg.HistorySize == 0 && cfg.HistoryWindow == 0 {
 		cfg = flightstate.DefaultConfig()
 	}
 	next := flightstate.Classify(in.History.State, in.History, cfg, in.Raw.ObservedAt)
 	summary := flightstate.SummaryFromState(next, false)
-	out.FlightState = &summary
+	analytics.FlightState = &summary
 	outcome.NextFlightState = &next
 }

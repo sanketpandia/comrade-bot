@@ -2,16 +2,16 @@
 
 ## Record contract
 
-Active flights are stored as `flights.Record` with immutable upstream `raw` (`Observation`) and effect-owned `derived` (`Derived`). Resolution effects may only mutate `Derived` and job `Outcome` flags. Upstream values are rebuilt each tick via `NewObservation`; rounding for API output happens in the HTTP mapper.
+Active flights are stored as `flights.Record` with immutable upstream `raw` (`Observation`) plus persisted sections `analytics`, `actions`, `links`, and reserved `history`. Resolution effects may only mutate those sections and job `Outcome` flags. Upstream values are rebuilt each tick via `NewObservation`; display strings and livery names are built at serve time via `flights.Normalize`. Rounding for API output happens in the HTTP mapper.
 
 ## Redis keys
 
 | Key | Purpose |
 |-----|---------|
-| `game:flights:record:v2:{flightId}` | Enriched record (`raw` + `derived`), 3-day TTL |
+| `game:flights:record:v3:{flightId}` | Sectioned record (`raw`, `analytics`, `actions`, `links`, `history`), 3-day TTL |
 | `game:flights:history:{flightId}` | Estimator sample window + full internal state, 30-minute TTL |
 
-History is written every refresh tick. The record is written only when derived data changes (motion, new flight, or `Derived.Equal` mismatch).
+History is written every refresh tick. The record is written only when persisted sections change (motion, new flight, or `Record.StoredSectionsEqual` mismatch). The API adds a serve-time `normalized` block and joins flight-state window features from the history key on read.
 
 ## Phases
 
@@ -33,7 +33,7 @@ Inject overrides through `flightresolution.ComputeDeps.FlightState` for tests or
 
 ## Livery enrichment
 
-When the livery changes and catalog lookup misses, previous `aircraftName` / `liveryName` are retained (legacy behaviour).
+Aircraft and livery display names come from the in-memory livery catalog when serving (`Normalize`). The sync job only increments `politburo_livegame_livery_resolve_total` when the flight is new or the livery/aircraft identity changes.
 
 ## Tuning loop
 

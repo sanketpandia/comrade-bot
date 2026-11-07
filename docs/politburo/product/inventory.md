@@ -33,8 +33,8 @@ against `:8082`.
 
 The map consumes the game JSON APIs with the session cookie. `FlightMap`
 still knows how to draw altitude-colored routes; the rewrite never feeds it
-waypoints because flight-plan sync is stubbed (`fplSyncRequired` is always
-false).
+waypoints because flight-plan sync is stubbed (`actions.fplSync.required` is
+only set when due; `RunFPLSync` is still a no-op).
 
 ### Jobs
 

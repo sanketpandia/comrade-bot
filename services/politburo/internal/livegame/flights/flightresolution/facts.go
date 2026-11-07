@@ -23,9 +23,9 @@ func computeFacts(ctx ComputeContext, raw flights.Observation, prior *flights.Re
 		facts.MotionChanged = true
 	}
 
-	var priorPathSync flights.PathSync
+	var priorFPL flights.FPLSyncAction
 	if prior != nil {
-		priorPathSync = prior.Derived.PathSync
+		priorFPL = prior.Actions.FPLSync
 		if prior.Raw.AircraftID != raw.AircraftID || prior.Raw.LiveryID != raw.LiveryID {
 			facts.LiveryChanged = true
 		}
@@ -33,6 +33,6 @@ func computeFacts(ctx ComputeContext, raw flights.Observation, prior *flights.Re
 		facts.LiveryChanged = true
 	}
 
-	facts.FPLDue = flights.FPLSyncDue(raw.PilotState, priorPathSync, ctx.RefreshedAt)
+	facts.FPLDue = flights.FPLSyncDue(raw.PilotState, priorFPL, ctx.RefreshedAt)
 	return facts
 }

@@ -52,7 +52,7 @@ Decided in [identity-membership.md](identity-membership.md). Old
 | Per-flight Redis history | Jobs / Redis | Rewrite (stored) | Not exposed as its own API |
 | Livery name cache | Jobs / Redis | Rewrite | Feeds flight payloads |
 | VA-filtered live flights (`/live`) | Discord | Bot-only | Old `GET /api/v1/flights/va` — filter by VA callsign / VO |
-| Live flight plans / waypoints | Jobs, Portal | Leftover | `PathSync` stub; map can draw routes; IF route API not in spec |
+| Live flight plans / waypoints | Jobs, Portal | Leftover | `actions.fplSync` stub; map can draw routes; IF route API not in spec |
 | Flight phase (climb/cruise/…) | Discord, old Portal | Bot-only | Rewrite exposes IF `pilotState`, not derived phase |
 | Origin / destination on live flights | Discord, old Portal | Bot-only | Needs FPL or world/route data |
 | Periodic Discord webhook snapshots | Jobs, Portal | Leftover | `va_webhooks` table idle |

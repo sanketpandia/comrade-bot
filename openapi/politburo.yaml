@@ -1789,6 +1789,35 @@ components:
     ActiveFlightRecord:
       type: object
       required:
+        - raw
+        - normalized
+        - analytics
+        - actions
+        - links
+        - history
+      properties:
+        raw:
+          $ref: '#/components/schemas/ActiveFlightRaw'
+        normalized:
+          $ref: '#/components/schemas/ActiveFlightNormalized'
+        analytics:
+          $ref: '#/components/schemas/ActiveFlightAnalytics'
+        actions:
+          $ref: '#/components/schemas/ActiveFlightActions'
+        links:
+          $ref: '#/components/schemas/ActiveFlightLinks'
+        history:
+          $ref: '#/components/schemas/ActiveFlightHistory'
+    ActiveFlightRecordResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ActiveFlightRecord'
+    ActiveFlightRaw:
+      type: object
+      required:
         - flightId
         - callsign
         - latitude
@@ -1802,7 +1831,6 @@ components:
         - isConnected
         - sessionId
         - normalizedName
-        - normalized
       properties:
         flightId:
           type: string
@@ -1823,9 +1851,6 @@ components:
           nullable: true
         callsign:
           type: string
-        normalizedCallsign:
-          type: string
-          description: Callsign with Infinite Flight weight/formation trailers removed for VA affix matching.
         latitude:
           type: number
           format: double
@@ -1855,39 +1880,11 @@ components:
           description: Raw Infinite Flight pilot state code.
         isConnected:
           type: boolean
-        aircraftName:
-          type: string
-        liveryName:
-          type: string
         sessionId:
           type: string
         normalizedName:
           type: string
           description: Normalized session name (for example casual, expert, training).
-        normalized:
-          $ref: '#/components/schemas/ActiveFlightNormalized'
-        pathSync:
-          $ref: '#/components/schemas/ActiveFlightPathSync'
-        matchedVirtualAirlines:
-          type: array
-          description: Virtual airlines whose BASIC callsign affix rules matched this flight on the current session.
-          items:
-            $ref: '#/components/schemas/ActiveFlightVirtualAirlineMatch'
-        flightState:
-          $ref: '#/components/schemas/ActiveFlightState'
-          description: Temporal flight-phase estimate when available.
-        users:
-          type: array
-          description: Distinct Infinite Flight user identifiers who have operated this flight during the current cache lifetime.
-          items:
-            type: string
-    ActiveFlightRecordResponse:
-      type: object
-      required:
-        - data
-      properties:
-        data:
-          $ref: '#/components/schemas/ActiveFlightRecord'
     ActiveFlightNormalized:
       type: object
       required:
@@ -1896,6 +1893,15 @@ components:
         - pilotState
         - isConnected
       properties:
+        normalizedCallsign:
+          type: string
+          description: Callsign with Infinite Flight weight/formation trailers removed for VA affix matching.
+        aircraftName:
+          type: string
+          description: Display aircraft name from the livery catalog.
+        liveryName:
+          type: string
+          description: Display livery name from the livery catalog.
         speed:
           type: string
           description: Display-formatted ground speed (for example "186 kts").
@@ -1910,18 +1916,48 @@ components:
             - connected
             - disconnected
           description: Human-readable connection status.
-    ActiveFlightPathSync:
+    ActiveFlightAnalytics:
+      type: object
+      properties:
+        flightState:
+          $ref: '#/components/schemas/ActiveFlightState'
+          description: Temporal flight-phase estimate when available.
+    ActiveFlightActions:
       type: object
       required:
-        - fplSyncRequired
+        - fplSync
       properties:
-        fplSyncRequired:
+        fplSync:
+          $ref: '#/components/schemas/ActiveFlightFPLSync'
+    ActiveFlightFPLSync:
+      type: object
+      required:
+        - required
+      properties:
+        required:
           type: boolean
-          description: Whether a flight-plan sync is pending for this flight.
-        lastFPLSyncAt:
+          description: Whether a flight-plan sync is pending for this flight on the current tick.
+        lastAt:
           type: string
           format: date-time
           description: When the last flight-plan sync completed, if any.
+    ActiveFlightLinks:
+      type: object
+      properties:
+        virtualAirlines:
+          type: array
+          description: Virtual airlines whose BASIC callsign affix rules matched this flight on the current session.
+          items:
+            $ref: '#/components/schemas/ActiveFlightVirtualAirlineMatch'
+        users:
+          type: array
+          description: Distinct Infinite Flight user identifiers who have operated this flight during the current cache lifetime.
+          items:
+            type: string
+    ActiveFlightHistory:
+      type: object
+      description: Reserved section on the flight record; empty for now.
+      additionalProperties: false
     ActiveFlightVirtualAirlineMatch:
       type: object
       required:

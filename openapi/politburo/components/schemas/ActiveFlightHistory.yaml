@@ -1,0 +1,3 @@
+type: object
+description: Reserved section on the flight record; empty for now.
+additionalProperties: false
