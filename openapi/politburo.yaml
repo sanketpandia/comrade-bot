@@ -1050,6 +1050,180 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va/members:
+    get:
+      operationId: listVAMembers
+      summary: List VA members for staff review
+      description: |
+        Returns registered members for the caller's virtual airline.
+        Requires VA staff role (`bourgeoisie` or `administrator`).
+        Use `status=deleted` to list removed members.
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Active members (default) or removed members.
+          schema:
+            type: string
+            enum:
+              - active
+              - deleted
+            default: active
+      responses:
+        '200':
+          description: Member list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VAMembersResponse'
+        '401':
+          description: Missing or inactive API key or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not VA staff (bourgeoisie or administrator)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No virtual airline context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to load members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va/members/{userId}:
+    patch:
+      operationId: updateVAMemberRole
+      summary: Change a member's VA role
+      description: |
+        Updates the VA membership role for a user in the caller's virtual airline.
+        Requires VA administrator role (`administrator`).
+        Transferring administrator demotes the current administrator to bourgeoisie.
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Politburo user id of the member
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VAMemberRoleUpdateRequest'
+      responses:
+        '204':
+          description: Role updated
+        '400':
+          description: Invalid role or request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or inactive API key or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not a VA administrator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Member or VA context not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Role change not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to update role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: removeVAMember
+      summary: Remove a member from the VA
+      description: |
+        Deactivates the caller's VA membership row for the target user (removed members appear under `status=deleted`).
+        Staff may remove active proletariat only. The administrator may remove active proletariat or bourgeoisie, not themselves.
+        Requires VA staff role (`bourgeoisie` or `administrator`).
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Politburo user id of the member
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Member removed
+        '401':
+          description: Missing or inactive API key or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller cannot remove this member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Member or VA context not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Removal not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to remove member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/va/config:
     get:
       operationId: getVAConfig
@@ -2579,6 +2753,60 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/VAWebhookTriggerData'
+    VAMember:
+      type: object
+      required:
+        - userId
+        - role
+        - joinedAt
+        - updatedAt
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: Internal Politburo user id.
+        ifCommunityId:
+          type: string
+          description: Linked Infinite Flight Community username.
+        username:
+          type: string
+          description: Stored display username when present.
+        role:
+          type: string
+          enum:
+            - proletariat
+            - bourgeoisie
+            - administrator
+        callsign:
+          type: string
+          description: VA callsign used for live matching.
+        joinedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last membership change, including removal.
+    VAMembersResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/VAMember'
+    VAMemberRoleUpdateRequest:
+      type: object
+      required:
+        - role
+      properties:
+        role:
+          type: string
+          enum:
+            - proletariat
+            - bourgeoisie
+            - administrator
     CurrentUser:
       type: object
       required:

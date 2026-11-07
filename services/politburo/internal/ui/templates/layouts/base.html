@@ -40,6 +40,9 @@
   {{if and (eq .Content "admin-content") (eq .AdminTab "live")}}
   <script type="module" src="/static/js/admin/oauth.mjs"></script>
   {{end}}
+  {{if and (eq .Content "admin-content") (or (eq .AdminTab "members") (eq .AdminTab "members-deleted"))}}
+  <script type="module" src="/static/js/admin/members.mjs"></script>
+  {{end}}
   {{if eq .Content "live-content"}}
   <script type="module" src="/static/js/live/organizations.mjs"></script>
   <script type="module" src="/static/js/live/schedules.mjs"></script>

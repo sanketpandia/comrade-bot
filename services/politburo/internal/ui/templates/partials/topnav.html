@@ -8,8 +8,8 @@
     {{if or (eq .Role "bourgeoisie") (eq .Role "administrator")}}
     <a class="topbar__link" href="/live/aircraft"{{if eq .Content "live-content"}} aria-current="page"{{end}}>Live Mode</a>
     {{end}}
-    {{if eq .Role "administrator"}}
-    <a class="topbar__link" href="/admin/general"{{if eq .Content "admin-content"}} aria-current="page"{{end}}>Admin</a>
+    {{if or (eq .Role "bourgeoisie") (eq .Role "administrator")}}
+    <a class="topbar__link" href="{{if eq .Role "administrator"}}/admin/general{{else}}/admin/members{{end}}"{{if eq .Content "admin-content"}} aria-current="page"{{end}}>Admin</a>
     {{end}}
     <button type="button" class="icon-btn icon-btn--round topbar__profile" aria-label="Profile">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">

@@ -367,9 +367,18 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// AdminRedirect sends /admin to the default General tab.
+// AdminRedirect sends /admin to the default tab for the caller's role.
 func (h *Handler) AdminRedirect(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, routes.AdminGeneral, http.StatusSeeOther)
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok || !claims.IsStaff() {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	dest := routes.AdminMembers
+	if claims.IsAdmin() {
+		dest = routes.AdminGeneral
+	}
+	http.Redirect(w, r, dest, http.StatusSeeOther)
 }
 
 func adminTab(path string) string {
@@ -378,19 +387,36 @@ func adminTab(path string) string {
 		return "webhooks"
 	case routes.AdminLive:
 		return "live"
+	case routes.AdminMembersDeleted:
+		return "members-deleted"
+	case routes.AdminMembers:
+		return "members"
 	default:
 		return "general"
 	}
 }
 
-// Admin is the VA administrator settings area.
+func adminTabRequiresAdministrator(tab string) bool {
+	switch tab {
+	case "general", "webhooks":
+		return true
+	default:
+		return false
+	}
+}
+
+// Admin is the VA staff and administrator settings area.
 func (h *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.ClaimsFromContext(r.Context())
-	if !ok || !claims.IsAdmin() {
+	if !ok || !claims.IsStaff() {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 	tab := adminTab(r.URL.Path)
+	if adminTabRequiresAdministrator(tab) && !claims.IsAdmin() {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
 	oauthQuery := strings.TrimSpace(r.URL.Query().Get("oauth"))
 	liveGrantStatus := ""
 	if tab == "live" && h.vaLiveGrants != nil {
@@ -405,10 +431,11 @@ func (h *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	data := basePageData(r, "Admin", "admin-content", map[string]any{
-		"AdminTab":        tab,
-		"IFOAuthEnabled":  h.ifOAuthEnabled,
-		"OAuthStatus":     oauthQuery,
-		"LiveGrantStatus": liveGrantStatus,
+		"AdminTab":           tab,
+		"IsAdministrator":    claims.IsAdmin(),
+		"IFOAuthEnabled":     h.ifOAuthEnabled,
+		"OAuthStatus":        oauthQuery,
+		"LiveGrantStatus":    liveGrantStatus,
 	})
 	if err := h.renderer.Render(w, "base", data); err != nil {
 		http.Error(w, "template render failed", http.StatusInternalServerError)

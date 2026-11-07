@@ -1,0 +1,51 @@
+get:
+  operationId: listVAMembers
+  summary: List VA members for staff review
+  description: |
+    Returns registered members for the caller's virtual airline.
+    Requires VA staff role (`bourgeoisie` or `administrator`).
+    Use `status=deleted` to list removed members.
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: status
+      in: query
+      required: false
+      description: Active members (default) or removed members.
+      schema:
+        type: string
+        enum: [active, deleted]
+        default: active
+  responses:
+    "200":
+      description: Member list
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VAMembersResponse.yaml"
+    "401":
+      description: Missing or inactive API key or session cookie
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Caller is not VA staff (bourgeoisie or administrator)
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: No virtual airline context
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Failed to load members
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

@@ -63,6 +63,11 @@ func (s *Service) LinkCurrentServer(ctx context.Context, input LinkCurrentServer
 		return nil, ErrAlreadyMember
 	}
 
+	inactive, err := s.memberships.GetForUserAndVA(ctx, user.ID, va.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	airtablePilotID := ""
 	if user.IFCommunityID != nil {
 		rosterResult, err := s.roster.LookupPilotByIFC(ctx, va.ID, *user.IFCommunityID)
@@ -74,15 +79,28 @@ func (s *Service) LinkCurrentServer(ctx context.Context, input LinkCurrentServer
 		}
 	}
 
-	m, err := s.memberships.Join(ctx, JoinInput{
+	joinInput := JoinInput{
 		UserID:          user.ID,
 		VAID:            va.ID,
 		Role:            RoleProletariat,
 		Callsign:        "",
 		AirtablePilotID: airtablePilotID,
-	})
-	if err != nil {
-		return nil, err
+	}
+
+	var m *Membership
+	if inactive != nil && !inactive.IsActive {
+		m, err = s.memberships.ReactivateForVA(ctx, va.ID, user.ID, joinInput)
+		if err != nil {
+			return nil, err
+		}
+		if m == nil {
+			return nil, errors.New("reactivate membership failed")
+		}
+	} else {
+		m, err = s.memberships.Join(ctx, joinInput)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &LinkResult{Membership: *m}, nil
 }

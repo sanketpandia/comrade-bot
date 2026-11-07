@@ -1,0 +1,116 @@
+patch:
+  operationId: updateVAMemberRole
+  summary: Change a member's VA role
+  description: |
+    Updates the VA membership role for a user in the caller's virtual airline.
+    Requires VA administrator role (`administrator`).
+    Transferring administrator demotes the current administrator to bourgeoisie.
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: userId
+      in: path
+      required: true
+      description: Politburo user id of the member
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/VAMemberRoleUpdateRequest.yaml"
+  responses:
+    "204":
+      description: Role updated
+    "400":
+      description: Invalid role or request
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "401":
+      description: Missing or inactive API key or session cookie
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Caller is not a VA administrator
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: Member or VA context not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "409":
+      description: Role change not allowed
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Failed to update role
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+delete:
+  operationId: removeVAMember
+  summary: Remove a member from the VA
+  description: |
+    Deactivates the caller's VA membership row for the target user (removed members appear under `status=deleted`).
+    Staff may remove active proletariat only. The administrator may remove active proletariat or bourgeoisie, not themselves.
+    Requires VA staff role (`bourgeoisie` or `administrator`).
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: userId
+      in: path
+      required: true
+      description: Politburo user id of the member
+      schema:
+        type: string
+        format: uuid
+  responses:
+    "204":
+      description: Member removed
+    "401":
+      description: Missing or inactive API key or session cookie
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "403":
+      description: Caller cannot remove this member
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "404":
+      description: Member or VA context not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "409":
+      description: Removal not allowed
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "500":
+      description: Failed to remove member
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
