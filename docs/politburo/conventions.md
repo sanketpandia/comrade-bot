@@ -63,3 +63,15 @@ optional `discordServerID`, and similar primitives). Do not pass the whole
 session object. Services stay REST-shaped and independent of how identity was
 established so authentication can later move to a separate service without
 rewriting domain logic.
+
+## Discord signed links
+
+A signed link is a one-time login URL. It may appear only in an ephemeral
+Discord reply, visible to the user who ran the command. Do not mint or embed
+a signed link in a public channel message, a non-ephemeral follow-up, or a
+webhook post. Anyone who can read that message could open the session.
+
+Live-mode fleet, schedule, history, and claim replies are public. They show
+the result in the channel and do not call `POST /api/v1/signed-link`. Commands
+that already defer an ephemeral reply (`/live`, `/dashboard`, `/logbook`,
+`/tour`) may still return a signed link to that user.

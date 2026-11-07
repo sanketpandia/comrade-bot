@@ -6,9 +6,7 @@ import {
     formatUtcShort,
     handleLiveMemberError,
     LIVE_PAGE_SIZE,
-    liveModeRedirectPath,
     paginationFooter,
-    withLiveModeLink,
     withVaLiveOrg,
 } from "../helpers/liveCommands";
 
@@ -89,8 +87,7 @@ export async function replySchedulesPage(
         timestamp: new Date().toISOString(),
     };
 
-    const linked = await withLiveModeLink(meta, [baseEmbed], liveModeRedirectPath("schedules", organizationId));
-    await editReply(linked);
+    await editReply({ embeds: [baseEmbed] });
 }
 
 export async function execute(interaction: DiscordInteraction): Promise<void> {

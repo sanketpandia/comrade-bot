@@ -21,7 +21,8 @@ the previous implementation is kept separately during migration.
 - `architecture/webhooks.md`: VA Discord webhooks (WEBHOOKS config, scheduling,
   manual trigger, run log, metrics).
 - `conventions.md`: cache responses, timestamps, Redis keys, metrics policy,
-  auth/service boundary, and the checklist for new cache-backed features.
+  auth/service boundary, Discord signed-link visibility, and the checklist
+  for new cache-backed features.
 - `development/getting-started.md`: `start-dev.sh`, Air `.env`, health checks.
 - `development/openapi.md`: JSON-only contract ownership, Go generation,
   Swagger UI, and Comrade Bot TypeScript generation.

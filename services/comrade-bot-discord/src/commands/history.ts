@@ -7,9 +7,7 @@ import {
     formatUtcShort,
     handleLiveMemberError,
     LIVE_PAGE_SIZE,
-    liveModeRedirectPath,
     paginationFooter,
-    withLiveModeLink,
     withVaLiveOrg,
 } from "../helpers/liveCommands";
 import { parseSchedulesPayload, schedulesPayload } from "./schedules";
@@ -81,8 +79,7 @@ export async function replyHistoryPage(
         timestamp: new Date().toISOString(),
     };
 
-    const linked = await withLiveModeLink(meta, [baseEmbed], liveModeRedirectPath("flights", organizationId));
-    await editReply(linked);
+    await editReply({ embeds: [baseEmbed] });
 }
 
 export async function execute(interaction: DiscordInteraction): Promise<void> {

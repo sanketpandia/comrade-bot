@@ -1,8 +1,6 @@
 import {
     ActionRowBuilder,
     APIEmbed,
-    ButtonBuilder,
-    ButtonStyle,
     InteractionEditReplyOptions,
     StringSelectMenuBuilder,
     StringSelectMenuOptionBuilder,
@@ -57,41 +55,6 @@ export function buildOrgSelectRow(
         .setPlaceholder(placeholder)
         .addOptions(options);
     return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
-}
-
-export function liveModeRedirectPath(tab: "aircraft" | "schedules" | "flights", organizationId: string): string {
-    const base =
-        tab === "aircraft" ? "/live/aircraft" : tab === "schedules" ? "/live/schedules" : "/live/flights";
-    return `${base}?organizationId=${encodeURIComponent(organizationId)}`;
-}
-
-export async function withLiveModeLink(
-    meta: MetaInfo,
-    embeds: APIEmbed[],
-    redirectTo: string,
-): Promise<{ embeds: APIEmbed[]; components: ActionRowBuilder<ButtonBuilder>[] }> {
-    const outEmbeds = embeds.map(e => ({ ...e }));
-    const components: ActionRowBuilder<ButtonBuilder>[] = [];
-    try {
-        const signed = await ApiService.generateSignedLink(meta, { type: "CUSTOM", redirectTo });
-        const url = signed?.result?.url;
-        const expiresIn = signed?.result?.expires_in ?? 900;
-        if (url) {
-            const button = new ButtonBuilder()
-                .setLabel("Open in Live Mode")
-                .setStyle(ButtonStyle.Link)
-                .setURL(url);
-            components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(button));
-            if (outEmbeds[0]) {
-                const minutes = Math.floor(expiresIn / 60);
-                const note = `\n\nLive Mode link expires in **${minutes} minutes**.`;
-                outEmbeds[0].description = `${outEmbeds[0].description ?? ""}${note}`.trim();
-            }
-        }
-    } catch {
-        // still show list or claim without the button
-    }
-    return { embeds: outEmbeds, components };
 }
 
 export function formatUtcShort(iso: string | undefined | null): string {
