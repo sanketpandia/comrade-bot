@@ -280,9 +280,13 @@ func (h apiHandler) AssignVALiveScheduleToMe(
 	})).ServeHTTP(w, r)
 }
 
-func (h apiHandler) ListVALiveScheduleBookings(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+func (h apiHandler) ListVALiveScheduleBookings(
+	w stdhttp.ResponseWriter,
+	r *stdhttp.Request,
+	params politburoapi.ListVALiveScheduleBookingsParams,
+) {
 	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
-		h.handlers.liveConn.ListVALiveScheduleBookings(w, r)
+		h.handlers.liveConn.ListVALiveScheduleBookings(w, r, params)
 	})).ServeHTTP(w, r)
 }
 

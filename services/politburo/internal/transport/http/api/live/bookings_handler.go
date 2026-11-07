@@ -4,12 +4,15 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
-
+	politburoapi "infinite-experiment/politburo/internal/api/generated/politburo"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
 
-func (h *ConnectionsHandler) ListVALiveScheduleBookings(w http.ResponseWriter, r *http.Request) {
+func (h *ConnectionsHandler) ListVALiveScheduleBookings(
+	w http.ResponseWriter,
+	r *http.Request,
+	params politburoapi.ListVALiveScheduleBookingsParams,
+) {
 	vaID, ok := vaIDFromClaims(w, r)
 	if !ok {
 		return
@@ -19,12 +22,11 @@ func (h *ConnectionsHandler) ListVALiveScheduleBookings(w http.ResponseWriter, r
 		return
 	}
 	var liveOrgFilter *string
-	if raw := strings.TrimSpace(r.URL.Query().Get("organizationId")); raw != "" {
-		if _, err := uuid.Parse(raw); err != nil {
-			response.WriteError(w, http.StatusBadRequest, "VALIDATION_ERROR", "organizationId must be a UUID")
-			return
+	if params.OrganizationId != nil {
+		raw := strings.TrimSpace(params.OrganizationId.String())
+		if raw != "" {
+			liveOrgFilter = &raw
 		}
-		liveOrgFilter = &raw
 	}
 	rows, err := h.actions.ListCrewAssignments(r.Context(), vaID, liveOrgFilter)
 	if err != nil {
