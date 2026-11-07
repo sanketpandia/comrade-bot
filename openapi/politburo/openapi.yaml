@@ -78,6 +78,8 @@ paths:
     $ref: "./paths/va/webhook-trigger.yaml"
   /api/v1/va/live/schedule-enums:
     $ref: "./paths/va/live-schedule-enums.yaml"
+  /api/v1/va/live/schedule-bookings:
+    $ref: "./paths/va/live-schedule-bookings.yaml"
   /api/v1/va/live/connections:
     $ref: "./paths/va/live-connections.yaml"
   /api/v1/va/live/connections/{organizationId}:
@@ -285,6 +287,8 @@ components:
       $ref: "./components/schemas/LiveScheduleAssignMeBody.yaml"
     LiveScheduleAssignMeResponse:
       $ref: "./components/schemas/LiveScheduleAssignMeResponse.yaml"
+    LiveScheduleBookingItem:
+      $ref: "./components/schemas/LiveScheduleBookingItem.yaml"
     LiveOrganizationSchedulesResponse:
       $ref: "./components/schemas/LiveOrganizationSchedulesResponse.yaml"
     LiveAircraftFlightCrewMember:

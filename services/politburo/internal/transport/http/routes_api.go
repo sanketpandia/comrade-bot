@@ -280,6 +280,12 @@ func (h apiHandler) AssignVALiveScheduleToMe(
 	})).ServeHTTP(w, r)
 }
 
+func (h apiHandler) ListVALiveScheduleBookings(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.liveConn.ListVALiveScheduleBookings(w, r)
+	})).ServeHTTP(w, r)
+}
+
 func writeParameterError(w stdhttp.ResponseWriter, _ *stdhttp.Request, err error) {
 	response.WriteError(w, stdhttp.StatusBadRequest, "INVALID_QUERY_FILTER", err.Error())
 }

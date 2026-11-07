@@ -77,9 +77,10 @@ type App struct {
 	VALiveGrants    *valive.GrantsRepository
 	VALiveConnections *valive.ConnectionsRepository
 	VALiveTokens      *valive.TokenProvider
-	VALiveAssignCaptain   *valive.AssignCaptainService
+	VALiveAssignCaptain     *valive.AssignCaptainService
 	VALiveAssignmentWebhook *livemodeassignment.Notifier
-	closeOnce             sync.Once
+	VALiveActions           *valive.ActionHistoryRepository
+	closeOnce               sync.Once
 }
 
 func New(ctx context.Context, cfg config.Config) (*App, error) {
@@ -205,6 +206,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		VALiveTokens:        vaLiveTokens,
 		VALiveAssignCaptain:     vaLiveAssignCaptain,
 		VALiveAssignmentWebhook: vaLiveAssignmentWebhook,
+		VALiveActions:           vaLiveActions,
 	}
 	slog.Info("application initialized", "environment", cfg.Environment, "jobs_enabled", cfg.Jobs.Enabled)
 	return application, nil

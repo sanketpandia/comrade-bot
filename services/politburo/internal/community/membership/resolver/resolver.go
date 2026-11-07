@@ -18,18 +18,18 @@ func NewResolver(users *users.Repository, vas *virtualairlines.Repository, membe
 	return &Resolver{users: users, vas: vas, memberships: memberships}
 }
 
-func (r *Resolver) ResolveMembership(ctx context.Context, discordUserID, discordServerID string) (vaID, role string, ok bool, err error) {
+func (r *Resolver) ResolveMembership(ctx context.Context, discordUserID, discordServerID string) (vaID, role, pbUserID string, ok bool, err error) {
 	va, err := r.vas.GetByDiscordServerID(ctx, discordServerID)
 	if err != nil || va == nil {
-		return "", "", false, err
+		return "", "", "", false, err
 	}
 	user, err := r.users.GetByDiscordID(ctx, discordUserID)
 	if err != nil || user == nil {
-		return "", "", false, err
+		return "", "", "", false, err
 	}
 	m, err := r.memberships.GetActiveForUserAndVA(ctx, user.ID, va.ID)
 	if err != nil || m == nil {
-		return "", "", false, err
+		return "", "", "", false, err
 	}
-	return va.ID, m.Role, true, nil
+	return va.ID, m.Role, user.ID, true, nil
 }

@@ -22,7 +22,7 @@ type ticketIssuer interface {
 }
 
 type membershipResolver interface {
-	ResolveMembership(ctx context.Context, discordUserID, discordServerID string) (vaID, role string, ok bool, err error)
+	ResolveMembership(ctx context.Context, discordUserID, discordServerID string) (vaID, role, pbUserID string, ok bool, err error)
 }
 
 type vaByDiscordServer interface {

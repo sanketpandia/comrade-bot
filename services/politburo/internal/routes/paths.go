@@ -40,6 +40,7 @@ const (
 	LiveAircraft  = "/live/aircraft"
 	LiveSchedules = "/live/schedules"
 	LiveFlights   = "/live/flights"
+	LiveBookings  = "/live/bookings"
 
 	OperatorReports              = "/operator/reports"
 	OperatorReportsResolve       = "/operator/reports/{reportID}/resolve"
@@ -80,6 +81,7 @@ const (
 	VAConfig                          = "/api/v1/va/config"
 	VAWebhookTrigger                  = "/api/v1/va/webhook/trigger"
 	VALiveScheduleEnums               = "/api/v1/va/live/schedule-enums"
+	VALiveScheduleBookings            = "/api/v1/va/live/schedule-bookings"
 	VALiveConnections                 = "/api/v1/va/live/connections"
 	VALiveConnection                  = "/api/v1/va/live/connections/{organizationId}"
 	VALiveConnectionPing              = "/api/v1/va/live/connections/{organizationId}/ping"
@@ -123,6 +125,7 @@ var OpenAPIPaths = []string{
 	VAConfig,
 	VAWebhookTrigger,
 	VALiveScheduleEnums,
+	VALiveScheduleBookings,
 	VALiveConnections,
 	VALiveConnection,
 	VALiveConnectionPing,

@@ -29,7 +29,7 @@ type liveOrgClient interface {
 
 type vaTokenProvider interface {
 	AccessToken(context.Context, string) (string, error)
-	Write(ctx context.Context, vaID string, actorUserID *string, orgID *string, actionName string, fn func(accessToken string) error) error
+	Write(ctx context.Context, vaID string, actorUserID *string, orgID *string, actionName string, meta map[string]any, fn func(accessToken string) error) error
 }
 
 type scheduleAssigner interface {
@@ -51,6 +51,7 @@ type ConnectionsHandler struct {
 	liveries           *gameliveries.Lookup
 	assignCaptain      scheduleAssigner
 	assignmentNotifier assignmentNotifier
+	actions            *valive.ActionHistoryRepository
 }
 
 func NewConnectionsHandler(
@@ -61,6 +62,7 @@ func NewConnectionsHandler(
 	liveries *gameliveries.Lookup,
 	assignCaptain scheduleAssigner,
 	assignmentNotifier assignmentNotifier,
+	actions *valive.ActionHistoryRepository,
 ) *ConnectionsHandler {
 	var data liveVADataClient
 	if live != nil {
@@ -75,6 +77,7 @@ func NewConnectionsHandler(
 		liveries:             liveries,
 		assignCaptain:        assignCaptain,
 		assignmentNotifier:   assignmentNotifier,
+		actions:              actions,
 	}
 }
 

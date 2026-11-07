@@ -184,8 +184,8 @@ type membershipStub struct {
 	err        error
 }
 
-func (s membershipStub) ResolveMembership(context.Context, string, string) (string, string, bool, error) {
-	return s.vaID, s.role, s.ok, s.err
+func (s membershipStub) ResolveMembership(context.Context, string, string) (string, string, string, bool, error) {
+	return s.vaID, s.role, "", s.ok, s.err
 }
 
 type vaLookupStub struct {

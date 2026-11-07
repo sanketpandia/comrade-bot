@@ -1437,6 +1437,56 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va/live/schedule-bookings:
+    get:
+      operationId: listVALiveScheduleBookings
+      summary: List recent crew self-assignments for this VA
+      description: |
+        Returns `assign_va_live_schedule_crew` action history rows for the caller's virtual airline,
+        newest first. Requires VA staff role (`bourgeoisie` or `administrator`).
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Booking history
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LiveScheduleBookingItem'
+        '401':
+          description: Missing or inactive API key or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not VA staff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No virtual airline context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/va/live/connections:
     get:
       operationId: listVALiveConnections
@@ -3729,6 +3779,59 @@ components:
           type: string
         destinationIcao:
           type: string
+    LiveScheduleBookingItem:
+      type: object
+      required:
+        - id
+        - startedAt
+        - outcome
+      properties:
+        id:
+          type: string
+          format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        outcome:
+          type: string
+          enum:
+            - success
+            - error
+        upstreamStatus:
+          type: integer
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+        organizationId:
+          type: string
+          format: uuid
+          nullable: true
+        actorUsername:
+          type: string
+          nullable: true
+        actorIfcUsername:
+          type: string
+          nullable: true
+        registration:
+          type: string
+          nullable: true
+        route:
+          type: string
+          nullable: true
+        callsign:
+          type: string
+          nullable: true
+        originIcao:
+          type: string
+          nullable: true
+        destinationIcao:
+          type: string
+          nullable: true
+        scheduleId:
+          type: string
+          format: uuid
+          nullable: true
     LiveOrganizationSchedulesResponse:
       type: object
       required:

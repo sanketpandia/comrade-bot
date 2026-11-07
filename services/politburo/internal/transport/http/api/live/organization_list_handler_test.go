@@ -123,7 +123,7 @@ func (s tokenStub) AccessToken(context.Context, string) (string, error) {
 	return s.token, nil
 }
 
-func (s tokenStub) Write(ctx context.Context, _ string, _ *string, _ *string, _ string, fn func(accessToken string) error) error {
+func (s tokenStub) Write(ctx context.Context, _ string, _ *string, _ *string, _ string, _ map[string]any, fn func(accessToken string) error) error {
 	return fn(s.token)
 }
 

@@ -5,12 +5,14 @@
     {{if and (eq .LiveTab "schedules") .IsAdministrator}}
     <button type="button" class="btn btn--primary" id="live-schedule-add" disabled>Add schedule</button>
     {{end}}
+    {{if ne .LiveTab "bookings"}}
     <div class="field">
       <label class="field__label" for="live-org-select">Organisation</label>
       <select class="select" id="live-org-select" name="organizationId" disabled>
         <option value="">Loading…</option>
       </select>
     </div>
+    {{end}}
   </div>
 </header>
 <p id="live-org-status" class="panel-message" role="status" hidden></p>
@@ -19,6 +21,9 @@
     <a class="tabs__tab" href="/live/aircraft"{{if eq .LiveTab "aircraft"}} aria-current="page"{{end}}>Aircrafts</a>
     <a class="tabs__tab" href="/live/schedules"{{if eq .LiveTab "schedules"}} aria-current="page"{{end}}>Schedules</a>
     <a class="tabs__tab" href="/live/flights"{{if eq .LiveTab "flights"}} aria-current="page"{{end}}>Flights</a>
+    {{if .IsStaff}}
+    <a class="tabs__tab" href="/live/bookings"{{if eq .LiveTab "bookings"}} aria-current="page"{{end}}>Bookings</a>
+    {{end}}
   </nav>
   {{if eq .LiveTab "aircraft"}}
   <div class="section-layout__main stack">
@@ -150,6 +155,12 @@
   <div id="live-flights-row-menu" class="row-menu" hidden role="menu" aria-label="Flight actions">
     <button type="button" class="row-menu__item" role="menuitem" data-action="copy-aircraft-id">Copy Aircraft ID</button>
     <button type="button" class="row-menu__item" role="menuitem" data-action="copy-flight-id">Copy Flight ID</button>
+  </div>
+  {{else if eq .LiveTab "bookings"}}
+  <div class="section-layout__main stack">
+    <div id="live-bookings" class="stack" aria-live="polite">
+      <p class="panel-lead">Loading bookings…</p>
+    </div>
   </div>
   {{end}}
 </div>

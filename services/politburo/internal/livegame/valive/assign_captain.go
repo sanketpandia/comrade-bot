@@ -18,7 +18,8 @@ var (
 	ErrLiveClientDisabled   = errors.New("infinite flight live client disabled")
 )
 
-const actionAssignScheduleCrew = "assign_va_live_schedule_crew"
+// ActionAssignScheduleCrew is the live_api_v3_action_history action_name for crew self-assign.
+const ActionAssignScheduleCrew = "assign_va_live_schedule_crew"
 
 // ScheduleCrewLiveClient lists fleet data and assigns schedule crew upstream.
 type ScheduleCrewLiveClient interface {
@@ -170,7 +171,15 @@ func (s *AssignCaptainService) AssignCaptain(ctx context.Context, input AssignCa
 
 	scheduleID := match.ID
 	orgCopy := orgID
-	if err := s.tokens.Write(ctx, vaID, input.ActorUserID, &orgCopy, actionAssignScheduleCrew, func(token string) error {
+	meta := map[string]any{
+		"registration":      registration,
+		"route":             strings.TrimSpace(input.Route),
+		"scheduleId":        scheduleID,
+		"callsign":          strings.TrimSpace(match.Callsign),
+		"originIcao":        strings.TrimSpace(match.OriginIcao),
+		"destinationIcao":   strings.TrimSpace(match.DestinationIcao),
+	}
+	if err := s.tokens.Write(ctx, vaID, input.ActorUserID, &orgCopy, ActionAssignScheduleCrew, meta, func(token string) error {
 		return s.live.AssignScheduleCrew(ctx, token, scheduleID, strings.TrimSpace(input.IFUserID), body)
 	}); err != nil {
 		return empty, err

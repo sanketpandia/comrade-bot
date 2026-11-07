@@ -183,7 +183,7 @@ func (c *LiveClient) requestLive(ctx context.Context, method, accessToken, path,
 		return nil, notFound
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s: HTTP %d", action, resp.StatusCode)
+		return nil, &HTTPStatusError{Status: resp.StatusCode, Action: action}
 	}
 	return payload, nil
 }

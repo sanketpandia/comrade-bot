@@ -802,6 +802,44 @@ func TestLiveModeRendersFlightsTabShell(t *testing.T) {
 	}
 }
 
+func TestLiveModeBookingsForbiddenForProletariat(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, false, nil)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveBookings, nil), auth.Claims{Role: "proletariat"})
+	recorder := httptest.NewRecorder()
+	handler.LiveMode(recorder, req)
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", recorder.Code)
+	}
+}
+
+func TestLiveModeBookingsTabForBourgeoisie(t *testing.T) {
+	renderer, err := appui.NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer() error = %v", err)
+	}
+	handler := NewHandler(renderer, &sessionManagerStub{}, &ticketConsumerStub{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, false, nil)
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.LiveBookings, nil), auth.Claims{Role: "bourgeoisie"})
+	recorder := httptest.NewRecorder()
+	handler.LiveMode(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		`href="/live/bookings" aria-current="page"`,
+		`id="live-bookings"`,
+		`/static/js/live/bookings.mjs`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q in body", want)
+		}
+	}
+}
+
 func TestLiveModeAllowsProletariat(t *testing.T) {
 	renderer, err := appui.NewRenderer()
 	if err != nil {

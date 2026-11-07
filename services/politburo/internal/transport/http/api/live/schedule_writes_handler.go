@@ -57,7 +57,7 @@ func (h *ConnectionsHandler) CreateVALiveAircraftSchedule(
 	vaID := access.vaID
 	orgCopy := orgID
 	actorID := actorUserID(r)
-	if err := h.tokens.Write(r.Context(), vaID, actorID, &orgCopy, actionCreateSchedule, func(token string) error {
+	if err := h.tokens.Write(r.Context(), vaID, actorID, &orgCopy, actionCreateSchedule, nil, func(token string) error {
 		return h.liveData.CreateAircraftSchedule(r.Context(), token, acID, body)
 	}); err != nil {
 		writeScheduleWriteError(w, err, orgID)
@@ -93,7 +93,7 @@ func (h *ConnectionsHandler) UpdateVALiveSchedule(
 	vaID := access.vaID
 	orgCopy := orgID
 	actorID := actorUserID(r)
-	if err := h.tokens.Write(r.Context(), vaID, actorID, &orgCopy, actionUpdateSchedule, func(token string) error {
+	if err := h.tokens.Write(r.Context(), vaID, actorID, &orgCopy, actionUpdateSchedule, nil, func(token string) error {
 		return h.liveData.UpdateSchedule(r.Context(), token, schedID, body)
 	}); err != nil {
 		writeScheduleWriteError(w, err, orgID)
@@ -129,7 +129,7 @@ func (h *ConnectionsHandler) UpdateVALiveScheduleFlightPlan(
 	vaID := access.vaID
 	orgCopy := orgID
 	actorID := actorUserID(r)
-	if err := h.tokens.Write(r.Context(), vaID, actorID, &orgCopy, actionUpdateScheduleFPL, func(token string) error {
+	if err := h.tokens.Write(r.Context(), vaID, actorID, &orgCopy, actionUpdateScheduleFPL, nil, func(token string) error {
 		return h.liveData.UpdateScheduleFlightPlan(r.Context(), token, schedID, body)
 	}); err != nil {
 		writeScheduleWriteError(w, err, orgID)
