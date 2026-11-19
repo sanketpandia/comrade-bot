@@ -38,7 +38,7 @@ func ValidateDocument(doc Document) error {
 		}
 	}
 	for entity, mapping := range doc.Mappings {
-		if entity != EntityPilots && entity != EntityRoutes && entity != EntityPIREPs {
+		if entity != EntityPilots && entity != EntityCareerPilots && entity != EntityRoutes && entity != EntityPIREPs {
 			return fmt.Errorf("%w: unknown entity %q", ErrInvalidMapping, entity)
 		}
 		if mapping.ConnectionID == "" || mapping.BaseSetupID == "" || mapping.TableID == "" {

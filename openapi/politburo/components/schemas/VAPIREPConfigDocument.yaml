@@ -1,0 +1,15 @@
+type: object
+required: [version, revision, fields]
+properties:
+  version:
+    type: integer
+  revision:
+    type: integer
+  enabled:
+    type: boolean
+  connectionsRevision:
+    type: integer
+  fields:
+    type: array
+    items:
+      type: string

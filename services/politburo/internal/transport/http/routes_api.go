@@ -213,6 +213,30 @@ func (h apiHandler) PreviewVADataConnectionMapping(w stdhttp.ResponseWriter, r *
 	})).ServeHTTP(w, r)
 }
 
+func (h apiHandler) GetVAFeatureConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, feature politburoapi.GetVAFeatureConfigParamsFeature) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.GetVAFeatureConfig(w, r, string(feature))
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) PutVAFeatureConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, feature politburoapi.PutVAFeatureConfigParamsFeature, _ politburoapi.PutVAFeatureConfigParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.PutVAFeatureConfig(w, r, string(feature))
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) DeleteVAFeatureConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, feature politburoapi.DeleteVAFeatureConfigParamsFeature, _ politburoapi.DeleteVAFeatureConfigParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.DeleteVAFeatureConfig(w, r, string(feature))
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) PreviewVAFeatureConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, feature politburoapi.PreviewVAFeatureConfigParamsFeature) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.PreviewVAFeatureConfig(w, r, string(feature))
+	})).ServeHTTP(w, r)
+}
+
 func (h apiHandler) GetCurrentUser(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	h.stacks.currentUser.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.handlers.user.GetMe(w, r)

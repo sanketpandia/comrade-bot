@@ -81,6 +81,26 @@ WHERE va_id = $1
 	return r.Get(ctx, vaID, configType)
 }
 
+// WithAdvisoryLock serializes VA-scoped config mutations for one transaction.
+func (r *Repository) WithAdvisoryLock(ctx context.Context, vaID string, fn func(tx *sql.Tx) error) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin va config tx: %w", err)
+	}
+	defer tx.Rollback()
+	var lockKey int64
+	if err := tx.QueryRowContext(ctx, `SELECT hashtext($1)::bigint`, vaID).Scan(&lockKey); err != nil {
+		return fmt.Errorf("hash va id: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock($1)`, lockKey); err != nil {
+		return fmt.Errorf("advisory lock: %w", err)
+	}
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (r *Repository) Upsert(ctx context.Context, vaID, configType string, config json.RawMessage, updatedBy string) (*Block, error) {
 	row := r.db.QueryRowContext(ctx, `
 INSERT INTO public.va_configs (va_id, config_type, config, updated_at, updated_by)
@@ -214,6 +234,26 @@ func scanActiveWebhooks(row interface{ Scan(dest ...any) error }) (ActiveWebhook
 		}
 	}
 	return out, nil
+}
+
+// Delete removes a config row for the VA and type.
+func (r *Repository) Delete(ctx context.Context, vaID, configType string) error {
+	result, err := r.db.ExecContext(ctx, `
+DELETE FROM public.va_configs
+WHERE va_id = $1 AND config_type = $2`,
+		vaID, configType,
+	)
+	if err != nil {
+		return fmt.Errorf("delete va config block: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete va config rows: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func scanBlock(row interface{ Scan(dest ...any) error }) (*Block, error) {

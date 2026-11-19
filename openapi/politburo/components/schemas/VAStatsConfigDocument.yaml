@@ -1,0 +1,15 @@
+type: object
+required: [version, revision]
+properties:
+  version:
+    type: integer
+  revision:
+    type: integer
+  enabled:
+    type: boolean
+  connectionsRevision:
+    type: integer
+  pilot:
+    $ref: ./VAStatsSection.yaml
+  career:
+    $ref: ./VAStatsSection.yaml

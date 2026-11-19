@@ -1,0 +1,18 @@
+info:
+  name: Get Data Connections
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{politburo-base-url}}/api/v1/va/data-connections"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`getVADataConnections` — redacted Airtable connections, bases, mappings, and catalog."

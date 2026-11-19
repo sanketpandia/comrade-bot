@@ -97,7 +97,7 @@ VA link uses `POST /api/v1/memberships/link` (OpenAPI) from `/register`; no sepa
 | `virtual_airlines` | Tenant: Discord guild, code, flight-modes JSON | Keep |
 | `va_user_roles` | Membership, callsign, Airtable/career ids, role enum | Keep |
 | `va_configs` | Typed JSON VA settings per `config_type` (`BASIC`, …) | Rewrite table (`002_va_configs.sql`); legacy prod used key/value text — different shape |
-| `va_data_provider_configs` | Airtable (later RDBMS) credentials + schema maps + `features_enabled` | Keep as the mapper home |
+| `va_configs` (`DATA_CONNECTIONS`, `MAP_STATS`, `MAP_PIREP`) | Airtable credentials, entity mappings, and feature selections | Rewrite mapper home |
 | `va_provider_validation_history` | Wizard audit | Keep if we keep the wizard |
 | `va_sync_history` | Sync bookkeeping | Likely drop if we do not warehouse |
 | `va_webhooks` | Periodic Discord live-flight posts | Discuss; feature exists in old UI |

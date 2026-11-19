@@ -8,6 +8,12 @@ import (
 	"testing"
 )
 
+func TestFiltersEqualNilAndEmpty(t *testing.T) {
+	if !filtersEqual(nil, map[string]any{}) {
+		t.Fatal("nil and empty maps should match")
+	}
+}
+
 func TestOpenCursorAcceptsDotInsideMAC(t *testing.T) {
 	key := bytes.Repeat([]byte{7}, 32)
 	for i := 0; i < 256; i++ {

@@ -24,6 +24,7 @@ type Handler struct {
 	webhooks         webhookTrigger
 	memberships      *membership.Service
 	dataConnections  dataConnections
+	featureMappings  featureMappings
 }
 
 func NewHandler(
@@ -33,10 +34,11 @@ func NewHandler(
 	webhooks webhookTrigger,
 	memberships *membership.Service,
 	dataConnections dataConnections,
+	featureMappings featureMappings,
 ) *Handler {
 	return &Handler{
 		vas: vas, configs: configs, users: users, webhooks: webhooks, memberships: memberships,
-		dataConnections: dataConnections,
+		dataConnections: dataConnections, featureMappings: featureMappings,
 	}
 }
 

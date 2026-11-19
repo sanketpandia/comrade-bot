@@ -1,0 +1,32 @@
+package featureconfig
+
+import (
+	"testing"
+
+	"infinite-experiment/politburo/internal/community/virtualairlines/connections"
+)
+
+func TestValidateStatsDraftRequiresBindings(t *testing.T) {
+	doc := StatsDocument{
+		Enabled: true,
+		Pilot:   &StatsSection{MatchBy: "callsign", Fields: []string{"displayName"}},
+	}
+	err := ValidateStatsDraft(doc, map[string]connections.Mapping{})
+	if err == nil {
+		t.Fatal("expected error for missing pilots mapping")
+	}
+}
+
+func TestValidatePIREPDraftRequiresPilotField(t *testing.T) {
+	doc := PIREPDocument{Enabled: true, Fields: []string{"remarks"}}
+	mappings := map[string]connections.Mapping{
+		connections.EntityPIREPs: {
+			TableID: "tblPireps",
+			Fields:  map[string]string{"remarks": "fldRemarks"},
+		},
+	}
+	err := ValidatePIREPDraft(doc, mappings)
+	if err == nil {
+		t.Fatal("expected error without pilot reference")
+	}
+}

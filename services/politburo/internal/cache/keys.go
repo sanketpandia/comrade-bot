@@ -58,6 +58,9 @@ const (
 
 	// PrefixSession namespaces browser session objects.
 	PrefixSession = "session:"
+
+	// PrefixVAConfig namespaces cached va_configs JSON blocks.
+	PrefixVAConfig = "va:config:"
 )
 
 func KeyAPIKeyStatus(apiKey string) string {
@@ -102,4 +105,8 @@ func KeyFlightPlan(flightID string) string {
 
 func KeyVAActiveFlights(vaID string) string {
 	return PrefixGameFlightsVA + vaID
+}
+
+func KeyVAConfig(vaID, configType string) string {
+	return PrefixVAConfig + vaID + ":" + configType
 }

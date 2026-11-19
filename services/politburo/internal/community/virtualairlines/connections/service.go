@@ -26,12 +26,27 @@ type blocksRepo interface {
 const airtablePATPurpose = "airtable.pat"
 
 // Service owns configuration and live mapped reads.
+// MappingChangeHook runs before a mapping or connection resource is removed.
+type MappingChangeHook func(ctx context.Context, vaID, entity string) error
+
 type Service struct {
 	repo     blocksRepo
 	airtable *airtable.Client
 	cipher   *secretstore.Cipher
 	metrics  *metrics.Registry
 	signKey  []byte
+	onClearMapping MappingChangeHook
+	onDeleteConnection func(ctx context.Context, vaID, connectionID string) error
+	onDeleteBase       func(ctx context.Context, vaID, baseSetupID string) error
+}
+
+func (s *Service) SetMappingHooks(onClear MappingChangeHook, onDeleteConn func(context.Context, string, string) error, onDeleteBase func(context.Context, string, string) error) {
+	if s == nil {
+		return
+	}
+	s.onClearMapping = onClear
+	s.onDeleteConnection = onDeleteConn
+	s.onDeleteBase = onDeleteBase
 }
 
 func NewService(repo blocksRepo, at *airtable.Client, cipher *secretstore.Cipher, cursorKey []byte, reg *metrics.Registry) (*Service, error) {
@@ -126,6 +141,9 @@ func (s *Service) CreateConnection(ctx context.Context, vaID, actor string, expe
 	}
 	if strings.TrimSpace(in.Token) == "" {
 		return StoredView{}, ErrInvalidCredential
+	}
+	if strings.TrimSpace(in.Name) == "" || strings.TrimSpace(in.BaseID) == "" || strings.TrimSpace(in.BaseName) == "" {
+		return StoredView{}, ErrInvalidMapping
 	}
 	doc, _, err := s.load(ctx, vaID)
 	if err != nil {
@@ -233,7 +251,11 @@ type FieldDescriptor struct {
 	ID             string   `json:"id"`
 	Name           string   `json:"name"`
 	Type           string   `json:"type"`
+	LinkedTableID  string   `json:"linkedTableId,omitempty"`
+	ResultType     string   `json:"resultType,omitempty"`
+	ElementType    string   `json:"elementType,omitempty"`
 	CompatibleKeys []string `json:"compatibleKeys"`
+	Writable       bool     `json:"writable"`
 }
 
 type InspectResult struct {
@@ -242,68 +264,87 @@ type InspectResult struct {
 
 func (s *Service) Inspect(ctx context.Context, vaID, connectionID, baseSetupID string) (InspectResult, error) {
 	started := time.Now()
-	defer func() { s.observeRead("inspect", "none", started, nil) }()
+	var err error
+	defer func() { s.observeRead("inspect", "none", started, err) }()
 	if !s.Enabled() {
-		return InspectResult{}, ErrDisabled
+		err = ErrDisabled
+		return InspectResult{}, err
 	}
-	doc, _, err := s.load(ctx, vaID)
+	var doc Document
+	doc, _, err = s.load(ctx, vaID)
 	if err != nil {
-		s.observeRead("inspect", "none", started, err)
 		return InspectResult{}, err
 	}
 	conn, _, ok := connectionByID(doc, connectionID)
 	if !ok {
 		err = ErrNotFound
-		s.observeRead("inspect", "none", started, err)
 		return InspectResult{}, err
 	}
 	base, ok := baseByID(conn, baseSetupID)
 	if !ok {
 		err = ErrNotFound
-		s.observeRead("inspect", "none", started, err)
 		return InspectResult{}, err
 	}
-	token, err := s.tokenForConnection(vaID, conn)
+	var token string
+	token, err = s.tokenForConnection(vaID, conn)
 	if err != nil {
-		s.observeRead("inspect", "none", started, err)
 		return InspectResult{}, err
 	}
-	tables, err := s.fetchSchema(ctx, token, base.BaseID)
+	var tables []airtable.Table
+	tables, err = s.fetchSchema(ctx, token, base.BaseID)
 	if err != nil {
-		s.observeRead("inspect", "none", started, err)
 		return InspectResult{}, err
 	}
 	out := InspectResult{Tables: make([]TableDescriptor, 0, len(tables))}
 	for _, tbl := range tables {
 		fields := make([]FieldDescriptor, 0, len(tbl.Fields))
 		for _, f := range tbl.Fields {
+			linked, resultType, elementType := airtableFieldMeta(f)
+			eff := effectiveAirtableType(f)
 			fields = append(fields, FieldDescriptor{
 				ID:             f.ID,
 				Name:           f.Name,
 				Type:           f.Type,
-				CompatibleKeys: compatibleKeysForType(f.Type),
+				LinkedTableID:  linked,
+				ResultType:     resultType,
+				ElementType:    elementType,
+				CompatibleKeys: compatibleKeysForField(f, eff),
+				Writable:       fieldWritable(f),
 			})
 		}
 		out.Tables = append(out.Tables, TableDescriptor{ID: tbl.ID, Name: tbl.Name, Fields: fields})
 	}
-	s.observeRead("inspect", "none", started, nil)
 	return out, nil
 }
 
-func compatibleKeysForType(fieldType string) []string {
+func compatibleKeysForField(field airtable.Field, effectiveType string) []string {
+	seen := map[string]struct{}{}
 	keys := make([]string, 0)
-	for entity, fields := range catalog {
-		_ = entity
-		for _, f := range fields {
-			for _, t := range f.AcceptedTypes {
-				if t == fieldType {
-					keys = append(keys, f.Key)
-					break
-				}
+	for _, ent := range CatalogEntities() {
+		for _, cf := range ent.Fields {
+			if !typeCompatible(cf, field) {
+				continue
 			}
+			if _, ok := seen[cf.Key]; ok {
+				continue
+			}
+			seen[cf.Key] = struct{}{}
+			keys = append(keys, cf.Key)
 		}
 	}
+	_ = effectiveType
 	return keys
+}
+
+func fieldWritable(f airtable.Field) bool {
+	if _, blocked := WritableComputedAirtableTypes[f.Type]; blocked {
+		return false
+	}
+	eff := effectiveAirtableType(f)
+	if _, blocked := WritableComputedAirtableTypes[eff]; blocked {
+		return false
+	}
+	return true
 }
 
 func (s *Service) observeRead(operation, entity string, started time.Time, err error) {
@@ -401,7 +442,7 @@ func (s *Service) List(ctx context.Context, vaID, entity string, filters map[str
 	}
 	records := make([]MappedRecord, 0, len(raws))
 	for _, raw := range raws {
-		mapped, mapErr := NormalizeRecord(entity, mapping, schema, raw.Fields)
+		mapped, _, mapErr := NormalizeRecord(entity, mapping, schema, raw.Fields)
 		if mapErr != nil {
 			err = mapErr
 			return ListResult{}, err
@@ -469,11 +510,18 @@ func buildFormula(entity string, mapping Mapping, schema map[string]FieldMeta, f
 		if !ok {
 			return "", ErrSchemaDrift
 		}
-		lit, err := filterLiteralValue(value)
+		opts := FilterOpts{}
+		if key == "callsign" {
+			opts.CallsignMatch = true
+			if s, ok := value.(string); ok {
+				value = NormalizeCallsignForMatch(s)
+			}
+		}
+		clause, err := BuildEqualityFilter(meta, value, opts)
 		if err != nil {
 			return "", err
 		}
-		parts = append(parts, fmt.Sprintf("%s='%s'", airtable.FieldRef(meta.Name), airtable.EscapeFormulaLiteral(lit)))
+		parts = append(parts, clause)
 	}
 	if len(parts) == 1 {
 		return parts[0], nil

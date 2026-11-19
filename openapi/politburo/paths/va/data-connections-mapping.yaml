@@ -11,7 +11,7 @@ put:
       required: true
       schema:
         type: string
-        enum: [pilots, routes, pireps]
+        enum: [pilots, careerPilots, routes, pireps]
     - name: If-Match
       in: header
       required: true
@@ -44,7 +44,7 @@ delete:
       required: true
       schema:
         type: string
-        enum: [pilots, routes, pireps]
+        enum: [pilots, careerPilots, routes, pireps]
     - name: If-Match
       in: header
       required: true

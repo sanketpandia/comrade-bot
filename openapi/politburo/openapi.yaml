@@ -92,6 +92,10 @@ paths:
     $ref: "./paths/va/data-connections-mapping.yaml"
   /api/v1/va/data-connections/mappings/{entity}/preview:
     $ref: "./paths/va/data-connections-mapping-preview.yaml"
+  /api/v1/va/feature-configs/{feature}:
+    $ref: "./paths/va/feature-configs.yaml"
+  /api/v1/va/feature-configs/{feature}/preview:
+    $ref: "./paths/va/feature-configs-preview.yaml"
   /api/v1/va/live/schedule-enums:
     $ref: "./paths/va/live-schedule-enums.yaml"
   /api/v1/va/live/schedule-bookings:
@@ -255,6 +259,18 @@ components:
       $ref: "./components/schemas/VAWebhookTriggerResponse.yaml"
     VADataConnectionsResponse:
       $ref: "./components/schemas/VADataConnectionsResponse.yaml"
+    VAFeatureConfigResponse:
+      $ref: "./components/schemas/VAFeatureConfigResponse.yaml"
+    VAFeatureConfigDeleteResponse:
+      $ref: "./components/schemas/VAFeatureConfigDeleteResponse.yaml"
+    VAFeatureConfigPreviewResponse:
+      $ref: "./components/schemas/VAFeatureConfigPreviewResponse.yaml"
+    VAStatsConfigDocument:
+      $ref: "./components/schemas/VAStatsConfigDocument.yaml"
+    VAStatsSection:
+      $ref: "./components/schemas/VAStatsSection.yaml"
+    VAPIREPConfigDocument:
+      $ref: "./components/schemas/VAPIREPConfigDocument.yaml"
     VAMember:
       $ref: "./components/schemas/VAMember.yaml"
     VAMembersResponse:

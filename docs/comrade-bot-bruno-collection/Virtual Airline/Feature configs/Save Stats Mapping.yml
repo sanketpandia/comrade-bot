@@ -1,0 +1,35 @@
+info:
+  name: Save Stats Mapping
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{politburo-base-url}}/api/v1/va/feature-configs/stats"
+  auth: inherit
+  headers:
+    - name: If-Match
+      value: "0"
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "version": 1,
+        "revision": 0,
+        "enabled": true,
+        "pilot": {
+          "matchBy": "callsign",
+          "fields": ["displayName", "flightTimeSeconds", "category", "region", "rank"]
+        }
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`putVAFeatureConfig` — save MAP_STATS (revision 0 for first save)."

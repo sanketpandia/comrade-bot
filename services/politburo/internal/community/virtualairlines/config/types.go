@@ -9,6 +9,8 @@ const (
 	TypeBasic           = "BASIC"
 	TypeWebhooks        = "WEBHOOKS"
 	TypeDataConnections = "DATA_CONNECTIONS"
+	TypeMapStats        = "MAP_STATS"
+	TypeMapPIREP        = "MAP_PIREP"
 )
 
 // PublicConfigTypes are allowed on the generic /va/config API.

@@ -43,8 +43,7 @@ Ask for:
 sentence (invalid key, base not found, no access). Do not dump Airtable
 error bodies.
 
-Save credentials in `va_data_provider_configs` (encrypted at rest when we
-implement storage). Do not put the key in Redis.
+Save credentials in the `DATA_CONNECTIONS` block of `va_configs` (encrypted at rest with `DATA_ENCRYPTION_KEY`). Do not put the key in Redis.
 
 ### 2–4. Each table step
 

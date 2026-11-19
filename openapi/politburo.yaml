@@ -1720,6 +1720,7 @@ paths:
             type: string
             enum:
               - pilots
+              - careerPilots
               - routes
               - pireps
         - name: If-Match
@@ -1757,6 +1758,7 @@ paths:
             type: string
             enum:
               - pilots
+              - careerPilots
               - routes
               - pireps
         - name: If-Match
@@ -1788,6 +1790,7 @@ paths:
             type: string
             enum:
               - pilots
+              - careerPilots
               - routes
               - pireps
       requestBody:
@@ -1810,6 +1813,129 @@ paths:
                   data:
                     type: object
                     additionalProperties: true
+  /api/v1/va/feature-configs/{feature}:
+    get:
+      operationId: getVAFeatureConfig
+      summary: Get feature mapping configuration
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: feature
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - stats
+              - pirep
+      responses:
+        '200':
+          description: Feature configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VAFeatureConfigResponse'
+    put:
+      operationId: putVAFeatureConfig
+      summary: Save feature mapping configuration
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: feature
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - stats
+              - pirep
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/VAStatsConfigDocument'
+                - $ref: '#/components/schemas/VAPIREPConfigDocument'
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VAFeatureConfigResponse'
+    delete:
+      operationId: deleteVAFeatureConfig
+      summary: Remove feature mapping configuration
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: feature
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - stats
+              - pirep
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VAFeatureConfigDeleteResponse'
+  /api/v1/va/feature-configs/{feature}/preview:
+    post:
+      operationId: previewVAFeatureConfig
+      summary: Preview feature mapping results
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: feature
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - stats
+              - pirep
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VAFeatureConfigPreviewResponse'
   /api/v1/va/live/schedule-enums:
     get:
       operationId: listVALiveScheduleEnums
@@ -3734,6 +3860,118 @@ components:
         data:
           type: object
           additionalProperties: true
+    VAFeatureConfigResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            feature:
+              type: string
+              enum:
+                - stats
+                - pirep
+            revision:
+              type: integer
+            connectionsRevision:
+              type: integer
+            enabled:
+              type: boolean
+            configured:
+              type: boolean
+            catalog:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+            mappings:
+              type: object
+              additionalProperties: true
+            stats:
+              $ref: '#/components/schemas/VAStatsConfigDocument'
+            pirep:
+              $ref: '#/components/schemas/VAPIREPConfigDocument'
+            updatedAt:
+              type: string
+              format: date-time
+            updatedBy:
+              type: string
+    VAFeatureConfigDeleteResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - status
+          properties:
+            status:
+              type: string
+              enum:
+                - deleted
+    VAFeatureConfigPreviewResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+    VAStatsConfigDocument:
+      type: object
+      required:
+        - version
+        - revision
+      properties:
+        version:
+          type: integer
+        revision:
+          type: integer
+        enabled:
+          type: boolean
+        connectionsRevision:
+          type: integer
+        pilot:
+          $ref: '#/components/schemas/VAStatsSection'
+        career:
+          $ref: '#/components/schemas/VAStatsSection'
+    VAStatsSection:
+      type: object
+      required:
+        - matchBy
+        - fields
+      properties:
+        matchBy:
+          type: string
+          enum:
+            - callsign
+            - ifcUsername
+        fields:
+          type: array
+          items:
+            type: string
+    VAPIREPConfigDocument:
+      type: object
+      required:
+        - version
+        - revision
+        - fields
+      properties:
+        version:
+          type: integer
+        revision:
+          type: integer
+        enabled:
+          type: boolean
+        connectionsRevision:
+          type: integer
+        fields:
+          type: array
+          items:
+            type: string
     VAMember:
       type: object
       required:

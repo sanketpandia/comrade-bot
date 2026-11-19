@@ -8,6 +8,8 @@
     <a class="tabs__tab" href="/admin/general"{{if eq .AdminTab "general"}} aria-current="page"{{end}}>General</a>
     <a class="tabs__tab" href="/admin/webhooks"{{if eq .AdminTab "webhooks"}} aria-current="page"{{end}}>Webhooks</a>
     <a class="tabs__tab" href="/admin/data-connections"{{if eq .AdminTab "data-connections"}} aria-current="page"{{end}}>Data connections</a>
+    <a class="tabs__tab" href="/admin/feature-stats"{{if eq .AdminTab "feature-stats"}} aria-current="page"{{end}}>Stats mapping</a>
+    <a class="tabs__tab" href="/admin/feature-pirep"{{if eq .AdminTab "feature-pirep"}} aria-current="page"{{end}}>PIREP mapping</a>
     {{end}}
     <a class="tabs__tab" href="/admin/members"{{if eq .AdminTab "members"}} aria-current="page"{{end}}>Members</a>
     <a class="tabs__tab" href="/admin/members/deleted"{{if eq .AdminTab "members-deleted"}} aria-current="page"{{end}}>Deleted</a>
@@ -77,7 +79,46 @@
   <section class="section">
     <h3 class="section__title">Mappings</h3>
     <dl class="description-list" id="data-connections-mappings"></dl>
+    <form class="form-stack form-stack--wide" id="data-connections-mapping-form"></form>
   </section>
+  </section>
+  {{else if eq .AdminTab "feature-stats"}}
+  <section class="panel stack" aria-labelledby="admin-feature-stats-heading">
+    <header class="panel__header">
+      <h2 class="panel-heading" id="admin-feature-stats-heading">Pilot stats</h2>
+    </header>
+    <p class="panel-lead">Choose roster and career fields to expose in previews and future Discord stats.</p>
+    <p id="admin-feature-stats-status" class="panel-message" role="status" hidden></p>
+    <form class="form-stack form-stack--wide" id="feature-stats-form">
+      <div id="feature-stats-fields" class="stack"></div>
+      <div class="field">
+        <label class="field__label" for="feature-stats-callsign">Test pilot callsign</label>
+        <input class="input" id="feature-stats-callsign" name="callsign" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <div id="feature-stats-preview" class="stack" role="region" aria-live="polite" hidden></div>
+      <div class="stack">
+        <button type="button" class="btn btn--secondary" id="feature-stats-preview-btn">Test a pilot</button>
+        <button type="submit" class="btn btn--primary">Save</button>
+        <button type="button" class="btn btn--danger" id="feature-stats-delete-btn">Remove config</button>
+      </div>
+    </form>
+  </section>
+  {{else if eq .AdminTab "feature-pirep"}}
+  <section class="panel stack" aria-labelledby="admin-feature-pirep-heading">
+    <header class="panel__header">
+      <h2 class="panel-heading" id="admin-feature-pirep-heading">PIREP filing</h2>
+    </header>
+    <p class="panel-lead">Select writable PIREP columns for synthetic filing previews.</p>
+    <p id="admin-feature-pirep-status" class="panel-message" role="status" hidden></p>
+    <form class="form-stack form-stack--wide" id="feature-pirep-form">
+      <div id="feature-pirep-fields" class="stack"></div>
+      <div id="feature-pirep-preview" class="stack" role="region" aria-live="polite" hidden></div>
+      <div class="stack">
+        <button type="button" class="btn btn--secondary" id="feature-pirep-preview-btn">Preview filing</button>
+        <button type="submit" class="btn btn--primary">Save</button>
+        <button type="button" class="btn btn--danger" id="feature-pirep-delete-btn">Remove config</button>
+      </div>
+    </form>
   </section>
   {{else if eq .AdminTab "webhooks"}}
   <section class="panel stack" aria-labelledby="admin-webhooks-heading">
