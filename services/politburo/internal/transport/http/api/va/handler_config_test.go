@@ -59,6 +59,16 @@ type userRepoStub struct {
 	err  error
 }
 
+func (s userRepoStub) GetByID(_ context.Context, id string) (*users.User, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	if s.user == nil || s.user.ID != id {
+		return nil, errors.New("not found")
+	}
+	return s.user, nil
+}
+
 func (s userRepoStub) GetByDiscordID(_ context.Context, _ string) (*users.User, error) {
 	if s.err != nil {
 		return nil, s.err

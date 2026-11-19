@@ -2,6 +2,8 @@ package connections
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -227,18 +229,27 @@ func (s *Service) SaveMapping(ctx context.Context, vaID, actor, entity string, e
 		return StoredView{}, err
 	}
 	if err := s.expectRevision(doc, expectedRevision); err != nil {
+		logMappingSaveRejected(vaID, entity, "revision_conflict",
+			"if_match", expectedRevision,
+			"stored_revision", doc.Revision,
+			"error", err.Error(),
+		)
 		return StoredView{}, err
 	}
 	conn, _, ok := connectionByID(doc, mapping.ConnectionID)
 	if !ok {
+		logMappingSaveRejected(vaID, entity, "connection_not_found", "connection_id", mapping.ConnectionID)
 		return StoredView{}, ErrNotFound
 	}
 	base, ok := baseByID(conn, mapping.BaseSetupID)
 	if !ok {
+		logMappingSaveRejected(vaID, entity, "base_not_found", "base_setup_id", mapping.BaseSetupID)
 		return StoredView{}, ErrNotFound
 	}
 	if !MappingMeetsMinimum(entity, mapping.Fields) {
-		return StoredView{}, ErrInvalidMapping
+		err := fmt.Errorf("%w: entity %s requires callsign or ifcUsername bound", ErrInvalidMapping, entity)
+		logMappingSaveRejected(vaID, entity, "below_minimum", "error", err.Error())
+		return StoredView{}, err
 	}
 	token, err := s.tokenForConnection(vaID, conn)
 	if err != nil {
@@ -249,6 +260,16 @@ func (s *Service) SaveMapping(ctx context.Context, vaID, actor, entity string, e
 		return StoredView{}, err
 	}
 	if err := s.validateMappingLive(ctx, token, base.BaseID, entity, mapping, tables); err != nil {
+		kind := "invalid_mapping"
+		if errors.Is(err, ErrSchemaDrift) {
+			kind = "schema_drift"
+		}
+		logMappingSaveRejected(vaID, entity, kind,
+			"airtable_base_id", base.BaseID,
+			"table_id", mapping.TableID,
+			"field_count", len(mapping.Fields),
+			"error", err.Error(),
+		)
 		return StoredView{}, err
 	}
 	if doc.Mappings == nil {
@@ -320,7 +341,8 @@ func (s *Service) Preview(ctx context.Context, vaID, entity string, mapping Mapp
 	}
 	schema := schemaIndexFromTables(tables, mapping.TableID)
 	if schema == nil {
-		err = ErrSchemaDrift
+		err = fmt.Errorf("%w: table %q is not in Airtable base %s; known tables: %s",
+			ErrSchemaDrift, mapping.TableID, base.BaseID, summarizeTables(tables, 8))
 		return nil, err
 	}
 	names := fieldNamesForMapping(mapping, schema)
@@ -425,7 +447,8 @@ func (s *Service) validateMappingLive(ctx context.Context, token, baseID, entity
 		}
 	}
 	if table == nil {
-		return ErrSchemaDrift
+		return fmt.Errorf("%w: table %q is not in Airtable base %s (check tableId from GET .../schema for this base); known tables: %s",
+			ErrSchemaDrift, mapping.TableID, baseID, summarizeTables(tables, 8))
 	}
 	byID := map[string]airtable.Field{}
 	for _, f := range table.Fields {
@@ -434,14 +457,16 @@ func (s *Service) validateMappingLive(ctx context.Context, token, baseID, entity
 	for logicalKey, fieldID := range mapping.Fields {
 		cf, ok := catalogField(entity, logicalKey)
 		if !ok {
-			return ErrInvalidMapping
+			return fmt.Errorf("%w: unknown logical field %q for entity %q", ErrInvalidMapping, logicalKey, entity)
 		}
 		f, ok := byID[fieldID]
 		if !ok {
-			return ErrSchemaDrift
+			return fmt.Errorf("%w: field id %q (logical %q) is not on table %q (%s); bind column ids from that table's schema",
+				ErrSchemaDrift, fieldID, logicalKey, table.Name, mapping.TableID)
 		}
 		if !typeCompatible(cf, f) {
-			return ErrInvalidMapping
+			return fmt.Errorf("%w: logical field %q maps to %q (%s) with Airtable type %q; accepted types: %s",
+				ErrInvalidMapping, logicalKey, f.Name, fieldID, f.Type, strings.Join(cf.AcceptedTypes, ", "))
 		}
 	}
 	_, _, err := s.listRecords(ctx, token, baseID, mapping.TableID, nil, "", 1, "")

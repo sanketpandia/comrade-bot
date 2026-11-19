@@ -9,7 +9,7 @@ http:
   auth: inherit
   headers:
     - name: If-Match
-      value: "0"
+      value: "{{map-stats-if-match}}"
     - name: Content-Type
       value: application/json
   body:
@@ -17,11 +17,23 @@ http:
     data: |-
       {
         "version": 1,
-        "revision": 0,
+        "revision": {{map-stats-if-match}},
         "enabled": true,
+        "connectionsRevision": {{connections-revision-for-features}},
         "pilot": {
-          "matchBy": "callsign",
+          "matchBy": "ifcUsername",
           "fields": ["displayName", "flightTimeSeconds", "category", "region", "rank"]
+        },
+        "career": {
+          "matchBy": "ifcUsername",
+          "fields": [
+            "flightTimeSeconds",
+            "timeToNextAircraftSeconds",
+            "lastActivity",
+            "assignedRoutes",
+            "aircraft",
+            "airline"
+          ]
         }
       }
 

@@ -23,6 +23,7 @@ import (
 	"infinite-experiment/politburo/internal/community/virtualairlines/connections"
 	"infinite-experiment/politburo/internal/community/virtualairlines/connections/airtable"
 	"infinite-experiment/politburo/internal/community/virtualairlines/featureconfig"
+	"infinite-experiment/politburo/internal/community/virtualairlines/pirepvaluemappings"
 	"infinite-experiment/politburo/internal/community/virtualairlines/lookup"
 	"infinite-experiment/politburo/internal/config"
 	"infinite-experiment/politburo/internal/database"
@@ -72,6 +73,7 @@ type App struct {
 	VAConfigs               *vaconfig.Repository
 	VADataConnections       *connections.Service
 	VAFeatureMappings       *featureconfig.Service
+	VAPIREPValueMappings    *pirepvaluemappings.Service
 	IFUsers                 infiniteflight.UsersClient
 	LiveryLookup            *gameliveries.Lookup
 	FlightsReader           *gameflights.Reader
@@ -212,6 +214,8 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		vaDataConnections.SetMappingHooks(guard.BeforeClearMapping, guard.BeforeDeleteConnection, guard.BeforeDeleteBase)
 	}
 
+	pirepValueMappings := pirepvaluemappings.NewService(pirepvaluemappings.NewRepository(db), liveryRepo, vaConfigRepo)
+
 	application := &App{
 		Config: cfg, StartedAt: time.Now().UTC(), DB: db, Cache: cacheStore,
 		APIKeys: apikeys.NewLookup(apikeys.NewRepository(db), cacheStore),
@@ -231,6 +235,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		VAConfigs:               vaConfigRepo,
 		VADataConnections:       vaDataConnections,
 		VAFeatureMappings:       vaFeatureMappings,
+		VAPIREPValueMappings:    pirepValueMappings,
 		IFUsers:                 ifUsers,
 		LiveryLookup:            liveryLookup,
 		FlightsReader:           gameflights.NewReader(cacheStore),

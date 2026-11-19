@@ -1,0 +1,23 @@
+type: object
+required: [version, defaults, AircraftMappings, AirlineMappings]
+properties:
+  version:
+    type: integer
+    enum: [1]
+  defaults:
+    type: object
+    properties:
+      aircraft:
+        type: string
+        nullable: true
+      airline:
+        type: string
+        nullable: true
+  AircraftMappings:
+    type: object
+    additionalProperties:
+      type: string
+  AirlineMappings:
+    type: object
+    additionalProperties:
+      type: string

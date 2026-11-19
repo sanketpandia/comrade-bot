@@ -12,6 +12,18 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
+func logDataConnectionHTTPFailure(r *http.Request, err error, kind string) {
+	if err == nil {
+		return
+	}
+	slog.Warn("data connections request failed",
+		"component", "data_connections",
+		"request_id", chimiddleware.GetReqID(r.Context()),
+		"error_kind", kind,
+		"error", err.Error(),
+	)
+}
+
 // writeConnectionFamilyError maps data-connection and upstream provider errors to HTTP.
 func writeConnectionFamilyError(w http.ResponseWriter, r *http.Request, err error) {
 	var pe *connections.ProviderError
@@ -39,6 +51,7 @@ func writeConnectionFamilyError(w http.ResponseWriter, r *http.Request, err erro
 	case errors.Is(err, connections.ErrDisabled):
 		response.WriteError(w, http.StatusServiceUnavailable, "DATA_CONNECTIONS_DISABLED", err.Error())
 	case errors.Is(err, connections.ErrConflict):
+		logDataConnectionHTTPFailure(r, err, "revision_conflict")
 		response.WriteError(w, http.StatusPreconditionFailed, "REVISION_CONFLICT", err.Error())
 	case errors.Is(err, connections.ErrInUse):
 		response.WriteError(w, http.StatusConflict, "RESOURCE_IN_USE", err.Error())
@@ -46,9 +59,14 @@ func writeConnectionFamilyError(w http.ResponseWriter, r *http.Request, err erro
 		response.WriteError(w, http.StatusConflict, "FEATURE_DEPENDENCY", err.Error())
 	case errors.Is(err, connections.ErrNotFound), errors.Is(err, connections.ErrRecordNotFound):
 		response.WriteError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+	case errors.Is(err, connections.ErrMissingMapping):
+		logDataConnectionHTTPFailure(r, err, "missing_mapping")
+		response.WriteError(w, http.StatusUnprocessableEntity, "INVALID_CONFIGURATION", err.Error())
 	case errors.Is(err, connections.ErrInvalidMapping), errors.Is(err, connections.ErrInvalidFilter), errors.Is(err, connections.ErrInvalidCredential):
+		logDataConnectionHTTPFailure(r, err, "invalid_mapping")
 		response.WriteError(w, http.StatusUnprocessableEntity, "INVALID_CONFIGURATION", err.Error())
 	case errors.Is(err, connections.ErrSchemaDrift):
+		logDataConnectionHTTPFailure(r, err, "schema_drift")
 		response.WriteError(w, http.StatusConflict, "SCHEMA_DRIFT", err.Error())
 	case errors.Is(err, connections.ErrProviderTimeout):
 		response.WriteError(w, http.StatusGatewayTimeout, "PROVIDER_TIMEOUT", err.Error())

@@ -180,7 +180,8 @@ func (s *Service) CreateConnection(ctx context.Context, vaID, actor string, expe
 
 func (s *Service) expectRevision(doc Document, expected int) error {
 	if doc.Revision != expected {
-		return ErrConflict
+		return fmt.Errorf("%w: If-Match %d does not match stored DATA_CONNECTIONS revision %d (GET /api/v1/va/data-connections → data.revision or ETag)",
+			ErrConflict, expected, doc.Revision)
 	}
 	return nil
 }

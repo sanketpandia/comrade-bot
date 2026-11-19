@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"strings"
 
@@ -71,7 +72,23 @@ func (p *Previewer) section(ctx context.Context, vaID, entity string, sec *Stats
 		return PreviewSection{Name: name}, nil, fmt.Errorf("%w: invalid matchBy", ErrInvalidDraft)
 	}
 	if identifier == "" {
+		slog.Warn("stats preview missing test identity",
+			"component", "feature_mappings",
+			"va_id", vaID,
+			"section", name,
+			"match_by", key,
+		)
 		return PreviewSection{Name: name}, nil, fmt.Errorf("%w: test identity required", ErrInvalidDraft)
+	}
+	if entity == connections.EntityCareerPilots && key == "ifcUsername" {
+		view, viewErr := p.reader.GetView(ctx, vaID)
+		if viewErr != nil {
+			return PreviewSection{}, nil, viewErr
+		}
+		careerMap := view.Mappings[connections.EntityCareerPilots]
+		if _, direct := careerMap.Fields["ifcUsername"]; !direct && careerIFCViaRosterAllowed(view.Mappings) {
+			return p.sectionCareerMatchedByIFCViaRoster(ctx, vaID, sec, identifier, required)
+		}
 	}
 	filterVal := identifier
 	if key == "callsign" {
@@ -117,6 +134,39 @@ func (p *Previewer) section(ctx context.Context, vaID, entity string, sec *Stats
 		fields = append(fields, pf)
 	}
 	return PreviewSection{Name: name, Fields: fields}, warnings, nil
+}
+
+func (p *Previewer) sectionCareerMatchedByIFCViaRoster(ctx context.Context, vaID string, sec *StatsSection, ifcUsername string, required bool) (PreviewSection, []string, error) {
+	page, err := p.reader.List(ctx, vaID, connections.EntityPilots, map[string]any{"ifcUsername": strings.TrimSpace(ifcUsername)}, 2, "")
+	if err != nil {
+		return PreviewSection{}, nil, err
+	}
+	if len(page.Records) == 0 {
+		if required {
+			return PreviewSection{}, nil, ErrPilotNotFound
+		}
+		return PreviewSection{Name: "Career"}, nil, ErrPilotNotFound
+	}
+	if len(page.Records) > 1 {
+		return PreviewSection{}, []string{"ambiguous pilot match"}, ErrAmbiguousPilot
+	}
+	rawCS, ok := page.Records[0].Fields["callsign"]
+	if !ok {
+		return PreviewSection{}, nil, fmt.Errorf("%w: roster row has no callsign for ifcUsername", ErrPilotNotFound)
+	}
+	callsign, ok := rawCS.(string)
+	if !ok || strings.TrimSpace(callsign) == "" {
+		return PreviewSection{}, nil, fmt.Errorf("%w: roster row has no callsign for ifcUsername", ErrPilotNotFound)
+	}
+	slog.Info("stats career match via roster callsign",
+		"component", "feature_mappings",
+		"va_id", vaID,
+		"ifc_username", strings.TrimSpace(ifcUsername),
+		"resolved_callsign", callsign,
+	)
+	careerSec := *sec
+	careerSec.MatchBy = "callsign"
+	return p.section(ctx, vaID, connections.EntityCareerPilots, &careerSec, callsign, "", required)
 }
 
 func (p *Previewer) resolveLastFlownRoute(ctx context.Context, vaID string, careerRec connections.MappedRecord) (any, string, error) {

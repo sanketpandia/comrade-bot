@@ -1,0 +1,19 @@
+get:
+  operationId: getPirepConfig
+  summary: PIREP filing configuration for the caller's active flight
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  responses:
+    "200":
+      description: Config
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                additionalProperties: true

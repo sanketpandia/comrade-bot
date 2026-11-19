@@ -23,22 +23,56 @@ request:
     - name: X-Discord-Server-Id
       value: "{{discord-server-id}}"
   variables:
+    - name: politburo-base-url
+      value: http://localhost:8082
+    - name: politburo-api-key
+      value: ""
+    - name: discord-user-id
+      value: ""
+    - name: discord-server-id
+      value: ""
+    - name: data-connections-revision
+      value: "0"
+    - name: va-connection-id
+      value: ""
+    - name: va-base-setup-id
+      value: ""
+    - name: airtable-base-id
+      value: ""
+    - name: data-connection-entity
+      value: pilots
+    - name: map-stats-if-match
+      value: "0"
+    - name: map-pirep-if-match
+      value: "0"
+    - name: connections-revision-for-features
+      value: "0"
+    - name: stats-test-ifc-username
+      value: ""
+    - name: stats-test-callsign
+      value: ""
+    - name: pirep-value-mappings-if-match
+      value: "0"
+    - name: discord-webhook-url
+      value: ""
+    - name: ban-target-discord-user-id
+      value: ""
     - name: POLITBURO_BASE_URL
       value: "{{politburo-base-url}}"
     - name: IFC_ID
-      value: Woutopia
+      value: ""
     - name: lastFlight
-      value: ENTC-ENSB
+      value: ""
     - name: flight-id
-      value: 90cdb286-d470-4dd1-9f45-688f1acf583c
+      value: ""
     - name: oauth-authorization-code
       value: ""
     - name: oauth-state
       value: ""
     - name: live-organization-id
-      value: 258538ec-ffb1-4583-9665-2f3975bef4a7
+      value: ""
     - name: live-aircraft-id
-      value: d05599b6-c70a-46e3-bf5d-d9d9959d9498
+      value: ""
 bundled: false
 extensions:
   bruno:

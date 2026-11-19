@@ -1,0 +1,60 @@
+get:
+  operationId: getVAPIREPValueMappings
+  summary: Get PIREP aircraft and airline value mappings
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  responses:
+    "200":
+      description: Saved mappings
+      headers:
+        ETag:
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VAPIREPValueMappingsView.yaml"
+    "401":
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+put:
+  operationId: putVAPIREPValueMappings
+  summary: Save PIREP value mappings
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/VAPIREPValueMappingsDocument.yaml"
+  responses:
+    "200":
+      description: Saved
+      headers:
+        ETag:
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VAPIREPValueMappingsView.yaml"
+    "412":
+      description: Revision conflict
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

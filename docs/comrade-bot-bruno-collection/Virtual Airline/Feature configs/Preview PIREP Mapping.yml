@@ -1,0 +1,37 @@
+info:
+  name: Preview PIREP Mapping
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{politburo-base-url}}/api/v1/va/feature-configs/pirep/preview"
+  auth: inherit
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "pirep": {
+          "version": 1,
+          "enabled": true,
+          "fields": [
+            "pilotRefs",
+            "routeRefs",
+            "flightTimeSeconds",
+            "remarks",
+            "flightMode"
+          ]
+        }
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`previewVAFeatureConfig` — synthetic filing projection for MAP_PIREP draft."

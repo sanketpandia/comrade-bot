@@ -1,0 +1,30 @@
+info:
+  name: Submit PIREP
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{politburo-base-url}}/api/v1/pireps/submit"
+  auth: inherit
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "flightId": "{{flight-id}}",
+        "fields": {
+          "remarks": "Bruno test filing"
+        }
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`submitPirep` — stage-4 filing hook; body shape evolves with provider write support."

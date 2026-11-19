@@ -1,0 +1,25 @@
+post:
+  operationId: previewVAPIREPValueMappings
+  summary: Preview mapping changes or resolve a sample flight
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/VAPIREPValueMappingsPreview.yaml"
+  responses:
+    "200":
+      description: Preview result
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                additionalProperties: true

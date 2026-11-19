@@ -1,0 +1,15 @@
+get:
+  operationId: getVAPIREPValueMappingsCatalogCSV
+  summary: Download full aircraft and liveries catalog CSV
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  responses:
+    "200":
+      description: CSV attachment
+      content:
+        text/csv:
+          schema:
+            type: string
+            format: binary

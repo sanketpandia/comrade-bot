@@ -67,6 +67,20 @@ function renderFieldToggles() {
   fieldsHost.append(pilotBox, careerBox);
   if (draft.pilot?.matchBy) matchPilot.value = draft.pilot.matchBy;
   if (draft.career?.matchBy) matchCareer.value = draft.career.matchBy;
+  matchPilot.addEventListener('change', syncTestIdentityFields);
+  matchCareer.addEventListener('change', syncTestIdentityFields);
+  syncTestIdentityFields();
+}
+
+function syncTestIdentityFields() {
+  const pilotMatch = document.getElementById('feature-stats-pilot-match')?.value;
+  const careerMatch = document.getElementById('feature-stats-career-match')?.value;
+  const needsCs = pilotMatch === 'callsign' || careerMatch === 'callsign';
+  const needsIfc = pilotMatch === 'ifcUsername' || careerMatch === 'ifcUsername';
+  const csWrap = document.getElementById('feature-stats-callsign')?.closest('.field');
+  const ifcWrap = document.getElementById('feature-stats-ifc-username')?.closest('.field');
+  if (csWrap) csWrap.hidden = !needsCs;
+  if (ifcWrap) ifcWrap.hidden = !needsIfc;
 }
 
 function collectDraft() {
@@ -133,9 +147,37 @@ form?.addEventListener('submit', async (event) => {
   showStatus('Saved.', false);
 });
 
+function previewIdentityHint(d) {
+  const needs = new Set();
+  if (d.pilot?.matchBy) needs.add(d.pilot.matchBy);
+  if (d.career?.matchBy) needs.add(d.career.matchBy);
+  if (needs.has('ifcUsername') && needs.has('callsign')) {
+    return 'Enter both a test callsign and IFC username because Pilot and Career use different lookup keys.';
+  }
+  if (needs.has('ifcUsername')) {
+    return 'Enter a test IFC username to match your configured lookup column.';
+  }
+  return 'Enter a test callsign to match your configured lookup column.';
+}
+
+function previewIdentityReady(d, callsign, ifcUsername) {
+  const needs = new Set();
+  if (d.pilot?.matchBy) needs.add(d.pilot.matchBy);
+  if (d.career?.matchBy) needs.add(d.career.matchBy);
+  if (needs.has('callsign') && !callsign) return false;
+  if (needs.has('ifcUsername') && !ifcUsername) return false;
+  return needs.size > 0;
+}
+
 previewBtn?.addEventListener('click', async () => {
+  const stats = collectDraft();
   const callsign = String(document.getElementById('feature-stats-callsign')?.value || '').trim();
-  const payload = { callsign, stats: collectDraft() };
+  const ifcUsername = String(document.getElementById('feature-stats-ifc-username')?.value || '').trim();
+  if (!previewIdentityReady(stats, callsign, ifcUsername)) {
+    showStatus(previewIdentityHint(stats), true);
+    return;
+  }
+  const payload = { callsign, ifcUsername, stats };
   const res = await fetch(`${API_URL}/preview`, {
     method: 'POST',
     credentials: 'same-origin',

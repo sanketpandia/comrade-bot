@@ -18,7 +18,7 @@ http:
     type: json
     data: |-
       {
-        "discord_user_id": "668664447950127154",
+        "discord_user_id": "{{ban-target-discord-user-id}}",
         "reason": "Violent language"
       }
   auth: inherit

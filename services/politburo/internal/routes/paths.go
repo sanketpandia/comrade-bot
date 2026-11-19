@@ -93,6 +93,13 @@ const (
 	VADataConnectionMappingPreview    = "/api/v1/va/data-connections/mappings/{entity}/preview"
 	VAFeatureConfig                   = "/api/v1/va/feature-configs/{feature}"
 	VAFeatureConfigPreview            = "/api/v1/va/feature-configs/{feature}/preview"
+	VAPIREPValueMappings              = "/api/v1/va/pirep-value-mappings"
+	VAPIREPValueMappingsExport        = "/api/v1/va/pirep-value-mappings/export"
+	VAPIREPValueMappingsCatalog       = "/api/v1/va/pirep-value-mappings/catalog"
+	VAPIREPValueMappingsCatalogCSV    = "/api/v1/va/pirep-value-mappings/catalog.csv"
+	VAPIREPValueMappingsPreview       = "/api/v1/va/pirep-value-mappings/preview"
+	PirepsConfig                      = "/api/v1/pireps/config"
+	PirepsSubmit                      = "/api/v1/pireps/submit"
 	VALiveScheduleEnums               = "/api/v1/va/live/schedule-enums"
 	VALiveScheduleBookings            = "/api/v1/va/live/schedule-bookings"
 	VALiveConnections                 = "/api/v1/va/live/connections"
@@ -145,6 +152,15 @@ var OpenAPIPaths = []string{
 	VADataConnectionBaseSchema,
 	VADataConnectionMapping,
 	VADataConnectionMappingPreview,
+	VAFeatureConfig,
+	VAFeatureConfigPreview,
+	VAPIREPValueMappings,
+	VAPIREPValueMappingsExport,
+	VAPIREPValueMappingsCatalog,
+	VAPIREPValueMappingsCatalogCSV,
+	VAPIREPValueMappingsPreview,
+	PirepsConfig,
+	PirepsSubmit,
 	VALiveScheduleEnums,
 	VALiveScheduleBookings,
 	VALiveConnections,

@@ -1936,6 +1936,239 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VAFeatureConfigPreviewResponse'
+  /api/v1/va/pirep-value-mappings:
+    get:
+      operationId: getVAPIREPValueMappings
+      summary: Get PIREP aircraft and airline value mappings
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Saved mappings
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VAPIREPValueMappingsView'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      operationId: putVAPIREPValueMappings
+      summary: Save PIREP value mappings
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VAPIREPValueMappingsDocument'
+      responses:
+        '200':
+          description: Saved
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VAPIREPValueMappingsView'
+        '412':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va/pirep-value-mappings/export:
+    get:
+      operationId: exportVAPIREPValueMappings
+      summary: Download canonical v1 mappings JSON
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      responses:
+        '200':
+          description: JSON attachment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VAPIREPValueMappingsDocument'
+  /api/v1/va/pirep-value-mappings/catalog:
+    get:
+      operationId: getVAPIREPValueMappingsCatalog
+      summary: Paginated catalog names for the value-mapping editor
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: kind
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - aircraft
+              - airline
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Name groups
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          additionalProperties: true
+                      total:
+                        type: integer
+  /api/v1/va/pirep-value-mappings/catalog.csv:
+    get:
+      operationId: getVAPIREPValueMappingsCatalogCSV
+      summary: Download full aircraft and liveries catalog CSV
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      responses:
+        '200':
+          description: CSV attachment
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+  /api/v1/va/pirep-value-mappings/preview:
+    post:
+      operationId: previewVAPIREPValueMappings
+      summary: Preview mapping changes or resolve a sample flight
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VAPIREPValueMappingsPreview'
+      responses:
+        '200':
+          description: Preview result
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+  /api/v1/pireps/config:
+    get:
+      operationId: getPirepConfig
+      summary: PIREP filing configuration for the caller's active flight
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Config
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+  /api/v1/pireps/submit:
+    post:
+      operationId: submitPirep
+      summary: Submit a PIREP for filing
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        '501':
+          description: Filing provider not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/va/live/schedule-enums:
     get:
       operationId: listVALiveScheduleEnums
@@ -3972,6 +4205,68 @@ components:
           type: array
           items:
             type: string
+    VAPIREPValueMappingsDocument:
+      type: object
+      required:
+        - version
+        - defaults
+        - AircraftMappings
+        - AirlineMappings
+      properties:
+        version:
+          type: integer
+          enum:
+            - 1
+        defaults:
+          type: object
+          properties:
+            aircraft:
+              type: string
+              nullable: true
+            airline:
+              type: string
+              nullable: true
+        AircraftMappings:
+          type: object
+          additionalProperties:
+            type: string
+        AirlineMappings:
+          type: object
+          additionalProperties:
+            type: string
+    VAPIREPValueMappingsView:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - revision
+            - document
+            - configured
+          properties:
+            revision:
+              type: integer
+              format: int64
+            configured:
+              type: boolean
+            document:
+              $ref: '#/components/schemas/VAPIREPValueMappingsDocument'
+            updatedAt:
+              type: string
+              format: date-time
+            updatedBy:
+              type: string
+    VAPIREPValueMappingsPreview:
+      type: object
+      properties:
+        document:
+          $ref: '#/components/schemas/VAPIREPValueMappingsDocument'
+        aircraftId:
+          type: string
+        liveryId:
+          type: string
     VAMember:
       type: object
       required:

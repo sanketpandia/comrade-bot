@@ -38,6 +38,11 @@ type LinkResult struct {
 	Membership Membership
 }
 
+// ActiveMembership returns the caller's active VA membership row when present.
+func (s *Service) ActiveMembership(ctx context.Context, userID, vaID string) (*Membership, error) {
+	return s.memberships.GetActiveForUserAndVA(ctx, userID, vaID)
+}
+
 func (s *Service) LinkCurrentServer(ctx context.Context, input LinkCurrentServerInput) (*LinkResult, error) {
 	user, err := s.users.GetByDiscordID(ctx, input.DiscordID)
 	if err != nil {

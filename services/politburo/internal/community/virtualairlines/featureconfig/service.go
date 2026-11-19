@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
@@ -124,7 +125,8 @@ func (s *Service) SaveStats(ctx context.Context, vaID, actor string, expected, c
 		return FeatureView{}, err
 	}
 	if connView.Revision != connectionsRevision {
-		return FeatureView{}, ErrStaleConnections
+		return FeatureView{}, fmt.Errorf("%w: body connectionsRevision %d but stored DATA_CONNECTIONS revision is %d (GET /api/v1/va/data-connections → data.revision)",
+			ErrStaleConnections, connectionsRevision, connView.Revision)
 	}
 	if err := ValidateStatsDraft(doc, connView.Mappings); err != nil {
 		return FeatureView{}, err
@@ -135,21 +137,41 @@ func (s *Service) SaveStats(ctx context.Context, vaID, actor string, expected, c
 	if err != nil {
 		return FeatureView{}, err
 	}
-	persist := func() error {
-		_, err := s.repo.UpsertIfRevision(ctx, vaID, vaconfig.TypeMapStats, raw, expected, actor)
-		if errors.Is(err, vaconfig.ErrConflict) {
-			return ErrConflict
-		}
-		return err
-	}
-	if s.lock != nil {
-		if err := s.lock.WithAdvisoryLock(ctx, vaID, func(tx *sql.Tx) error { return persist() }); err != nil {
-			return FeatureView{}, err
-		}
-	} else if err := persist(); err != nil {
+	if err := s.persistStats(ctx, vaID, actor, raw, expected); err != nil {
 		return FeatureView{}, err
 	}
 	return s.Get(ctx, vaID, FeatureStats)
+}
+
+func (s *Service) persistStats(ctx context.Context, vaID, actor string, raw json.RawMessage, expected int) error {
+	persist := func() error {
+		_, err := s.repo.UpsertIfRevision(ctx, vaID, vaconfig.TypeMapStats, raw, expected, actor)
+		return s.wrapConfigConflict(ctx, vaID, vaconfig.TypeMapStats, expected, err)
+	}
+	if s.lock != nil {
+		return s.lock.WithAdvisoryLock(ctx, vaID, func(tx *sql.Tx) error { return persist() })
+	}
+	return persist()
+}
+
+func (s *Service) wrapConfigConflict(ctx context.Context, vaID, configType string, expected int, err error) error {
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, vaconfig.ErrConflict) {
+		return err
+	}
+	block, getErr := s.repo.Get(ctx, vaID, configType)
+	if getErr != nil {
+		if errors.Is(getErr, vaconfig.ErrNotFound) {
+			return fmt.Errorf("%w: If-Match %d but %s row already exists; GET current revision and retry",
+				ErrConflict, expected, configType)
+		}
+		return ErrConflict
+	}
+	stored := revisionFromBlock(configType, block.Config)
+	return fmt.Errorf("%w: If-Match %d does not match stored %s revision %d (GET feature-config and use ETag)",
+		ErrConflict, expected, configType, stored)
 }
 
 func (s *Service) SavePIREP(ctx context.Context, vaID, actor string, expected, connectionsRevision int, doc PIREPDocument) (FeatureView, error) {
@@ -161,7 +183,8 @@ func (s *Service) SavePIREP(ctx context.Context, vaID, actor string, expected, c
 		return FeatureView{}, err
 	}
 	if connView.Revision != connectionsRevision {
-		return FeatureView{}, ErrStaleConnections
+		return FeatureView{}, fmt.Errorf("%w: body connectionsRevision %d but stored DATA_CONNECTIONS revision is %d (GET /api/v1/va/data-connections → data.revision)",
+			ErrStaleConnections, connectionsRevision, connView.Revision)
 	}
 	if err := ValidatePIREPDraft(doc, connView.Mappings); err != nil {
 		return FeatureView{}, err
@@ -269,6 +292,10 @@ func (s *Service) Preview(ctx context.Context, vaID, feature string, in PreviewI
 	if s.preview == nil {
 		return PreviewResult{}, errors.New("feature preview not configured")
 	}
+	connView, connErr := s.connections.GetView(ctx, vaID)
+	if connErr != nil {
+		return PreviewResult{}, connErr
+	}
 	switch feature {
 	case FeatureStats:
 		doc := in.Stats
@@ -282,6 +309,9 @@ func (s *Service) Preview(ctx context.Context, vaID, feature string, in PreviewI
 		if doc == nil || !doc.Enabled {
 			return PreviewResult{Disabled: true}, ErrDisabled
 		}
+		if err := ValidateStatsDraft(*doc, connView.Mappings); err != nil {
+			return PreviewResult{}, err
+		}
 		return s.preview.Stats(ctx, vaID, *doc, in.Callsign, in.IFCUsername)
 	case FeaturePIREP:
 		doc := in.PIREP
@@ -294,6 +324,9 @@ func (s *Service) Preview(ctx context.Context, vaID, feature string, in PreviewI
 		}
 		if doc == nil || !doc.Enabled {
 			return PreviewResult{Disabled: true}, ErrDisabled
+		}
+		if err := ValidatePIREPDraft(*doc, connView.Mappings); err != nil {
+			return PreviewResult{}, err
 		}
 		return s.preview.PIREP(ctx, vaID, *doc)
 	default:
@@ -318,4 +351,20 @@ func (s *Service) LoadStatsForRuntime(ctx context.Context, vaID string) (StatsDo
 		return StatsDocument{}, ErrDisabled
 	}
 	return doc, nil
+}
+
+func revisionFromBlock(configType string, raw json.RawMessage) int {
+	switch configType {
+	case vaconfig.TypeMapStats:
+		doc, err := ParseStatsDocument(raw)
+		if err == nil {
+			return doc.Revision
+		}
+	case vaconfig.TypeMapPIREP:
+		doc, err := ParsePIREPDocument(raw)
+		if err == nil {
+			return doc.Revision
+		}
+	}
+	return 0
 }

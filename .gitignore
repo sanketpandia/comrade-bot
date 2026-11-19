@@ -21,6 +21,12 @@ _monorepo-backup/
 .claude/settings.local.json
 .opencode/node_modules/
 
+# Legacy AF/KLM PIREP mappings (e.g. the-afklm-experiment/assets_contents/if_afklm_mappings.json); import via CLI only
+**/if_afklm_mappings.json
+
+# Local-only legacy PIREP import helper (never commit)
+services/politburo/cmd/import-pirep-value-mappings/
+
 *.png
 !services/comrade-bot-discord/assets/**/*.png
 !docs-site/docs/assets/**/*.png

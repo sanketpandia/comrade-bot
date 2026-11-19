@@ -1,0 +1,21 @@
+info:
+  name: Clear Entity Mapping
+  type: http
+  seq: 6
+
+http:
+  method: DELETE
+  url: "{{politburo-base-url}}/api/v1/va/data-connections/mappings/{{data-connection-entity}}"
+  auth: inherit
+  headers:
+    - name: If-Match
+      value: "{{data-connections-revision}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`deleteVADataConnectionMapping` — removes one entity binding; blocked when feature configs depend on it."

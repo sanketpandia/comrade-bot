@@ -1,0 +1,8 @@
+type: object
+properties:
+  document:
+    $ref: ./VAPIREPValueMappingsDocument.yaml
+  aircraftId:
+    type: string
+  liveryId:
+    type: string

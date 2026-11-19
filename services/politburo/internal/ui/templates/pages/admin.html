@@ -91,9 +91,16 @@
     <p id="admin-feature-stats-status" class="panel-message" role="status" hidden></p>
     <form class="form-stack form-stack--wide" id="feature-stats-form">
       <div id="feature-stats-fields" class="stack"></div>
-      <div class="field">
-        <label class="field__label" for="feature-stats-callsign">Test pilot callsign</label>
-        <input class="input" id="feature-stats-callsign" name="callsign" type="text" autocomplete="off" spellcheck="false">
+      <div class="stack">
+        <div class="field">
+          <label class="field__label" for="feature-stats-callsign">Test callsign</label>
+          <input class="input" id="feature-stats-callsign" name="callsign" type="text" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label class="field__label" for="feature-stats-ifc-username">Test IFC username</label>
+          <input class="input" id="feature-stats-ifc-username" name="ifcUsername" type="text" autocomplete="off" spellcheck="false">
+        </div>
+        <p class="panel-lead">Enter the identifier that matches your Pilot or Career lookup column (callsign or IFC username).</p>
       </div>
       <div id="feature-stats-preview" class="stack" role="region" aria-live="polite" hidden></div>
       <div class="stack">
@@ -106,7 +113,7 @@
   {{else if eq .AdminTab "feature-pirep"}}
   <section class="panel stack" aria-labelledby="admin-feature-pirep-heading">
     <header class="panel__header">
-      <h2 class="panel-heading" id="admin-feature-pirep-heading">PIREP filing</h2>
+      <h2 class="panel-heading" id="admin-feature-pirep-heading">PIREP filing columns</h2>
     </header>
     <p class="panel-lead">Select writable PIREP columns for synthetic filing previews.</p>
     <p id="admin-feature-pirep-status" class="panel-message" role="status" hidden></p>
@@ -115,8 +122,50 @@
       <div id="feature-pirep-preview" class="stack" role="region" aria-live="polite" hidden></div>
       <div class="stack">
         <button type="button" class="btn btn--secondary" id="feature-pirep-preview-btn">Preview filing</button>
-        <button type="submit" class="btn btn--primary">Save</button>
+        <button type="submit" class="btn btn--primary">Save PIREP columns</button>
         <button type="button" class="btn btn--danger" id="feature-pirep-delete-btn">Remove config</button>
+      </div>
+    </form>
+  </section>
+  <section class="panel stack" aria-labelledby="pirep-value-mappings-heading">
+    <header class="panel__header">
+      <h2 class="panel-heading" id="pirep-value-mappings-heading">Aircraft and airline values</h2>
+    </header>
+    <p class="panel-lead">Map game aircraft and livery names to the values your PIREP form accepts.</p>
+    <ol class="stack">
+      <li>Export mappings JSON and download the catalog CSV.</li>
+      <li>Edit JSON using <code>AircraftName</code> and <code>LiveryName</code> keys from the CSV.</li>
+      <li>Import JSON, review the diff, then apply to this server.</li>
+    </ol>
+    <div class="stack">
+      <button type="button" class="btn btn--secondary" id="pirep-value-mappings-export">Export mappings JSON</button>
+      <button type="button" class="btn btn--secondary" id="pirep-value-mappings-catalog-csv">Download aircraft and liveries CSV</button>
+      <label class="btn btn--secondary">Import mappings JSON
+        <input type="file" id="pirep-value-mappings-import" accept="application/json" hidden>
+      </label>
+      <button type="button" class="btn btn--primary" id="pirep-value-mappings-apply-import">Apply import</button>
+    </div>
+    <p id="pirep-value-mappings-status" class="panel-message" role="status" hidden></p>
+    <nav class="tabs tabs--nav" aria-label="Mapping kind">
+      <button type="button" class="tabs__tab" id="pirep-vm-tab-aircraft" aria-current="true">Aircraft</button>
+      <button type="button" class="tabs__tab" id="pirep-vm-tab-airline">Liveries</button>
+    </nav>
+    <form class="form-stack" id="pirep-value-mappings-defaults-form">
+      <div class="stack">
+        <label class="field__label">Default aircraft filing value
+          <input class="input" type="text" name="default_aircraft" autocomplete="off">
+        </label>
+        <label class="field__label">Default airline filing value
+          <input class="input" type="text" name="default_airline" autocomplete="off">
+        </label>
+      </div>
+      <label class="field__label" for="pirep-value-mappings-search">Search catalog</label>
+      <input class="input" type="search" id="pirep-value-mappings-search" autocomplete="off">
+      <div id="pirep-value-mappings-list" class="stack"></div>
+      <div id="pirep-value-mappings-preview" class="stack" role="region" aria-live="polite" hidden></div>
+      <div class="stack">
+        <button type="button" class="btn btn--secondary" id="pirep-value-mappings-save-rules">Save rules draft</button>
+        <button type="submit" class="btn btn--primary">Save aircraft and airline values</button>
       </div>
     </form>
   </section>

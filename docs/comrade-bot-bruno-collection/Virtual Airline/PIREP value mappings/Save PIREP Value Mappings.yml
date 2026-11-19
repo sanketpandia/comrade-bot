@@ -1,0 +1,35 @@
+info:
+  name: Save PIREP Value Mappings
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{politburo-base-url}}/api/v1/va/pirep-value-mappings"
+  auth: inherit
+  headers:
+    - name: If-Match
+      value: "{{pirep-value-mappings-if-match}}"
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "version": 1,
+        "defaults": {
+          "aircraft": null,
+          "airline": null
+        },
+        "AircraftMappings": {},
+        "AirlineMappings": {}
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`putVAPIREPValueMappings` — first save uses If-Match `0` when no row exists."

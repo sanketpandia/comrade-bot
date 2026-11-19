@@ -11,6 +11,7 @@ import (
 	oauthapi "infinite-experiment/politburo/internal/transport/http/api/oauth"
 	"infinite-experiment/politburo/internal/transport/http/api/signedlink"
 	userapi "infinite-experiment/politburo/internal/transport/http/api/user"
+	pirepsapi "infinite-experiment/politburo/internal/transport/http/api/pireps"
 	vaapi "infinite-experiment/politburo/internal/transport/http/api/va"
 	uihttp "infinite-experiment/politburo/internal/transport/http/ui"
 )
@@ -22,6 +23,7 @@ type handlers struct {
 	signedLink *signedlink.Handler
 	identity   *identity.Handler
 	va         *vaapi.Handler
+	pireps     *pirepsapi.Handler
 	user       *userapi.Handler
 	oauth      *oauthapi.Handler
 	live       *liveapi.Handler
@@ -51,7 +53,9 @@ func newHandlers(application *app.App) handlers {
 			application.VirtualAirlines, application.VAConfigs, application.Users,
 			application.VAWebhookJob, application.Membership, application.VADataConnections,
 			application.VAFeatureMappings,
+			application.VAPIREPValueMappings,
 		),
+		pireps: pirepsapi.NewHandler(application.VAPIREPValueMappings),
 		user:  userHandler,
 		oauth: oauthapi.NewHandler(
 			application.IFOAuth,

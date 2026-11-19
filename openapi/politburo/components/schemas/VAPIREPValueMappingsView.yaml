@@ -1,0 +1,19 @@
+type: object
+required: [data]
+properties:
+  data:
+    type: object
+    required: [revision, document, configured]
+    properties:
+      revision:
+        type: integer
+        format: int64
+      configured:
+        type: boolean
+      document:
+        $ref: ./VAPIREPValueMappingsDocument.yaml
+      updatedAt:
+        type: string
+        format: date-time
+      updatedBy:
+        type: string

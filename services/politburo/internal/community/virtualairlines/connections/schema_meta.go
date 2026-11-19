@@ -29,6 +29,12 @@ func effectiveAirtableType(f airtable.Field) string {
 		if result != "" {
 			return result
 		}
+	case "lastModifiedTime", "createdTime":
+		_, result, _ := airtableFieldMeta(f)
+		if result != "" {
+			return result
+		}
+		return "dateTime"
 	}
 	return t
 }

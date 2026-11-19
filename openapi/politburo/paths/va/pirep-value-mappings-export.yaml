@@ -1,0 +1,14 @@
+get:
+  operationId: exportVAPIREPValueMappings
+  summary: Download canonical v1 mappings JSON
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  responses:
+    "200":
+      description: JSON attachment
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VAPIREPValueMappingsDocument.yaml"

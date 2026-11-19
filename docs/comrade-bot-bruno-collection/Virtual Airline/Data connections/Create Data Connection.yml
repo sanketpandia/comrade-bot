@@ -1,0 +1,33 @@
+info:
+  name: Create Data Connection
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{politburo-base-url}}/api/v1/va/data-connections/connections"
+  auth: inherit
+  headers:
+    - name: If-Match
+      value: "{{data-connections-revision}}"
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "name": "airtable_base",
+        "provider": "airtable",
+        "token": "<AIRTABLE_PAT>",
+        "baseName": "main",
+        "baseId": "<AIRTABLE_BASE_ID>"
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`createVADataConnection` — first connection; set If-Match from `GET` `data.revision` (0 when empty). Copy `connections[0].id` and `bases[0].id` into collection vars."

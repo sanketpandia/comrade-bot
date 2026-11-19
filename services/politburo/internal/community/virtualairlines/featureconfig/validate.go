@@ -44,7 +44,11 @@ func validateSection(sec *StatsSection, entity string, mappings map[string]conne
 		return fmt.Errorf("%w: missing mapping for %s", ErrInvalidDraft, entity)
 	}
 	if _, bound := mapping.Fields[match]; !bound {
-		return fmt.Errorf("%w: matchBy %s not bound on %s", ErrInvalidDraft, match, entity)
+		if entity == connections.EntityCareerPilots && match == "ifcUsername" && careerIFCViaRosterAllowed(mappings) {
+			// Career row is matched by resolving IFC on the pilots roster, then callsign on career.
+		} else {
+			return fmt.Errorf("%w: matchBy %s not bound on %s", ErrInvalidDraft, match, entity)
+		}
 	}
 	for _, key := range sec.Fields {
 		if _, derived := connections.DerivedStatsKeys[key]; derived {
@@ -55,6 +59,28 @@ func validateSection(sec *StatsSection, entity string, mappings map[string]conne
 		}
 	}
 	return nil
+}
+
+// careerIFCViaRosterAllowed reports whether career pilots can use matchBy ifcUsername
+// without a career.ifcUsername column, by resolving roster callsign first.
+func careerIFCViaRosterAllowed(mappings map[string]connections.Mapping) bool {
+	career, ok := mappings[connections.EntityCareerPilots]
+	if !ok || career.TableID == "" {
+		return false
+	}
+	if _, direct := career.Fields["ifcUsername"]; direct {
+		return false
+	}
+	if _, cs := career.Fields["callsign"]; !cs {
+		return false
+	}
+	pilots, ok := mappings[connections.EntityPilots]
+	if !ok || pilots.TableID == "" {
+		return false
+	}
+	_, ifc := pilots.Fields["ifcUsername"]
+	_, cs := pilots.Fields["callsign"]
+	return ifc && cs
 }
 
 func validateLastFlownRoute(mappings map[string]connections.Mapping) error {

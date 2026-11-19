@@ -48,7 +48,7 @@ func (h *Handler) GetVAFeatureConfig(w http.ResponseWriter, r *http.Request, fea
 	}
 	view, err := svc.Get(r.Context(), vaID, feature)
 	if err != nil {
-		writeFeatureConfigError(w, r, err)
+		writeFeatureConfigError(w, r, vaID, feature, "get", err, nil)
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
@@ -112,7 +112,7 @@ func (h *Handler) PutVAFeatureConfig(w http.ResponseWriter, r *http.Request, fea
 		return
 	}
 	if err != nil {
-		writeFeatureConfigError(w, r, err)
+		writeFeatureConfigError(w, r, vaID, feature, "save", err, nil)
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
@@ -135,7 +135,7 @@ func (h *Handler) DeleteVAFeatureConfig(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	if err := svc.Delete(r.Context(), vaID, feature, expected); err != nil {
-		writeFeatureConfigError(w, r, err)
+		writeFeatureConfigError(w, r, vaID, feature, "delete", err, nil)
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
@@ -163,6 +163,9 @@ func (h *Handler) PreviewVAFeatureConfig(w http.ResponseWriter, r *http.Request,
 			return
 		}
 	}
+	if feature == featureconfig.FeatureStats {
+		h.applyStatsPreviewIdentityDefaults(r.Context(), r, vaID, &in)
+	}
 	result, err := svc.Preview(r.Context(), vaID, feature, in)
 	if err != nil {
 		if errors.Is(err, featureconfig.ErrDisabled) {
@@ -170,17 +173,18 @@ func (h *Handler) PreviewVAFeatureConfig(w http.ResponseWriter, r *http.Request,
 			response.WriteJSON(w, http.StatusOK, map[string]any{"data": featureconfig.PreviewResult{Disabled: true}})
 			return
 		}
-		writeFeatureConfigError(w, r, err)
+		writeFeatureConfigError(w, r, vaID, feature, "preview", err, &in)
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	response.WriteJSON(w, http.StatusOK, map[string]any{"data": result})
 }
 
-func writeFeatureConfigError(w http.ResponseWriter, r *http.Request, err error) {
+func writeFeatureConfigError(w http.ResponseWriter, r *http.Request, vaID, feature, operation string, err error, preview *featureconfig.PreviewInput) {
+	logFeatureMappingsFailure(vaID, feature, operation, err, preview)
 	switch {
 	case errors.Is(err, featureconfig.ErrConflict):
-		response.WriteError(w, http.StatusPreconditionFailed, "CONFLICT", "configuration was updated elsewhere")
+		response.WriteError(w, http.StatusPreconditionFailed, "CONFLICT", err.Error())
 	case errors.Is(err, featureconfig.ErrStaleConnections):
 		response.WriteError(w, http.StatusUnprocessableEntity, "STALE_CONNECTIONS", err.Error())
 	case errors.Is(err, featureconfig.ErrPilotNotFound):
@@ -195,6 +199,8 @@ func writeFeatureConfigError(w http.ResponseWriter, r *http.Request, err error) 
 		response.WriteError(w, http.StatusNotFound, "NOT_FOUND", "not found")
 	case errors.Is(err, connections.ErrDisabled):
 		response.WriteError(w, http.StatusServiceUnavailable, "FEATURE_MAPPINGS_DISABLED", err.Error())
+	case errors.Is(err, connections.ErrMissingMapping):
+		response.WriteError(w, http.StatusUnprocessableEntity, "INVALID_CONFIGURATION", err.Error())
 	default:
 		var pe *connections.ProviderError
 		if errors.As(err, &pe) {

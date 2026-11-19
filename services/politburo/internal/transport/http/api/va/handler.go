@@ -10,6 +10,7 @@ import (
 	"infinite-experiment/politburo/internal/community/users"
 	"infinite-experiment/politburo/internal/community/virtualairlines"
 	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
+	"infinite-experiment/politburo/internal/community/virtualairlines/pirepvaluemappings"
 	"infinite-experiment/politburo/internal/transport/http/response"
 )
 
@@ -23,8 +24,9 @@ type Handler struct {
 	users            discordUserLookup
 	webhooks         webhookTrigger
 	memberships      *membership.Service
-	dataConnections  dataConnections
-	featureMappings  featureMappings
+	dataConnections    dataConnections
+	featureMappings    featureMappings
+	pirepValueMappings *pirepvaluemappings.Service
 }
 
 func NewHandler(
@@ -35,10 +37,12 @@ func NewHandler(
 	memberships *membership.Service,
 	dataConnections dataConnections,
 	featureMappings featureMappings,
+	pirepValueMappings *pirepvaluemappings.Service,
 ) *Handler {
 	return &Handler{
 		vas: vas, configs: configs, users: users, webhooks: webhooks, memberships: memberships,
 		dataConnections: dataConnections, featureMappings: featureMappings,
+		pirepValueMappings: pirepValueMappings,
 	}
 }
 
