@@ -76,6 +76,22 @@ paths:
     $ref: "./paths/va/config.yaml"
   /api/v1/va/webhook/trigger:
     $ref: "./paths/va/webhook-trigger.yaml"
+  /api/v1/va/data-connections:
+    $ref: "./paths/va/data-connections.yaml"
+  /api/v1/va/data-connections/connections:
+    $ref: "./paths/va/data-connections-connections.yaml"
+  /api/v1/va/data-connections/connections/{connectionId}:
+    $ref: "./paths/va/data-connections-connection-by-id.yaml"
+  /api/v1/va/data-connections/connections/{connectionId}/bases:
+    $ref: "./paths/va/data-connections-bases.yaml"
+  /api/v1/va/data-connections/connections/{connectionId}/bases/{baseId}:
+    $ref: "./paths/va/data-connections-base-by-id.yaml"
+  /api/v1/va/data-connections/connections/{connectionId}/bases/{baseId}/schema:
+    $ref: "./paths/va/data-connections-schema.yaml"
+  /api/v1/va/data-connections/mappings/{entity}:
+    $ref: "./paths/va/data-connections-mapping.yaml"
+  /api/v1/va/data-connections/mappings/{entity}/preview:
+    $ref: "./paths/va/data-connections-mapping-preview.yaml"
   /api/v1/va/live/schedule-enums:
     $ref: "./paths/va/live-schedule-enums.yaml"
   /api/v1/va/live/schedule-bookings:
@@ -237,6 +253,8 @@ components:
       $ref: "./components/schemas/VAWebhookTriggerData.yaml"
     VAWebhookTriggerResponse:
       $ref: "./components/schemas/VAWebhookTriggerResponse.yaml"
+    VADataConnectionsResponse:
+      $ref: "./components/schemas/VADataConnectionsResponse.yaml"
     VAMember:
       $ref: "./components/schemas/VAMember.yaml"
     VAMembersResponse:

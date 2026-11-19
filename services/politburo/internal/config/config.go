@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"net"
@@ -21,7 +22,13 @@ type Config struct {
 	Jobs                      Jobs
 	InfiniteFlight            InfiniteFlight
 	Auth                      Auth
+	DataConnections           DataConnections
 	PlatformOperatorDiscordIDs []string
+}
+
+// DataConnections holds encryption material for live provider credentials.
+type DataConnections struct {
+	EncryptionKey []byte
 }
 
 type Auth struct {
@@ -102,6 +109,10 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	dataConnectionsKeyRaw, err := secret("DATA_CONNECTIONS_ENCRYPTION_KEY", "")
+	if err != nil {
+		return Config{}, err
+	}
 
 	environment := env("APP_ENV", "local")
 	parsedSecret, err := parseSignedLinkSecret(signedLinkSecret, environment)
@@ -154,6 +165,11 @@ func Load() (Config, error) {
 		},
 		PlatformOperatorDiscordIDs: csv("PLATFORM_OPERATOR_DISCORD_IDS", nil),
 	}
+	dataConnKey, err := parseDataConnectionsEncryptionKey(dataConnectionsKeyRaw)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.DataConnections.EncryptionKey = dataConnKey
 
 	if _, err := strconv.Atoi(cfg.HTTP.Port); err != nil {
 		return Config{}, fmt.Errorf("PORT must be numeric: %w", err)
@@ -190,6 +206,21 @@ func Load() (Config, error) {
 
 // localSignedLinkSecretHex is a documented 32-byte development key.
 const localSignedLinkSecretHex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+func parseDataConnectionsEncryptionKey(raw string) ([]byte, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	decoded, err := base64.StdEncoding.DecodeString(raw)
+	if err != nil {
+		return nil, fmt.Errorf("DATA_CONNECTIONS_ENCRYPTION_KEY must be base64-encoded 32 bytes: %w", err)
+	}
+	if len(decoded) != 32 {
+		return nil, fmt.Errorf("DATA_CONNECTIONS_ENCRYPTION_KEY must decode to 32 bytes")
+	}
+	return decoded, nil
+}
 
 func parseSignedLinkSecret(raw, environment string) ([]byte, error) {
 	raw = strings.TrimSpace(raw)

@@ -18,11 +18,12 @@ type vaLoader interface {
 }
 
 type Handler struct {
-	vas          vaLoader
-	configs      configBlocksRepo
-	users        discordUserLookup
-	webhooks     webhookTrigger
-	memberships  *membership.Service
+	vas              vaLoader
+	configs          configBlocksRepo
+	users            discordUserLookup
+	webhooks         webhookTrigger
+	memberships      *membership.Service
+	dataConnections  dataConnections
 }
 
 func NewHandler(
@@ -31,8 +32,12 @@ func NewHandler(
 	users *users.Repository,
 	webhooks webhookTrigger,
 	memberships *membership.Service,
+	dataConnections dataConnections,
 ) *Handler {
-	return &Handler{vas: vas, configs: configs, users: users, webhooks: webhooks, memberships: memberships}
+	return &Handler{
+		vas: vas, configs: configs, users: users, webhooks: webhooks, memberships: memberships,
+		dataConnections: dataConnections,
+	}
 }
 
 func (h *Handler) GetVA(w http.ResponseWriter, r *http.Request) {

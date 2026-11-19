@@ -510,6 +510,27 @@ func TestAdminRendersShell(t *testing.T) {
 	}
 }
 
+func TestAdminDataConnectionsRendersPanel(t *testing.T) {
+	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminDataConnections, nil), auth.Claims{Role: "administrator"})
+	recorder := httptest.NewRecorder()
+	handler.Admin(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		`href="` + routes.AdminDataConnections + `" aria-current="page"`,
+		`id="admin-data-connections-heading"`,
+		`id="data-connections-create-form"`,
+		`/static/js/admin/data-connections.mjs`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q in body", want)
+		}
+	}
+}
+
 func TestAdminWebhooksRendersActiveFlightsForm(t *testing.T) {
 	handler := newUIHandler(t, &sessionManagerStub{}, &ticketConsumerStub{})
 	req := withClaims(httptest.NewRequest(http.MethodGet, routes.AdminWebhooks, nil), auth.Claims{Role: "administrator"})

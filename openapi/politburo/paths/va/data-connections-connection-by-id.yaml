@@ -1,0 +1,59 @@
+patch:
+  operationId: patchVADataConnection
+  summary: Rename or replace credentials for a connection
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: connectionId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name: { type: string }
+            token: { type: string }
+  responses:
+    "200":
+      description: Updated
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VADataConnectionsResponse.yaml"
+delete:
+  operationId: deleteVADataConnection
+  summary: Delete an unused connection
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: connectionId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: Deleted
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VADataConnectionsResponse.yaml"

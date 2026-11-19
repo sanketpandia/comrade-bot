@@ -6,9 +6,16 @@ import (
 )
 
 const (
-	TypeBasic    = "BASIC"
-	TypeWebhooks = "WEBHOOKS"
+	TypeBasic           = "BASIC"
+	TypeWebhooks        = "WEBHOOKS"
+	TypeDataConnections = "DATA_CONNECTIONS"
 )
+
+// PublicConfigTypes are allowed on the generic /va/config API.
+var PublicConfigTypes = map[string]struct{}{
+	TypeBasic:    {},
+	TypeWebhooks: {},
+}
 
 type Block struct {
 	VAID       string

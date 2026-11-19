@@ -7,6 +7,7 @@
     {{if .IsAdministrator}}
     <a class="tabs__tab" href="/admin/general"{{if eq .AdminTab "general"}} aria-current="page"{{end}}>General</a>
     <a class="tabs__tab" href="/admin/webhooks"{{if eq .AdminTab "webhooks"}} aria-current="page"{{end}}>Webhooks</a>
+    <a class="tabs__tab" href="/admin/data-connections"{{if eq .AdminTab "data-connections"}} aria-current="page"{{end}}>Data connections</a>
     {{end}}
     <a class="tabs__tab" href="/admin/members"{{if eq .AdminTab "members"}} aria-current="page"{{end}}>Members</a>
     <a class="tabs__tab" href="/admin/members/deleted"{{if eq .AdminTab "members-deleted"}} aria-current="page"{{end}}>Deleted</a>
@@ -42,6 +43,41 @@
         </table>
       </div>
     </section>
+  </section>
+  {{else if eq .AdminTab "data-connections"}}
+  <section class="panel stack" aria-labelledby="admin-data-connections-heading">
+    <header class="panel__header">
+      <h2 class="panel-heading" id="admin-data-connections-heading">Data connections</h2>
+    </header>
+    <p class="panel-lead">Link Airtable bases for live pilot, route, and PIREP reads. Credentials stay on the server.</p>
+    <p id="admin-data-connections-status" class="panel-message" role="status" hidden></p>
+  <section class="section">
+    <h3 class="section__title">Connections</h3>
+    <ul class="stack" id="data-connections-list" aria-live="polite"></ul>
+    <form class="form-stack form-stack--wide" id="data-connections-create-form">
+      <div class="field">
+        <label class="field__label" for="dc-name">Connection name</label>
+        <input class="input" id="dc-name" name="name" type="text" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label class="field__label" for="dc-token">Airtable token</label>
+        <input class="input" id="dc-token" name="token" type="password" autocomplete="off" required>
+      </div>
+      <div class="field">
+        <label class="field__label" for="dc-base-name">Base label</label>
+        <input class="input" id="dc-base-name" name="baseName" type="text" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label class="field__label" for="dc-base-id">Airtable base ID</label>
+        <input class="input" id="dc-base-id" name="baseId" type="text" required autocomplete="off" spellcheck="false">
+      </div>
+      <button type="submit" class="btn btn--primary" id="dc-create-submit">Add connection</button>
+    </form>
+  </section>
+  <section class="section">
+    <h3 class="section__title">Mappings</h3>
+    <dl class="description-list" id="data-connections-mappings"></dl>
+  </section>
   </section>
   {{else if eq .AdminTab "webhooks"}}
   <section class="panel stack" aria-labelledby="admin-webhooks-heading">

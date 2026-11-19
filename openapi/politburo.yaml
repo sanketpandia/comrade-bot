@@ -1397,6 +1397,419 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va/data-connections:
+    get:
+      operationId: getVADataConnections
+      summary: Get VA data connection configuration
+      description: Returns the redacted data connection configuration and field catalog. Requires VA administrator.
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Configuration projection
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VADataConnectionsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Data connections encryption key not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va/data-connections/connections:
+    post:
+      operationId: createVADataConnection
+      summary: Create a data connection
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - provider
+                - token
+                - baseName
+                - baseId
+              properties:
+                name:
+                  type: string
+                provider:
+                  type: string
+                token:
+                  type: string
+                baseName:
+                  type: string
+                baseId:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VADataConnectionsResponse'
+        '412':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '428':
+          description: Missing If-Match
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/va/data-connections/connections/{connectionId}:
+    patch:
+      operationId: patchVADataConnection
+      summary: Rename or replace credentials for a connection
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VADataConnectionsResponse'
+    delete:
+      operationId: deleteVADataConnection
+      summary: Delete an unused connection
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VADataConnectionsResponse'
+  /api/v1/va/data-connections/connections/{connectionId}/bases:
+    post:
+      operationId: addVADataConnectionBase
+      summary: Add a base to a connection
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - baseId
+              properties:
+                name:
+                  type: string
+                baseId:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VADataConnectionsResponse'
+  /api/v1/va/data-connections/connections/{connectionId}/bases/{baseId}:
+    patch:
+      operationId: patchVADataConnectionBase
+      summary: Rename a base setup
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: baseId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VADataConnectionsResponse'
+    delete:
+      operationId: deleteVADataConnectionBase
+      summary: Delete an unused base setup
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: baseId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VADataConnectionsResponse'
+  /api/v1/va/data-connections/connections/{connectionId}/bases/{baseId}/schema:
+    get:
+      operationId: getVADataConnectionSchema
+      summary: Live schema for a connection base
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: baseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Schema metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+  /api/v1/va/data-connections/mappings/{entity}:
+    put:
+      operationId: putVADataConnectionMapping
+      summary: Save entity mapping
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: entity
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - pilots
+              - routes
+              - pireps
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VADataConnectionsResponse'
+    delete:
+      operationId: deleteVADataConnectionMapping
+      summary: Clear entity mapping
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: entity
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - pilots
+              - routes
+              - pireps
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cleared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VADataConnectionsResponse'
+  /api/v1/va/data-connections/mappings/{entity}/preview:
+    post:
+      operationId: previewVADataConnectionMapping
+      summary: Preview mapping sample rows
+      tags:
+        - VirtualAirline
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: entity
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - pilots
+              - routes
+              - pireps
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Sample records
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
   /api/v1/va/live/schedule-enums:
     get:
       operationId: listVALiveScheduleEnums
@@ -3313,6 +3726,14 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/VAWebhookTriggerData'
+    VADataConnectionsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: true
     VAMember:
       type: object
       required:

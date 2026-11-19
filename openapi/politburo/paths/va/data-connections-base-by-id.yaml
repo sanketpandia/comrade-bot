@@ -1,0 +1,68 @@
+patch:
+  operationId: patchVADataConnectionBase
+  summary: Rename a base setup
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: connectionId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: baseId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name: { type: string }
+  responses:
+    "200":
+      description: Updated
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VADataConnectionsResponse.yaml"
+delete:
+  operationId: deleteVADataConnectionBase
+  summary: Delete an unused base setup
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: connectionId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: baseId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: Updated
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VADataConnectionsResponse.yaml"

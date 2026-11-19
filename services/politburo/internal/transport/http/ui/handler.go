@@ -385,6 +385,8 @@ func adminTab(path string) string {
 	switch strings.TrimSuffix(path, "/") {
 	case routes.AdminWebhooks:
 		return "webhooks"
+	case routes.AdminDataConnections:
+		return "data-connections"
 	case routes.AdminLive:
 		return "live"
 	case routes.AdminMembersDeleted:
@@ -398,7 +400,7 @@ func adminTab(path string) string {
 
 func adminTabRequiresAdministrator(tab string) bool {
 	switch tab {
-	case "general", "webhooks":
+	case "general", "webhooks", "data-connections":
 		return true
 	default:
 		return false

@@ -37,6 +37,50 @@ WHERE va_id = $1 AND config_type = $2`,
 	return block, nil
 }
 
+// UpsertIfRevision writes config when config->revision matches expectedRevision.
+// expectedRevision 0 inserts a new row; an existing row yields ErrConflict.
+func (r *Repository) UpsertIfRevision(ctx context.Context, vaID, configType string, config json.RawMessage, expectedRevision int, updatedBy string) (*Block, error) {
+	if expectedRevision == 0 {
+		row := r.db.QueryRowContext(ctx, `
+INSERT INTO public.va_configs (va_id, config_type, config, updated_at, updated_by)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (va_id, config_type) DO NOTHING
+RETURNING `+blockColumns,
+			vaID, configType, []byte(config), time.Now().UTC(), updatedBy,
+		)
+		block, err := scanBlock(row)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrConflict
+		}
+		if err != nil {
+			return nil, fmt.Errorf("insert va config block: %w", err)
+		}
+		return block, nil
+	}
+
+	result, err := r.db.ExecContext(ctx, `
+UPDATE public.va_configs
+SET config = $4,
+    updated_at = $5,
+    updated_by = $6
+WHERE va_id = $1
+  AND config_type = $2
+  AND COALESCE((config->>'revision')::int, 0) = $3`,
+		vaID, configType, expectedRevision, []byte(config), time.Now().UTC(), updatedBy,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("update va config block: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("update va config rows: %w", err)
+	}
+	if rows == 0 {
+		return nil, ErrConflict
+	}
+	return r.Get(ctx, vaID, configType)
+}
+
 func (r *Repository) Upsert(ctx context.Context, vaID, configType string, config json.RawMessage, updatedBy string) (*Block, error) {
 	row := r.db.QueryRowContext(ctx, `
 INSERT INTO public.va_configs (va_id, config_type, config, updated_at, updated_by)

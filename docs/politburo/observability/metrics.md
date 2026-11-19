@@ -74,6 +74,22 @@ Grafana dashboard **Infinite Live metrics** (`politburo-livegame`).
   active VA from the latest `infinite-flight-va-flight-index` run (0 when none;
   deactivated VAs are dropped). Requested explicitly as a feature gauge.
 
+## Data connections
+
+Grafana dashboard **Politburo data connections** (`politburo-dataconnections`).
+
+- `politburo_dataconnections_provider_requests_total{provider,operation,outcome}` — one
+  sample per Airtable HTTP call (`operation` is `schema` or `records`).
+- `politburo_dataconnections_provider_request_duration_seconds{provider,operation}` —
+  upstream request latency.
+- `politburo_dataconnections_reads_total{operation,entity,outcome}` — logical
+  `list`, `get`, `preview`, or `inspect` calls (`entity` is `pilots`, `routes`,
+  `pireps`, or `none`).
+- `politburo_dataconnections_read_duration_seconds{operation,entity}` — end-to-end
+  service duration for those operations.
+
+HTTP route timings remain on `politburo_http_*` for `/api/v1/va/data-connections/*`.
+
 ## Webhooks
 
 Grafana dashboard **Politburo webhooks** (`politburo-webhooks`). Details in

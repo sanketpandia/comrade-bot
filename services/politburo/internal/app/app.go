@@ -19,6 +19,8 @@ import (
 	"infinite-experiment/politburo/internal/community/users"
 	"infinite-experiment/politburo/internal/community/users/status"
 	"infinite-experiment/politburo/internal/community/virtualairlines"
+	"infinite-experiment/politburo/internal/community/virtualairlines/connections"
+	"infinite-experiment/politburo/internal/community/virtualairlines/connections/airtable"
 	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/community/virtualairlines/lookup"
 	"infinite-experiment/politburo/internal/config"
@@ -66,6 +68,7 @@ type App struct {
 	VALookup        *lookup.VALookup
 	VirtualAirlines *virtualairlines.Repository
 	VAConfigs       *vaconfig.Repository
+	VADataConnections *connections.Service
 	IFUsers         infiniteflight.UsersClient
 	LiveryLookup    *gameliveries.Lookup
 	FlightsReader   *gameflights.Reader
@@ -176,6 +179,18 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	}
 	vaLiveAssignmentWebhook := livemodeassignment.New(vaConfigRepo, discord.NewClient(metricsRegistry))
 
+	var vaDataConnections *connections.Service
+	if len(cfg.DataConnections.EncryptionKey) == 32 {
+		cipher, err := connections.NewCredentialCipher(cfg.DataConnections.EncryptionKey)
+		if err != nil {
+			_ = cacheStore.Close()
+			_ = db.Close()
+			return nil, fmt.Errorf("data connections cipher: %w", err)
+		}
+		atClient := airtable.NewClient(metricsRegistry, cfg.HTTP.WriteTimeout)
+		vaDataConnections = connections.NewService(vaConfigRepo, atClient, cipher, metricsRegistry)
+	}
+
 	application := &App{
 		Config: cfg, StartedAt: time.Now().UTC(), DB: db, Cache: cacheStore,
 		APIKeys: apikeys.NewLookup(apikeys.NewRepository(db), cacheStore),
@@ -192,7 +207,8 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		Resolver:        resolver.NewResolver(userRepo, vaRepo, membershipRepo),
 		VALookup:        lookup.NewVALookup(vaRepo),
 		VirtualAirlines: vaRepo,
-		VAConfigs:       vaConfigRepo,
+		VAConfigs:           vaConfigRepo,
+		VADataConnections:   vaDataConnections,
 		IFUsers:         ifUsers,
 		LiveryLookup:    liveryLookup,
 		FlightsReader:   gameflights.NewReader(cacheStore),
