@@ -1,0 +1,33 @@
+post:
+  operationId: previewVADataConnectionMapping
+  summary: Preview mapping sample rows
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: entity
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [pilots, routes, pireps]
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: true
+  responses:
+    "200":
+      description: Sample records
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                additionalProperties: true

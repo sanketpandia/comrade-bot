@@ -147,6 +147,72 @@ func (h apiHandler) TriggerVAWebhook(w stdhttp.ResponseWriter, r *stdhttp.Reques
 	})).ServeHTTP(w, r)
 }
 
+func (h apiHandler) GetVADataConnections(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.GetVADataConnections(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) CreateVADataConnection(w stdhttp.ResponseWriter, r *stdhttp.Request, _ politburoapi.CreateVADataConnectionParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.CreateVADataConnection(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) PatchVADataConnection(w stdhttp.ResponseWriter, r *stdhttp.Request, connectionID string, _ politburoapi.PatchVADataConnectionParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.PatchVADataConnection(w, r, connectionID)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) DeleteVADataConnection(w stdhttp.ResponseWriter, r *stdhttp.Request, connectionID string, _ politburoapi.DeleteVADataConnectionParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.DeleteVADataConnection(w, r, connectionID)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) AddVADataConnectionBase(w stdhttp.ResponseWriter, r *stdhttp.Request, connectionID string, _ politburoapi.AddVADataConnectionBaseParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.AddVADataConnectionBase(w, r, connectionID)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) PatchVADataConnectionBase(w stdhttp.ResponseWriter, r *stdhttp.Request, connectionID, baseID string, _ politburoapi.PatchVADataConnectionBaseParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.PatchVADataConnectionBase(w, r, connectionID, baseID)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) DeleteVADataConnectionBase(w stdhttp.ResponseWriter, r *stdhttp.Request, connectionID, baseID string, _ politburoapi.DeleteVADataConnectionBaseParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.DeleteVADataConnectionBase(w, r, connectionID, baseID)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) GetVADataConnectionSchema(w stdhttp.ResponseWriter, r *stdhttp.Request, connectionID, baseID string) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.GetVADataConnectionSchema(w, r, connectionID, baseID)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) PutVADataConnectionMapping(w stdhttp.ResponseWriter, r *stdhttp.Request, entity politburoapi.PutVADataConnectionMappingParamsEntity, _ politburoapi.PutVADataConnectionMappingParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.PutVADataConnectionMapping(w, r, string(entity))
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) DeleteVADataConnectionMapping(w stdhttp.ResponseWriter, r *stdhttp.Request, entity politburoapi.DeleteVADataConnectionMappingParamsEntity, _ politburoapi.DeleteVADataConnectionMappingParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.DeleteVADataConnectionMapping(w, r, string(entity))
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) PreviewVADataConnectionMapping(w stdhttp.ResponseWriter, r *stdhttp.Request, entity politburoapi.PreviewVADataConnectionMappingParamsEntity) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.PreviewVADataConnectionMapping(w, r, string(entity))
+	})).ServeHTTP(w, r)
+}
+
 func (h apiHandler) GetCurrentUser(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	h.stacks.currentUser.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.handlers.user.GetMe(w, r)

@@ -1,0 +1,30 @@
+get:
+  operationId: getVADataConnectionSchema
+  summary: Live schema for a connection base
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: connectionId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: baseId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: Schema metadata
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                additionalProperties: true

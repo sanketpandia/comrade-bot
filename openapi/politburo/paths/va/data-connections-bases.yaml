@@ -1,0 +1,35 @@
+post:
+  operationId: addVADataConnectionBase
+  summary: Add a base to a connection
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: connectionId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [name, baseId]
+          properties:
+            name: { type: string }
+            baseId: { type: string }
+  responses:
+    "200":
+      description: Updated
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VADataConnectionsResponse.yaml"

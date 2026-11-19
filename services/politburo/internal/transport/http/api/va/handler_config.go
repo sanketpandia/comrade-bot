@@ -39,6 +39,10 @@ func (h *Handler) GetVAConfig(w http.ResponseWriter, r *http.Request, configType
 	if !ok {
 		return
 	}
+	if _, allowed := vaconfig.PublicConfigTypes[configType]; !allowed {
+		response.WriteError(w, http.StatusBadRequest, "UNKNOWN_CONFIG_TYPE", "unknown config type")
+		return
+	}
 
 	block, err := h.configs.Get(r.Context(), vaID, configType)
 	if err != nil {
@@ -70,6 +74,10 @@ func (h *Handler) UpsertVAConfig(w http.ResponseWriter, r *http.Request, configT
 		return
 	}
 
+	if _, allowed := vaconfig.PublicConfigTypes[configType]; !allowed {
+		response.WriteError(w, http.StatusBadRequest, "UNKNOWN_CONFIG_TYPE", "unknown config type")
+		return
+	}
 	validate, known := configValidators[configType]
 	if !known {
 		response.WriteError(w, http.StatusBadRequest, "UNKNOWN_CONFIG_TYPE", "unknown config type")

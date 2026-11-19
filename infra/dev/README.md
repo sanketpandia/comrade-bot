@@ -24,7 +24,7 @@ cd services/politburo
 cp .env.example .env
 ```
 
-Use `PORT=8082`, `PG_HOST=localhost`, `PG_DB=politburo_next`, and `IF_API_KEY` when jobs are enabled.
+Use `PORT=8082`, `PG_HOST=localhost`, `PG_DB=politburo_next`, and `IF_API_KEY` when jobs are enabled. Set `DATA_ENCRYPTION_KEY` (`openssl rand -base64 32`) in `services/politburo/.env` to enable data connections, then restart Air. Leave it empty to run without that feature. Dev Compose supplies the backing services only.
 
 **3. Database**
 

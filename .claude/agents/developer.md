@@ -69,6 +69,7 @@ Then read every file in the plan's Changes Required plus direct neighbours (impo
 - Make `generate-politburo`/`generate-infinite-flight` depend on Node (Docker generate stage has no Node).
 - Construct dependencies outside `internal/app/app.go`, or start goroutines outside the scheduler/server lifecycle.
 - Pass `auth.Claims`, sessions, cookies, or generated OpenAPI types into domain packages — pass primitive IDs.
+- Return sealed ciphertext, envelopes, or decrypted secrets from an ordinary REST response or UI handler. A dedicated route is required to return an encrypted value.
 - Hand-mount a new `/api/v1` JSON route in a `router.Group` instead of adding it to OpenAPI + `apiHandler`.
 - Call the upstream API or DB from a cache-backed handler on cache miss (return 503).
 - Write Redis key literals outside `internal/cache/keys.go`.
@@ -89,7 +90,7 @@ Then read every file in the plan's Changes Required plus direct neighbours (impo
 - Jobs: `internal/livegame/jobs/<feature>/job.go` implementing `Name()` + `Run(ctx)`; schedule constant in `internal/livegame/jobs/schedules/intervals.go`; register in `livegame/jobs.Register`.
 - Config: new env vars in `internal/config/config.go` (use `secret()` for sensitive values so `*_FILE` works), `services/politburo/.env.example`, and `infra/prod/env/politburo.env.example`.
 - Migrations: `services/politburo/migrations/NNN_<slug>.sql`, transactional, manual apply.
-- Responses: `response.WriteJSON` / `response.WriteError(w, status, CODE, message)`; cache-backed via `cachedresponse.Response[T]`.
+- Responses: `response.WriteJSON` / `response.WriteError(w, status, CODE, message)`; cache-backed via `cachedresponse.Response[T]`. Do not put sealed ciphertext, envelopes, or decrypted secrets in an ordinary JSON response or SSR page. Returning an encrypted value requires its own handler and route (`docs/politburo/conventions.md`).
 - Every exported identifier in a new file gets a one-line doc comment starting with its name.
 
 ## Performance defaults
@@ -114,7 +115,7 @@ Then read every file in the plan's Changes Required plus direct neighbours (impo
 
 ## SSR UI rules
 
-- Handlers: read claims → call one service → `renderer.Render(w, "<template>", data)`. No DB/Redis/IF calls in UI handlers.
+- Handlers: read claims → call one service → `renderer.Render(w, "<template>", data)`. No DB/Redis/IF calls in UI handlers. Page data does not include sealed ciphertext, envelopes, or decrypted secrets.
 - Computed values, role checks, and formatting happen in Go before render; templates only branch on show/hide.
 - CSS in `internal/ui/static/css/`; JS as ES modules in `internal/ui/static/js/` with explicit constructor options (see `js/map/flight-map.mjs`). No inline `onclick`, no inline color/typography styles, no polling.
 - Map/heavy JS loads only on the page that needs it.

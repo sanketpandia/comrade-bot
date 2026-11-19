@@ -127,6 +127,7 @@ Compose, env templates (`services/politburo/.env.example`, `infra/prod/env/*.env
 - Success: `response.WriteJSON(w, status, body)` with `{data: …}`; cache-backed: `cachedresponse.Response[T]`.
 - Error: `response.WriteError(w, status, CODE, message)` → `{error:{code,message}}`. Name each `CODE`.
 - List every status each endpoint returns and its trigger.
+- Ordinary responses and UI page data do not include sealed ciphertext, envelopes, or decrypted secrets. Presence flags are fine. Returning an encrypted value needs its own route and handler, used only when the caller must receive the sealed value. See `docs/politburo/conventions.md`.
 
 ### Auth Scopes
 | Scope | Mechanism | Requirement |

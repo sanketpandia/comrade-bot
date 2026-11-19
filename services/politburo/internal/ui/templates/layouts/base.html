@@ -37,6 +37,9 @@
   {{if and (eq .Content "admin-content") (eq .AdminTab "webhooks")}}
   <script type="module" src="/static/js/admin/webhooks.mjs"></script>
   {{end}}
+  {{if and (eq .Content "admin-content") (eq .AdminTab "data-connections")}}
+  <script type="module" src="/static/js/admin/data-connections.mjs"></script>
+  {{end}}
   {{if and (eq .Content "admin-content") (eq .AdminTab "live")}}
   <script type="module" src="/static/js/admin/oauth.mjs"></script>
   {{end}}

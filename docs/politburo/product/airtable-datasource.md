@@ -1,5 +1,13 @@
 # Airtable datasource
 
+**Implemented path:** VA administrators use **Admin → Data connections**
+(`/admin/data-connections`) and `/api/v1/va/data-connections` to register an
+Airtable personal access token, one or more bases, and mappings for pilots,
+routes, and PIREPs. Credentials are encrypted at rest with the shared Politburo key (`DATA_ENCRYPTION_KEY`);
+live reads hit Airtable on each request (no record sync tables yet). The sections
+below retain the original product notes; treat the admin tab and OpenAPI contract
+as the source of truth for current behaviour.
+
 Administrator portal wizard for connecting a VA’s Airtable base. Pilots never
 see table names, record ids, or link fields. Bourgeoisie do not configure
 this; administrator only.

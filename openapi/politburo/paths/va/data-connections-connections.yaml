@@ -1,0 +1,45 @@
+post:
+  operationId: createVADataConnection
+  summary: Create a data connection
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [name, provider, token, baseName, baseId]
+          properties:
+            name: { type: string }
+            provider: { type: string }
+            token: { type: string }
+            baseName: { type: string }
+            baseId: { type: string }
+  responses:
+    "201":
+      description: Created
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VADataConnectionsResponse.yaml"
+    "412":
+      description: Revision conflict
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"
+    "428":
+      description: Missing If-Match
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yaml"

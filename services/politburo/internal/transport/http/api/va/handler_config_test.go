@@ -168,6 +168,37 @@ func TestUpsertVAConfigUnknownType(t *testing.T) {
 	}
 }
 
+func TestGetVAConfigRejectsDataConnections(t *testing.T) {
+	handler := &Handler{vas: configTestVA(), configs: configRepoStub{block: &vaconfig.Block{
+		ConfigType: vaconfig.TypeDataConnections,
+		Config:     []byte(`{"version":1,"revision":1}`),
+	}}}
+	recorder := httptest.NewRecorder()
+	req := withClaims(httptest.NewRequest(http.MethodGet, routes.VAConfig+"?configType=DATA_CONNECTIONS", nil), auth.Claims{
+		PbServerID: "va-1",
+		PbUserID:   "user-1",
+		Role:       "administrator",
+	})
+	handler.GetVAConfig(recorder, req, vaconfig.TypeDataConnections)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body)
+	}
+}
+
+func TestUpsertVAConfigRejectsDataConnections(t *testing.T) {
+	handler := &Handler{vas: configTestVA(), configs: configRepoStub{}}
+	recorder := httptest.NewRecorder()
+	req := withClaims(httptest.NewRequest(http.MethodPost, routes.VAConfig+"?configType=DATA_CONNECTIONS", bytes.NewBufferString(`{}`)), auth.Claims{
+		PbServerID: "va-1",
+		PbUserID:   "user-1",
+		Role:       "administrator",
+	})
+	handler.UpsertVAConfig(recorder, req, vaconfig.TypeDataConnections)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body)
+	}
+}
+
 func TestUpsertVAConfigValidatesWebhooks(t *testing.T) {
 	handler := &Handler{vas: configTestVA(), configs: configRepoStub{}}
 	cases := map[string]int{

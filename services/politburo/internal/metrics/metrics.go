@@ -33,6 +33,10 @@ type Registry struct {
 	WebhookActiveFlightsMatched  *prometheus.CounterVec
 	WebhookActiveFlightsReported *prometheus.CounterVec
 	WebhookActiveFlightsCapped   *prometheus.CounterVec
+	DataConnectionsProviderReqs       *prometheus.CounterVec
+	DataConnectionsProviderDuration   *prometheus.HistogramVec
+	DataConnectionsReadsTotal         *prometheus.CounterVec
+	DataConnectionsReadDuration       *prometheus.HistogramVec
 }
 
 func NewRegistry() *Registry {
@@ -215,6 +219,32 @@ func NewRegistry() *Registry {
 		Name:      "active_flights_capped_total",
 		Help:      "active_flights dispatches whose match count exceeded the report cap.",
 	}, []string{"webhook_type"})
+	dataConnProviderReqs := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "dataconnections",
+		Name:      "provider_requests_total",
+		Help:      "Upstream data provider HTTP requests.",
+	}, []string{"provider", "operation", "outcome"})
+	dataConnProviderDuration := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "politburo",
+		Subsystem: "dataconnections",
+		Name:      "provider_request_duration_seconds",
+		Help:      "Upstream data provider HTTP request duration in seconds.",
+		Buckets:   []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 15, 20, 30},
+	}, []string{"provider", "operation"})
+	dataConnReads := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "politburo",
+		Subsystem: "dataconnections",
+		Name:      "reads_total",
+		Help:      "Logical data connection read operations.",
+	}, []string{"operation", "entity", "outcome"})
+	dataConnReadDuration := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "politburo",
+		Subsystem: "dataconnections",
+		Name:      "read_duration_seconds",
+		Help:      "Logical data connection read operation duration in seconds.",
+		Buckets:   prometheus.DefBuckets,
+	}, []string{"operation", "entity"})
 	registry.MustRegister(
 		requests, duration,
 		cacheOperations, cacheDuration, cachePayloadBytes, cacheInserts,
@@ -225,6 +255,7 @@ func NewRegistry() *Registry {
 		vaActiveFlights,
 		webhookDispatchTotal, webhookDispatchDuration, webhookDiscordPosts,
 		webhookActiveFlightsServers, webhookActiveFlightsMatched, webhookActiveFlightsReported, webhookActiveFlightsCapped,
+		dataConnProviderReqs, dataConnProviderDuration, dataConnReads, dataConnReadDuration,
 	)
 	return &Registry{
 		Prometheus: registry, Requests: requests, RequestDuration: duration,
@@ -246,7 +277,27 @@ func NewRegistry() *Registry {
 		WebhookActiveFlightsMatched:  webhookActiveFlightsMatched,
 		WebhookActiveFlightsReported: webhookActiveFlightsReported,
 		WebhookActiveFlightsCapped:   webhookActiveFlightsCapped,
+		DataConnectionsProviderReqs:       dataConnProviderReqs,
+		DataConnectionsProviderDuration:   dataConnProviderDuration,
+		DataConnectionsReadsTotal:         dataConnReads,
+		DataConnectionsReadDuration:       dataConnReadDuration,
 	}
+}
+
+func (r *Registry) ObserveDataConnectionsProvider(provider, operation, outcome string, seconds float64) {
+	if r == nil {
+		return
+	}
+	r.DataConnectionsProviderReqs.WithLabelValues(provider, operation, outcome).Inc()
+	r.DataConnectionsProviderDuration.WithLabelValues(provider, operation).Observe(seconds)
+}
+
+func (r *Registry) ObserveDataConnectionsRead(operation, entity, outcome string, seconds float64) {
+	if r == nil {
+		return
+	}
+	r.DataConnectionsReadsTotal.WithLabelValues(operation, entity, outcome).Inc()
+	r.DataConnectionsReadDuration.WithLabelValues(operation, entity).Observe(seconds)
 }
 
 func (r *Registry) ObserveWebhookDispatch(webhookType, outcome string, seconds float64) {

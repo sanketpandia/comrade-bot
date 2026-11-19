@@ -1,0 +1,67 @@
+{
+  "title": "Politburo data connections",
+  "uid": "politburo-dataconnections",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Provider requests / min",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "sum by (outcome) (rate(politburo_dataconnections_provider_requests_total[5m]))",
+          "legendFormat": "{{outcome}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Provider p95 latency",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, operation) (rate(politburo_dataconnections_provider_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{operation}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Logical reads / min",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "sum by (entity, outcome) (rate(politburo_dataconnections_reads_total[5m]))",
+          "legendFormat": "{{entity}} {{outcome}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Throttle and timeout outcomes",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "sum(rate(politburo_dataconnections_provider_requests_total{outcome=~\"throttled|timeout\"}[5m]))",
+          "legendFormat": "provider",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(politburo_dataconnections_reads_total{outcome=~\"throttled|timeout\"}[5m]))",
+          "legendFormat": "logical",
+          "refId": "B"
+        }
+      ]
+    }
+  ]
+}

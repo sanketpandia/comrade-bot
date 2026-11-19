@@ -20,6 +20,8 @@ import (
 	"infinite-experiment/politburo/internal/community/users/status"
 	"infinite-experiment/politburo/internal/community/virtualairlines"
 	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
+	"infinite-experiment/politburo/internal/community/virtualairlines/connections"
+	"infinite-experiment/politburo/internal/community/virtualairlines/connections/airtable"
 	"infinite-experiment/politburo/internal/community/virtualairlines/lookup"
 	"infinite-experiment/politburo/internal/config"
 	"infinite-experiment/politburo/internal/database"
@@ -27,14 +29,15 @@ import (
 	gameflights "infinite-experiment/politburo/internal/livegame/flights"
 	"infinite-experiment/politburo/internal/livegame/infiniteflight"
 	gameliveries "infinite-experiment/politburo/internal/livegame/liveries"
-	"infinite-experiment/politburo/internal/livegame/valive"
 	gamesessions "infinite-experiment/politburo/internal/livegame/sessions"
+	"infinite-experiment/politburo/internal/livegame/valive"
 	"infinite-experiment/politburo/internal/logging"
 	"infinite-experiment/politburo/internal/metrics"
 	"infinite-experiment/politburo/internal/operations/contact"
 	"infinite-experiment/politburo/internal/operations/operator"
 	"infinite-experiment/politburo/internal/operations/reports"
 	"infinite-experiment/politburo/internal/scheduler"
+	"infinite-experiment/politburo/internal/secretstore"
 	"infinite-experiment/politburo/internal/ui"
 	"infinite-experiment/politburo/internal/webhooks"
 	"infinite-experiment/politburo/internal/webhooks/discord"
@@ -55,28 +58,29 @@ type App struct {
 	Scheduler *scheduler.Scheduler
 	UI        *ui.Renderer
 
-	Registration    *registration.Service
-	Membership      *membership.Service
-	VAInit          *virtualairlines.Service
-	Status          *status.Builder
-	Reports         *reports.Repository
-	Contact         *contact.Repository
-	Operator        *operator.Service
-	Resolver        *resolver.Resolver
-	VALookup        *lookup.VALookup
-	VirtualAirlines *virtualairlines.Repository
-	VAConfigs       *vaconfig.Repository
-	IFUsers         infiniteflight.UsersClient
-	LiveryLookup    *gameliveries.Lookup
-	FlightsReader   *gameflights.Reader
-	PlanFetcher     *gameflights.PlanFetcher
-	SessionsReader  *gamesessions.Reader
-	VAWebhookJob    *webhookjobs.Job
-	IFOAuth         *infiniteflight.OAuthClient
-	IFLive          *infiniteflight.LiveClient
-	VALiveGrants    *valive.GrantsRepository
-	VALiveConnections *valive.ConnectionsRepository
-	VALiveTokens      *valive.TokenProvider
+	Registration            *registration.Service
+	Membership              *membership.Service
+	VAInit                  *virtualairlines.Service
+	Status                  *status.Builder
+	Reports                 *reports.Repository
+	Contact                 *contact.Repository
+	Operator                *operator.Service
+	Resolver                *resolver.Resolver
+	VALookup                *lookup.VALookup
+	VirtualAirlines         *virtualairlines.Repository
+	VAConfigs               *vaconfig.Repository
+	VADataConnections       *connections.Service
+	IFUsers                 infiniteflight.UsersClient
+	LiveryLookup            *gameliveries.Lookup
+	FlightsReader           *gameflights.Reader
+	PlanFetcher             *gameflights.PlanFetcher
+	SessionsReader          *gamesessions.Reader
+	VAWebhookJob            *webhookjobs.Job
+	IFOAuth                 *infiniteflight.OAuthClient
+	IFLive                  *infiniteflight.LiveClient
+	VALiveGrants            *valive.GrantsRepository
+	VALiveConnections       *valive.ConnectionsRepository
+	VALiveTokens            *valive.TokenProvider
 	VALiveAssignCaptain     *valive.AssignCaptainService
 	VALiveAssignmentWebhook *livemodeassignment.Notifier
 	VALiveActions           *valive.ActionHistoryRepository
@@ -176,34 +180,56 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	}
 	vaLiveAssignmentWebhook := livemodeassignment.New(vaConfigRepo, discord.NewClient(metricsRegistry))
 
+	var vaDataConnections *connections.Service
+	if len(cfg.AtRest.Key) == 32 {
+		root := cfg.AtRest.Key
+		cfg.AtRest.Key = nil
+		keys, err := secretstore.Derive(root)
+		secretstore.Wipe(root)
+		if err != nil {
+			_ = cacheStore.Close()
+			_ = db.Close()
+			return nil, fmt.Errorf("data encryption: %w", err)
+		}
+		atClient := airtable.NewClient(metricsRegistry, cfg.HTTP.WriteTimeout)
+		vaDataConnections, err = connections.NewService(vaConfigRepo, atClient, keys.AtRest, keys.CursorMAC, metricsRegistry)
+		secretstore.Wipe(keys.CursorMAC)
+		if err != nil {
+			_ = cacheStore.Close()
+			_ = db.Close()
+			return nil, fmt.Errorf("data connections: %w", err)
+		}
+	}
+
 	application := &App{
 		Config: cfg, StartedAt: time.Now().UTC(), DB: db, Cache: cacheStore,
 		APIKeys: apikeys.NewLookup(apikeys.NewRepository(db), cacheStore),
 		Users:   userRepo, Sessions: session.NewService(cacheStore),
 		Tickets: auth.NewTickets(cacheStore, cfg.Auth.SignedLinkSecret),
 		Metrics: metricsRegistry, Scheduler: jobScheduler, UI: renderer,
-		Registration:    registration.NewService(userRepo, ifUsers),
-		Membership:      membership.NewService(userRepo, membershipRepo, vaRepo, roster.Noop{}),
-		VAInit:          vaInit,
-		Status:          status.NewBuilder(userRepo, membershipRepo, vaRepo),
-		Reports:         reportRepo,
-		Contact:         contact.NewRepository(db),
-		Operator:        operator.NewService(db, userRepo, membershipRepo, reportRepo, vaRepo),
-		Resolver:        resolver.NewResolver(userRepo, vaRepo, membershipRepo),
-		VALookup:        lookup.NewVALookup(vaRepo),
-		VirtualAirlines: vaRepo,
-		VAConfigs:       vaConfigRepo,
-		IFUsers:         ifUsers,
-		LiveryLookup:    liveryLookup,
-		FlightsReader:   gameflights.NewReader(cacheStore),
-		PlanFetcher:     gameflights.NewPlanFetcher(infiniteFlightClient, cacheStore),
-		SessionsReader:  gamesessions.NewReader(cacheStore),
-		VAWebhookJob:    vaWebhookDispatch,
-		IFOAuth:           ifOAuth,
-		IFLive:            ifLive,
-		VALiveGrants:      vaLiveGrants,
-		VALiveConnections:   vaLiveConnections,
-		VALiveTokens:        vaLiveTokens,
+		Registration:            registration.NewService(userRepo, ifUsers),
+		Membership:              membership.NewService(userRepo, membershipRepo, vaRepo, roster.Noop{}),
+		VAInit:                  vaInit,
+		Status:                  status.NewBuilder(userRepo, membershipRepo, vaRepo),
+		Reports:                 reportRepo,
+		Contact:                 contact.NewRepository(db),
+		Operator:                operator.NewService(db, userRepo, membershipRepo, reportRepo, vaRepo),
+		Resolver:                resolver.NewResolver(userRepo, vaRepo, membershipRepo),
+		VALookup:                lookup.NewVALookup(vaRepo),
+		VirtualAirlines:         vaRepo,
+		VAConfigs:               vaConfigRepo,
+		VADataConnections:       vaDataConnections,
+		IFUsers:                 ifUsers,
+		LiveryLookup:            liveryLookup,
+		FlightsReader:           gameflights.NewReader(cacheStore),
+		PlanFetcher:             gameflights.NewPlanFetcher(infiniteFlightClient, cacheStore),
+		SessionsReader:          gamesessions.NewReader(cacheStore),
+		VAWebhookJob:            vaWebhookDispatch,
+		IFOAuth:                 ifOAuth,
+		IFLive:                  ifLive,
+		VALiveGrants:            vaLiveGrants,
+		VALiveConnections:       vaLiveConnections,
+		VALiveTokens:            vaLiveTokens,
 		VALiveAssignCaptain:     vaLiveAssignCaptain,
 		VALiveAssignmentWebhook: vaLiveAssignmentWebhook,
 		VALiveActions:           vaLiveActions,

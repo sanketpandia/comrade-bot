@@ -31,7 +31,8 @@ const (
 	Dashboard     = "/dashboard"
 	Admin         = "/admin"
 	AdminGeneral  = "/admin/general"
-	AdminWebhooks = "/admin/webhooks"
+	AdminWebhooks         = "/admin/webhooks"
+	AdminDataConnections  = "/admin/data-connections"
 	AdminLive            = "/admin/live"
 	AdminMembers         = "/admin/members"
 	AdminMembersDeleted  = "/admin/members/deleted"
@@ -80,6 +81,14 @@ const (
 	VA                                = "/api/v1/va"
 	VAConfig                          = "/api/v1/va/config"
 	VAWebhookTrigger                  = "/api/v1/va/webhook/trigger"
+	VADataConnections                 = "/api/v1/va/data-connections"
+	VADataConnectionsConnections      = "/api/v1/va/data-connections/connections"
+	VADataConnection                  = "/api/v1/va/data-connections/connections/{connectionId}"
+	VADataConnectionBases             = "/api/v1/va/data-connections/connections/{connectionId}/bases"
+	VADataConnectionBase              = "/api/v1/va/data-connections/connections/{connectionId}/bases/{baseId}"
+	VADataConnectionBaseSchema        = "/api/v1/va/data-connections/connections/{connectionId}/bases/{baseId}/schema"
+	VADataConnectionMapping           = "/api/v1/va/data-connections/mappings/{entity}"
+	VADataConnectionMappingPreview    = "/api/v1/va/data-connections/mappings/{entity}/preview"
 	VALiveScheduleEnums               = "/api/v1/va/live/schedule-enums"
 	VALiveScheduleBookings            = "/api/v1/va/live/schedule-bookings"
 	VALiveConnections                 = "/api/v1/va/live/connections"
@@ -124,6 +133,14 @@ var OpenAPIPaths = []string{
 	VA,
 	VAConfig,
 	VAWebhookTrigger,
+	VADataConnections,
+	VADataConnectionsConnections,
+	VADataConnection,
+	VADataConnectionBases,
+	VADataConnectionBase,
+	VADataConnectionBaseSchema,
+	VADataConnectionMapping,
+	VADataConnectionMappingPreview,
 	VALiveScheduleEnums,
 	VALiveScheduleBookings,
 	VALiveConnections,

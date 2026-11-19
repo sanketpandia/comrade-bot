@@ -1,0 +1,59 @@
+put:
+  operationId: putVADataConnectionMapping
+  summary: Save entity mapping
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: entity
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [pilots, routes, pireps]
+    - name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: true
+  responses:
+    "200":
+      description: Saved
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VADataConnectionsResponse.yaml"
+delete:
+  operationId: deleteVADataConnectionMapping
+  summary: Clear entity mapping
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: entity
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [pilots, routes, pireps]
+    - name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: Cleared
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VADataConnectionsResponse.yaml"
