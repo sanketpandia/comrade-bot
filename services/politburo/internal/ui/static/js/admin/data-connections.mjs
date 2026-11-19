@@ -22,7 +22,7 @@ async function load() {
   const res = await fetch(API_URL, { credentials: 'same-origin' });
   const body = await res.json().catch(() => ({}));
   if (res.status === 503) {
-    showStatus('Data connections are not configured on this server. Set DATA_CONNECTIONS_ENCRYPTION_KEY.', true);
+    showStatus('Data connections are not configured on this server. Set DATA_ENCRYPTION_KEY.', true);
     if (createForm) createForm.hidden = true;
     return;
   }

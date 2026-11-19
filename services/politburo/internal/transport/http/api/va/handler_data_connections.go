@@ -423,6 +423,13 @@ func writeDataConnectionsView(w http.ResponseWriter, status int, view connection
 func writeDataConnectionsError(w http.ResponseWriter, r *http.Request, err error) {
 	var pe *connections.ProviderError
 	if errors.As(err, &pe) {
+		slog.Warn("data connection provider request failed",
+			"request_id", chimiddleware.GetReqID(r.Context()),
+			"operation", pe.Operation,
+			"base_id", pe.BaseID,
+			"upstream_status", pe.StatusCode,
+			"upstream_error", pe.UpstreamCode,
+		)
 		if errors.Is(pe.Kind, connections.ErrProviderThrottled) {
 			if pe.RetryAfter > 0 {
 				w.Header().Set("Retry-After", strconv.Itoa(int(pe.RetryAfter.Seconds())))

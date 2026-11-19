@@ -14,10 +14,13 @@ var (
 )
 
 // ResponseError is returned for non-success HTTP statuses.
+// Code is Airtable's error type when the body has one. It is empty when the
+// body is missing or not a short token of letters, digits, '_', '-', or '.'.
 type ResponseError struct {
 	Status     int
 	RetryAfter time.Duration
 	Err        error
+	Code       string
 }
 
 func (e *ResponseError) Error() string {

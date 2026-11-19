@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,6 +29,27 @@ func TestClientFetchSchemaSuccess(t *testing.T) {
 	}
 	if len(tables) != 1 || tables[0].ID != "tbl" {
 		t.Fatalf("tables = %+v", tables)
+	}
+}
+
+func TestClientDeniedKeepsErrorCodeOnly(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer secret-token" {
+			t.Fatalf("authorization header missing")
+		}
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"error":{"type":"INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND","message":"secret-token was rejected"}}`))
+	}))
+	defer srv.Close()
+
+	client := NewClient(nil, time.Second).WithBaseURL(srv.URL)
+	_, err := client.FetchSchema(context.Background(), "secret-token", "appBase")
+	var resp *ResponseError
+	if !errors.As(err, &resp) || resp.Status != http.StatusForbidden || resp.Code != "INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND" {
+		t.Fatalf("err = %#v", resp)
+	}
+	if strings.Contains(err.Error(), "secret-token") {
+		t.Fatalf("error leaked token: %v", err)
 	}
 }
 

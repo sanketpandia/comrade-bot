@@ -15,20 +15,21 @@ import (
 )
 
 type Config struct {
-	Environment               string
-	HTTP                      HTTP
-	Database                  Database
-	Redis                     Redis
-	Jobs                      Jobs
-	InfiniteFlight            InfiniteFlight
-	Auth                      Auth
-	DataConnections           DataConnections
+	Environment                string
+	HTTP                       HTTP
+	Database                   Database
+	Redis                      Redis
+	Jobs                       Jobs
+	InfiniteFlight             InfiniteFlight
+	Auth                       Auth
+	AtRest                     AtRest
 	PlatformOperatorDiscordIDs []string
 }
 
-// DataConnections holds encryption material for live provider credentials.
-type DataConnections struct {
-	EncryptionKey []byte
+// AtRest holds the optional deployment root for secretstore.
+// An empty key leaves at-rest consumers disabled. There is no generated fallback.
+type AtRest struct {
+	Key []byte
 }
 
 type Auth struct {
@@ -109,7 +110,7 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	dataConnectionsKeyRaw, err := secret("DATA_CONNECTIONS_ENCRYPTION_KEY", "")
+	atRestKeyRaw, err := secret("DATA_ENCRYPTION_KEY", "")
 	if err != nil {
 		return Config{}, err
 	}
@@ -165,11 +166,11 @@ func Load() (Config, error) {
 		},
 		PlatformOperatorDiscordIDs: csv("PLATFORM_OPERATOR_DISCORD_IDS", nil),
 	}
-	dataConnKey, err := parseDataConnectionsEncryptionKey(dataConnectionsKeyRaw)
+	atRestKey, err := parseAtRestKey(atRestKeyRaw)
 	if err != nil {
 		return Config{}, err
 	}
-	cfg.DataConnections.EncryptionKey = dataConnKey
+	cfg.AtRest.Key = atRestKey
 
 	if _, err := strconv.Atoi(cfg.HTTP.Port); err != nil {
 		return Config{}, fmt.Errorf("PORT must be numeric: %w", err)
@@ -207,17 +208,17 @@ func Load() (Config, error) {
 // localSignedLinkSecretHex is a documented 32-byte development key.
 const localSignedLinkSecretHex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
-func parseDataConnectionsEncryptionKey(raw string) ([]byte, error) {
+func parseAtRestKey(raw string) ([]byte, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return nil, nil
 	}
 	decoded, err := base64.StdEncoding.DecodeString(raw)
 	if err != nil {
-		return nil, fmt.Errorf("DATA_CONNECTIONS_ENCRYPTION_KEY must be base64-encoded 32 bytes: %w", err)
+		return nil, fmt.Errorf("DATA_ENCRYPTION_KEY must be base64-encoded 32 bytes: %w", err)
 	}
 	if len(decoded) != 32 {
-		return nil, fmt.Errorf("DATA_CONNECTIONS_ENCRYPTION_KEY must decode to 32 bytes")
+		return nil, fmt.Errorf("DATA_ENCRYPTION_KEY must decode to 32 bytes")
 	}
 	return decoded, nil
 }

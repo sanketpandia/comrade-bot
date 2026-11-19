@@ -18,15 +18,15 @@ func mapAirtableError(err error) error {
 	if errors.As(err, &resp) {
 		switch {
 		case errors.Is(resp.Err, airtable.ErrThrottle):
-			return &ProviderError{Kind: ErrProviderThrottled, StatusCode: resp.Status, RetryAfter: resp.RetryAfter}
+			return &ProviderError{Kind: ErrProviderThrottled, StatusCode: resp.Status, RetryAfter: resp.RetryAfter, UpstreamCode: resp.Code}
 		case errors.Is(resp.Err, airtable.ErrDenied):
-			return &ProviderError{Kind: ErrProviderDenied, StatusCode: resp.Status}
+			return &ProviderError{Kind: ErrProviderDenied, StatusCode: resp.Status, UpstreamCode: resp.Code}
 		case errors.Is(resp.Err, airtable.ErrNotFound):
 			return ErrRecordNotFound
 		case errors.Is(resp.Err, airtable.ErrTimeout):
 			return ErrProviderTimeout
 		default:
-			return &ProviderError{Kind: ErrProviderUpstream, StatusCode: resp.Status}
+			return &ProviderError{Kind: ErrProviderUpstream, StatusCode: resp.Status, UpstreamCode: resp.Code}
 		}
 	}
 	if errors.Is(err, airtable.ErrTimeout) {

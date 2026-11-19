@@ -37,7 +37,7 @@ Host **Caddy** (native `caddy.service`) proxies public HTTPS to `127.0.0.1:8080`
 ```bash
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server \
   --disable traefik \
-  --write-kubeconfig-mode 644" sh -
+  --write-kubeconfig-mode 600" sh -
 
 sudo kubectl get nodes
 ```
@@ -73,7 +73,9 @@ sudo chown -R gitrunner:gitrunner /home/gitrunner/.kube
 sudo chmod 600 /home/gitrunner/.kube/config
 ```
 
-Optional: use GitHub secret `KUBECONFIG_B64` instead (deploy workflow writes `~/.kube/config` per job).
+`/etc/rancher/k3s/k3s.yaml` is the cluster-admin kubeconfig. Keep it `root:root` and mode `0600`. The copy above is also cluster-admin: anyone who can use it can read `politburo-env`, including `DATA_ENCRYPTION_KEY`. Replace it with a dedicated deploy identity scoped to the namespaces and verbs the deploy jobs actually use before storing real provider tokens. Workload create and update rights can still expose mounted secrets, so check that identity's RBAC as well as datastore encryption and backup access.
+
+Optional: use GitHub secret `KUBECONFIG_B64` instead (deploy workflow writes `~/.kube/config` per job). That value must be the dedicated deploy identity, not the admin kubeconfig.
 
 ### Runner hooks (optional)
 
@@ -127,6 +129,17 @@ kubectl -n ie-apps create secret docker-registry ghcr-cred \
   --docker-password=GITHUB_PAT_WITH_read_packages
 kubectl -n ie-apps patch deployment politburo -p '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"ghcr-cred"}]}}}}'
 kubectl -n ie-apps patch deployment comrade-bot -p '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"ghcr-cred"}]}}}}'
+```
+
+Generate `DATA_ENCRYPTION_KEY` once per environment with `openssl rand -base64 32` and put it in the private `infra/prod/env/politburo.env` (mode `0600`) before creating `politburo-env`. Keep a recoverable copy separate from database backups. To refresh that Secret without dropping other entries, reapply the env file and the cluster DNS patch, then roll Politburo:
+
+```bash
+kubectl -n ie-apps create secret generic politburo-env \
+  --from-env-file=../env/politburo.env --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n ie-apps patch secret politburo-env --type merge -p \
+  '{"stringData":{"PG_HOST":"postgres.ie-data.svc.cluster.local","REDIS_HOST":"redis.ie-data.svc.cluster.local"}}'
+kubectl -n ie-apps rollout restart deployment/politburo
+kubectl -n ie-apps rollout status deployment/politburo
 ```
 
 Public GHCR packages do not need `ghcr-cred`; manifests omit `imagePullSecrets` by default so kubelet will not warn about a missing secret.

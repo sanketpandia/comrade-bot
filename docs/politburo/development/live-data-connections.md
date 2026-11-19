@@ -29,7 +29,7 @@ Use the internal config type `DATA_CONNECTIONS`. Keep this type out of the publi
     "name": "Flight operations",
     "provider": "airtable",
     "airtable": {
-      "credential": {"version": 1, "nonce": "...", "ciphertext": "..."},
+      "credential": {"version": 1, "sealed": "..."},
       "bases": [{"id": "base-setup-id", "name": "Operations", "baseId": "appExample"}]
     }
   }],
@@ -46,7 +46,7 @@ Use the internal config type `DATA_CONNECTIONS`. Keep this type out of the publi
 
 - Generate stable internal UUIDs for connections and base setups. Connection labels are editable. Validate references within the current VA block. Keep provider-specific base and table resolution inside the adapter. Persist physical field IDs so column renames preserve mappings.
 - Give the admin view its own DTO with `hasCredential`, labels, IDs, mappings, revision, and audit metadata. The write DTO accepts a replacement token. Omitting it on edit retains the existing token. An empty replacement is invalid. Deletion removes the credential with the connection.
-- Use a dedicated deployment key, `DATA_CONNECTIONS_ENCRYPTION_KEY`, decoded from base64 to 32 bytes. Use the standard-library AES-GCM pattern already present in the auth package, with a fresh random nonce per encryption and VA ID, connection ID and envelope version as authenticated context. Keep credential handling in the connections domain. Provision the key through existing environment/secret wiring. Missing key disables this capability with a clear setup error while existing service functionality remains available. Keep the key durable across replicas, backups, and redeploys.
+- Seal credentials with the shared at-rest cipher (`services/politburo/internal/secretstore`), configured by `DATA_ENCRYPTION_KEY` (standard base64, 32 bytes) or `DATA_ENCRYPTION_KEY_FILE`. The root is split with HKDF into an AES-256-GCM key and a separate cursor HMAC key. Associated data binds envelope version, purpose `airtable.pat`, VA ID, and connection ID. A missing key disables this capability with a clear setup error while the rest of Politburo keeps running. Keep the root durable across replicas, backups, and redeploys, and separate from database backups. Signed dashboard tickets stay on `SIGNED_LINK_SECRET`.
 - Require the observed revision on every mutation. Read and validate the candidate configuration first, including any provider calls. On first write use insert-on-conflict-do-nothing at expected revision zero. For updates, match VA, config type and expected JSON revision in the UPDATE predicate. Write the incremented revision, actor, and timestamp together and return the stored metadata. Zero affected rows means conflict. Retain an empty block after the last deletion so revisions continue increasing. Hold no database lock across upstream requests.
 - Reject deletion of referenced bases or connections. Changing a mapped base's physical ID would invalidate the saved table IDs. Add a new base setup, remap the entity, then remove the original. Test a replacement credential against every configured base before committing it.
 

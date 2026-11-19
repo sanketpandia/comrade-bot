@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"encoding/base64"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +24,8 @@ func TestLoadUsesRewriteSafeDefaults(t *testing.T) {
 	t.Setenv("CORS_ALLOWED_ORIGINS", "")
 	t.Setenv("SIGNED_LINK_SECRET", "")
 	t.Setenv("UI_BASE_URL", "")
+	t.Setenv("DATA_ENCRYPTION_KEY", "")
+	t.Setenv("DATA_ENCRYPTION_KEY_FILE", "")
 
 	cfg, err := Load()
 	if err != nil {
@@ -38,6 +42,9 @@ func TestLoadUsesRewriteSafeDefaults(t *testing.T) {
 	}
 	if cfg.Database.URL == "" {
 		t.Fatal("database URL must have a local default")
+	}
+	if cfg.AtRest.Key != nil {
+		t.Fatal("at-rest key must stay unset when DATA_ENCRYPTION_KEY is empty")
 	}
 	if cfg.Redis.Address() != "localhost:6379" || cfg.Redis.DB != 0 {
 		t.Fatalf("Redis config = %#v", cfg.Redis)
@@ -249,6 +256,57 @@ func TestLoadAcceptsInfiniteFlightOAuthCredentials(t *testing.T) {
 	}
 	if cfg.OAuthRedirectURI() != "https://viz.example"+routes.OAuthCallback {
 		t.Fatalf("redirect URI = %q", cfg.OAuthRedirectURI())
+	}
+}
+
+func TestLoadReadsAtRestKeyFromEnvOrFile(t *testing.T) {
+	raw := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32))
+	t.Setenv("DATA_ENCRYPTION_KEY", raw)
+	t.Setenv("DATA_ENCRYPTION_KEY_FILE", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if len(cfg.AtRest.Key) != 32 || cfg.AtRest.Key[0] != 7 {
+		t.Fatalf("at-rest key length = %d", len(cfg.AtRest.Key))
+	}
+
+	t.Setenv("DATA_ENCRYPTION_KEY", "")
+	path := filepath.Join(t.TempDir(), "data-key")
+	if err := os.WriteFile(path, []byte(raw+"\n"), 0o600); err != nil {
+		t.Fatalf("write secret: %v", err)
+	}
+	t.Setenv("DATA_ENCRYPTION_KEY_FILE", path)
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("Load() file error = %v", err)
+	}
+	if len(cfg.AtRest.Key) != 32 || cfg.AtRest.Key[0] != 7 {
+		t.Fatalf("file at-rest key length = %d", len(cfg.AtRest.Key))
+	}
+}
+
+func TestLoadRejectsBadAtRestKeyWithoutEchoingIt(t *testing.T) {
+	secret := "SUPER-SECRET-KEY-VALUE"
+	t.Setenv("DATA_ENCRYPTION_KEY", secret)
+	t.Setenv("DATA_ENCRYPTION_KEY_FILE", "")
+	_, err := Load()
+	if err == nil || strings.Contains(err.Error(), secret) {
+		t.Fatalf("Load() error = %v, want base64 failure without the secret", err)
+	}
+
+	shortKey := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{1}, 16))
+	t.Setenv("DATA_ENCRYPTION_KEY", shortKey)
+	_, err = Load()
+	if err == nil || !strings.Contains(err.Error(), "32 bytes") || strings.Contains(err.Error(), shortKey) {
+		t.Fatalf("Load() error = %v, want length failure without the secret", err)
+	}
+
+	t.Setenv("DATA_ENCRYPTION_KEY", shortKey)
+	t.Setenv("DATA_ENCRYPTION_KEY_FILE", filepath.Join(t.TempDir(), "unused"))
+	_, err = Load()
+	if err == nil || !strings.Contains(err.Error(), "cannot both be set") || strings.Contains(err.Error(), shortKey) {
+		t.Fatalf("Load() error = %v, want ambiguous source failure without the secret", err)
 	}
 }
 

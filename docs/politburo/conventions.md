@@ -52,6 +52,12 @@ colon-delimited, and begin with a bounded domain prefix such as `game:`. Callers
 must use the shared constants or key builders rather than repeating string
 literals.
 
+## Encrypted values in responses
+
+Ordinary REST responses and UI handlers do not return sealed ciphertext, envelopes, or decrypted secrets. A list, detail, or page response may say that a secret exists (`hasCredential` and similar). It does not include the stored blob or the opened value.
+
+Returning an encrypted value requires its own handler and route, separate from the response that already describes the resource. Use that route only when a caller must receive the sealed value itself. Do not add the blob to a shared DTO, do not render it from the page handler, and do not call the route as part of a normal page load. Authorize it as tightly as the secret it returns.
+
 ## Auth boundary
 
 HTTP handlers and OpenAPI-generated controller methods own cookies, Redis

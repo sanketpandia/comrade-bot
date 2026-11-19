@@ -35,21 +35,17 @@ func signCursor(key []byte, payload cursorPayload) (string, error) {
 
 func openCursor(key []byte, token string, vaID, entity string, revision int, filters map[string]any) (string, error) {
 	raw, err := base64.RawURLEncoding.DecodeString(token)
-	if err != nil {
+	if err != nil || len(raw) < sha256.Size+2 {
 		return "", ErrInvalidCursor
 	}
-	idx := -1
-	for i := len(raw) - 1; i >= 0; i-- {
-		if raw[i] == '.' {
-			idx = i
-			break
-		}
-	}
-	if idx <= 0 {
+	// The MAC is the fixed last 32 bytes. Scanning for a dot inside it rejects
+	// a valid cursor whenever the tag happens to contain 0x2e.
+	split := len(raw) - sha256.Size
+	if raw[split-1] != '.' {
 		return "", ErrInvalidCursor
 	}
-	body := raw[:idx]
-	sig := raw[idx+1:]
+	body := raw[:split-1]
+	sig := raw[split:]
 	mac := hmac.New(sha256.New, key)
 	mac.Write(body)
 	if !hmac.Equal(sig, mac.Sum(nil)) {

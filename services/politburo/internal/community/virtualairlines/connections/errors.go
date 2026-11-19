@@ -25,11 +25,14 @@ var (
 	ErrBaseIDImmutable   = errors.New("physical base id cannot change")
 )
 
-// ProviderError carries a sanitized retry delay for HTTP 429 responses.
+// ProviderError carries sanitized upstream failure details for logs and HTTP mapping.
 type ProviderError struct {
-	Kind       error
-	StatusCode int
-	RetryAfter time.Duration
+	Kind         error
+	StatusCode   int
+	RetryAfter   time.Duration
+	Operation    string
+	BaseID       string
+	UpstreamCode string
 }
 
 func (e *ProviderError) Error() string {

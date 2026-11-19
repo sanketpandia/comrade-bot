@@ -122,6 +122,7 @@ Conventions that are enforced in code today (see `docs/politburo/conventions.md`
 
 - Cache-backed endpoints never call upstream/DB on miss — they return 503 and jobs own population.
 - Handlers own cookies/sessions/claims; domain packages take primitive IDs only and must not import `internal/access/session`.
+- Ordinary REST responses and UI handlers do not return sealed ciphertext, envelopes, or decrypted secrets. A dedicated route is required to return an encrypted value, and it is rare. See `docs/politburo/conventions.md`.
 - Timestamps are `time.Time` until JSON, UTC, RFC 3339.
 - Metrics are performance-only (HTTP, cache, jobs); no business gauges unless asked (explicitly requested: `politburo_livegame_*`, `politburo_livegame_va_active_flights{va_id}`, `politburo_webhooks_*`).
 - VA dependency direction: `livegame`/`webhooks`/transport → `community/virtualairlines`, never the reverse. Data loaders are `Repository` queries (plain `database/sql`; there is no ORM), not `Service` methods.

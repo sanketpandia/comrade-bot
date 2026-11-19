@@ -43,7 +43,7 @@ func (s *Service) UpdateConnection(ctx context.Context, vaID, actor, connectionI
 				return StoredView{}, err
 			}
 		}
-		enc, err := s.cipher.Encrypt(vaID, conn.ID, token)
+		enc, err := s.sealToken(vaID, conn.ID, token)
 		if err != nil {
 			return StoredView{}, err
 		}

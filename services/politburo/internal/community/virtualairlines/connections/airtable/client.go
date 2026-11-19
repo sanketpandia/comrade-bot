@@ -147,18 +147,19 @@ func (c *Client) getJSON(ctx context.Context, token, operation, path string, que
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 
+	code := upstreamErrorCode(body)
 	if resp.StatusCode == http.StatusTooManyRequests {
 		c.observe(operation, "throttled", time.Since(started))
 		retry := parseRetryAfter(resp.Header.Get("Retry-After"))
-		return &ResponseError{Status: resp.StatusCode, RetryAfter: retry, Err: ErrThrottle}
+		return &ResponseError{Status: resp.StatusCode, RetryAfter: retry, Err: ErrThrottle, Code: code}
 	}
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		c.observe(operation, "denied", time.Since(started))
-		return &ResponseError{Status: resp.StatusCode, Err: ErrDenied}
+		return &ResponseError{Status: resp.StatusCode, Err: ErrDenied, Code: code}
 	}
 	if resp.StatusCode == http.StatusNotFound {
 		c.observe(operation, "client_error", time.Since(started))
-		return &ResponseError{Status: resp.StatusCode, Err: ErrNotFound}
+		return &ResponseError{Status: resp.StatusCode, Err: ErrNotFound, Code: code}
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		outcome := "server_error"
@@ -166,7 +167,7 @@ func (c *Client) getJSON(ctx context.Context, token, operation, path string, que
 			outcome = "client_error"
 		}
 		c.observe(operation, outcome, time.Since(started))
-		return &ResponseError{Status: resp.StatusCode, Err: ErrUpstream}
+		return &ResponseError{Status: resp.StatusCode, Err: ErrUpstream, Code: code}
 	}
 	if err := json.Unmarshal(body, dest); err != nil {
 		c.observe(operation, "server_error", time.Since(started))
@@ -201,6 +202,41 @@ func mapRequestErr(err error) error {
 		return ErrTimeout
 	}
 	return ErrUpstream
+}
+
+func upstreamErrorCode(body []byte) string {
+	var wrap struct {
+		Error json.RawMessage `json:"error"`
+	}
+	if err := json.Unmarshal(body, &wrap); err != nil || len(wrap.Error) == 0 {
+		return ""
+	}
+	var asString string
+	if err := json.Unmarshal(wrap.Error, &asString); err == nil {
+		return safeErrorCode(asString)
+	}
+	var asObject struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(wrap.Error, &asObject); err == nil {
+		return safeErrorCode(asObject.Type)
+	}
+	return ""
+}
+
+func safeErrorCode(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || len(raw) > 80 {
+		return ""
+	}
+	for _, r := range raw {
+		switch {
+		case r >= 'A' && r <= 'Z', r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '_', r == '-', r == '.':
+		default:
+			return ""
+		}
+	}
+	return raw
 }
 
 func parseRetryAfter(raw string) time.Duration {

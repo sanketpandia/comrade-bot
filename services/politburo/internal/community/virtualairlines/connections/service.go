@@ -1,6 +1,7 @@
 package connections
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/community/virtualairlines/connections/airtable"
 	"infinite-experiment/politburo/internal/metrics"
+	"infinite-experiment/politburo/internal/secretstore"
 
 	"github.com/google/uuid"
 )
@@ -21,21 +23,26 @@ type blocksRepo interface {
 	UpsertIfRevision(ctx context.Context, vaID, configType string, config json.RawMessage, expectedRevision int, updatedBy string) (*vaconfig.Block, error)
 }
 
+const airtablePATPurpose = "airtable.pat"
+
 // Service owns configuration and live mapped reads.
 type Service struct {
 	repo     blocksRepo
 	airtable *airtable.Client
-	cipher   *CredentialCipher
+	cipher   *secretstore.Cipher
 	metrics  *metrics.Registry
 	signKey  []byte
 }
 
-func NewService(repo blocksRepo, at *airtable.Client, cipher *CredentialCipher, reg *metrics.Registry) *Service {
+func NewService(repo blocksRepo, at *airtable.Client, cipher *secretstore.Cipher, cursorKey []byte, reg *metrics.Registry) (*Service, error) {
+	if cipher != nil && len(cursorKey) != 32 {
+		return nil, errors.New("connections: cursor key must be 32 bytes")
+	}
 	var signKey []byte
 	if cipher != nil {
-		signKey = cipher.SigningKey()
+		signKey = bytes.Clone(cursorKey)
 	}
-	return &Service{repo: repo, airtable: at, cipher: cipher, metrics: reg, signKey: signKey}
+	return &Service{repo: repo, airtable: at, cipher: cipher, metrics: reg, signKey: signKey}, nil
 }
 
 func (s *Service) Enabled() bool {
@@ -106,11 +113,11 @@ func (s *Service) persist(ctx context.Context, vaID, actor string, expected int,
 
 // CreateConnectionInput starts a new provider connection with one base.
 type CreateConnectionInput struct {
-	Name      string
-	Provider  string
-	Token     string
-	BaseName  string
-	BaseID    string
+	Name     string
+	Provider string
+	Token    string
+	BaseName string
+	BaseID   string
 }
 
 func (s *Service) CreateConnection(ctx context.Context, vaID, actor string, expectedRevision int, in CreateConnectionInput) (StoredView, error) {
@@ -132,7 +139,7 @@ func (s *Service) CreateConnection(ctx context.Context, vaID, actor string, expe
 	if err := s.testAirtableAccess(ctx, in.Token, in.BaseID, ""); err != nil {
 		return StoredView{}, err
 	}
-	enc, err := s.cipher.Encrypt(vaID, connID, in.Token)
+	enc, err := s.sealToken(vaID, connID, in.Token)
 	if err != nil {
 		return StoredView{}, err
 	}
@@ -186,18 +193,40 @@ func (s *Service) testAirtableAccess(ctx context.Context, token, baseID, tableID
 	return nil
 }
 
+func (s *Service) sealToken(vaID, connectionID, token string) (secretstore.Envelope, error) {
+	if s == nil || s.cipher == nil {
+		return secretstore.Envelope{}, ErrDisabled
+	}
+	return s.cipher.Encrypt(secretstore.Context{
+		Purpose:  airtablePATPurpose,
+		OwnerID:  vaID,
+		RecordID: connectionID,
+	}, []byte(token))
+}
+
 func (s *Service) tokenForConnection(vaID string, conn Connection) (string, error) {
-	if conn.Airtable == nil {
+	if s == nil || s.cipher == nil || conn.Airtable == nil || len(conn.Airtable.Credential.Sealed) == 0 {
 		return "", ErrInvalidCredential
 	}
-	return s.cipher.Decrypt(vaID, conn.ID, conn.Airtable.Credential)
+	plain, err := s.cipher.Decrypt(secretstore.Context{
+		Purpose:  airtablePATPurpose,
+		OwnerID:  vaID,
+		RecordID: conn.ID,
+	}, conn.Airtable.Credential)
+	if err != nil || len(plain) == 0 {
+		secretstore.Wipe(plain)
+		return "", ErrInvalidCredential
+	}
+	token := string(plain)
+	secretstore.Wipe(plain)
+	return token, nil
 }
 
 // TableDescriptor is live provider metadata for the dashboard.
 type TableDescriptor struct {
-	ID             string             `json:"id"`
-	Name           string             `json:"name"`
-	Fields         []FieldDescriptor  `json:"fields"`
+	ID     string            `json:"id"`
+	Name   string            `json:"name"`
+	Fields []FieldDescriptor `json:"fields"`
 }
 
 type FieldDescriptor struct {
@@ -327,6 +356,13 @@ func (s *Service) List(ctx context.Context, vaID, entity string, filters map[str
 		err = loadErr
 		return ListResult{}, err
 	}
+	offset := ""
+	if cursor != "" {
+		offset, err = openCursor(s.signKey, cursor, vaID, entity, doc.Revision, filters)
+		if err != nil {
+			return ListResult{}, err
+		}
+	}
 	mapping, ok := doc.Mappings[entity]
 	if !ok {
 		err = ErrMissingMapping
@@ -356,13 +392,6 @@ func (s *Service) List(ctx context.Context, vaID, entity string, filters map[str
 	if formulaErr != nil {
 		err = formulaErr
 		return ListResult{}, err
-	}
-	offset := ""
-	if cursor != "" {
-		offset, err = openCursor(s.signKey, cursor, vaID, entity, doc.Revision, filters)
-		if err != nil {
-			return ListResult{}, err
-		}
 	}
 	names := fieldNamesForMapping(mapping, schema)
 	raws, nextOffset, listErr := s.listRecords(ctx, token, base.BaseID, mapping.TableID, names, formula, pageSize, offset)

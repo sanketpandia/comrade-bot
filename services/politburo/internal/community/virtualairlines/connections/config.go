@@ -3,10 +3,12 @@ package connections
 import (
 	"encoding/json"
 	"fmt"
+
+	"infinite-experiment/politburo/internal/secretstore"
 )
 
 const (
-	documentVersion = 1
+	documentVersion  = 1
 	ProviderAirtable = "airtable"
 )
 
@@ -26,14 +28,8 @@ type Connection struct {
 }
 
 type AirtableSetup struct {
-	Credential EncryptedCredential `json:"credential"`
-	Bases      []BaseSetup         `json:"bases"`
-}
-
-type EncryptedCredential struct {
-	Version    int    `json:"version"`
-	Nonce      string `json:"nonce"`
-	Ciphertext string `json:"ciphertext"`
+	Credential secretstore.Envelope `json:"credential"`
+	Bases      []BaseSetup          `json:"bases"`
 }
 
 type BaseSetup struct {
@@ -90,18 +86,18 @@ func (d Document) Marshal() (json.RawMessage, error) {
 
 // AdminView is the redacted API projection.
 type AdminView struct {
-	Revision    int                  `json:"revision"`
-	Connections []ConnectionView     `json:"connections"`
-	Mappings    map[string]Mapping   `json:"mappings"`
-	Catalog     []CatalogEntity      `json:"catalog"`
+	Revision    int                `json:"revision"`
+	Connections []ConnectionView   `json:"connections"`
+	Mappings    map[string]Mapping `json:"mappings"`
+	Catalog     []CatalogEntity    `json:"catalog"`
 }
 
 type ConnectionView struct {
-	ID            string           `json:"id"`
-	Name          string           `json:"name"`
-	Provider      string           `json:"provider"`
-	HasCredential bool             `json:"hasCredential"`
-	Bases         []BaseSetup      `json:"bases"`
+	ID            string      `json:"id"`
+	Name          string      `json:"name"`
+	Provider      string      `json:"provider"`
+	HasCredential bool        `json:"hasCredential"`
+	Bases         []BaseSetup `json:"bases"`
 }
 
 func Redact(doc Document) AdminView {
@@ -110,7 +106,7 @@ func Redact(doc Document) AdminView {
 		hasCred := false
 		var bases []BaseSetup
 		if c.Airtable != nil {
-			hasCred = c.Airtable.Credential.Ciphertext != ""
+			hasCred = len(c.Airtable.Credential.Sealed) > 0
 			bases = append(bases, c.Airtable.Bases...)
 		}
 		views = append(views, ConnectionView{

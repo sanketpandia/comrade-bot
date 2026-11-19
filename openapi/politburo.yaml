@@ -1431,7 +1431,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '503':
-          description: Data connections encryption key not configured
+          description: At-rest encryption key is not configured
           content:
             application/json:
               schema:
