@@ -1,0 +1,33 @@
+info:
+  name: Preview Entity Mapping
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{politburo-base-url}}/api/v1/va/data-connections/mappings/{{data-connection-entity}}/preview"
+  auth: inherit
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "connectionId": "{{va-connection-id}}",
+        "baseSetupId": "{{va-base-setup-id}}",
+        "tableId": "<tbl_FROM_SCHEMA>",
+        "fields": {
+          "callsign": "<fld_CALLSIGN>",
+          "ifcUsername": "<fld_IFC_USERNAME>"
+        }
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`previewVADataConnectionMapping` — sample rows for a draft mapping (no revision change)."

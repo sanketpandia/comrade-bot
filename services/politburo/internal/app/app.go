@@ -22,6 +22,8 @@ import (
 	vaconfig "infinite-experiment/politburo/internal/community/virtualairlines/config"
 	"infinite-experiment/politburo/internal/community/virtualairlines/connections"
 	"infinite-experiment/politburo/internal/community/virtualairlines/connections/airtable"
+	"infinite-experiment/politburo/internal/community/virtualairlines/featureconfig"
+	"infinite-experiment/politburo/internal/community/virtualairlines/pirepvaluemappings"
 	"infinite-experiment/politburo/internal/community/virtualairlines/lookup"
 	"infinite-experiment/politburo/internal/config"
 	"infinite-experiment/politburo/internal/database"
@@ -70,6 +72,8 @@ type App struct {
 	VirtualAirlines         *virtualairlines.Repository
 	VAConfigs               *vaconfig.Repository
 	VADataConnections       *connections.Service
+	VAFeatureMappings       *featureconfig.Service
+	VAPIREPValueMappings    *pirepvaluemappings.Service
 	IFUsers                 infiniteflight.UsersClient
 	LiveryLookup            *gameliveries.Lookup
 	FlightsReader           *gameflights.Reader
@@ -166,6 +170,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	vaInit := virtualairlines.NewService(db, userRepo, vaRepo)
 	vaWebhookDispatch := webhooks.NewJob(cacheStore, liveryLookup, db, metricsRegistry)
 	vaConfigRepo := vaconfig.NewRepository(db)
+	vaConfigCache := vaconfig.NewCachedStore(vaConfigRepo, cacheStore)
 	membershipRepo := membership.NewRepository(db)
 	reportRepo := reports.NewRepository(db)
 
@@ -191,8 +196,8 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 			_ = db.Close()
 			return nil, fmt.Errorf("data encryption: %w", err)
 		}
-		atClient := airtable.NewClient(metricsRegistry, cfg.HTTP.WriteTimeout)
-		vaDataConnections, err = connections.NewService(vaConfigRepo, atClient, keys.AtRest, keys.CursorMAC, metricsRegistry)
+		atClient := airtable.NewClient(metricsRegistry, cfg.DataConnections.HTTPTimeout)
+		vaDataConnections, err = connections.NewService(vaConfigCache, atClient, keys.AtRest, keys.CursorMAC, metricsRegistry)
 		secretstore.Wipe(keys.CursorMAC)
 		if err != nil {
 			_ = cacheStore.Close()
@@ -200,6 +205,16 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 			return nil, fmt.Errorf("data connections: %w", err)
 		}
 	}
+
+	var vaFeatureMappings *featureconfig.Service
+	if vaDataConnections != nil {
+		previewer := featureconfig.NewPreviewer(vaDataConnections)
+		vaFeatureMappings = featureconfig.NewService(vaConfigCache, vaConfigRepo, vaDataConnections, previewer)
+		guard := featureconfig.NewGuard(vaConfigCache)
+		vaDataConnections.SetMappingHooks(guard.BeforeClearMapping, guard.BeforeDeleteConnection, guard.BeforeDeleteBase)
+	}
+
+	pirepValueMappings := pirepvaluemappings.NewService(pirepvaluemappings.NewRepository(db), liveryRepo, vaConfigRepo)
 
 	application := &App{
 		Config: cfg, StartedAt: time.Now().UTC(), DB: db, Cache: cacheStore,
@@ -219,6 +234,8 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		VirtualAirlines:         vaRepo,
 		VAConfigs:               vaConfigRepo,
 		VADataConnections:       vaDataConnections,
+		VAFeatureMappings:       vaFeatureMappings,
+		VAPIREPValueMappings:    pirepValueMappings,
 		IFUsers:                 ifUsers,
 		LiveryLookup:            liveryLookup,
 		FlightsReader:           gameflights.NewReader(cacheStore),

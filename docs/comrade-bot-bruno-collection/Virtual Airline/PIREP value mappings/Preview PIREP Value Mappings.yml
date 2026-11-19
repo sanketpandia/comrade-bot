@@ -1,0 +1,35 @@
+info:
+  name: Preview PIREP Value Mappings
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{politburo-base-url}}/api/v1/va/pirep-value-mappings/preview"
+  auth: inherit
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "version": 1,
+        "defaults": {
+          "aircraft": null,
+          "airline": null
+        },
+        "AircraftMappings": {
+          "A320 Air France": "A320"
+        },
+        "AirlineMappings": {}
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`previewVAPIREPValueMappings` — resolve sample IF aircraft/livery labels to filing values."

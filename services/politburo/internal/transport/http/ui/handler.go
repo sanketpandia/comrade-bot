@@ -387,6 +387,10 @@ func adminTab(path string) string {
 		return "webhooks"
 	case routes.AdminDataConnections:
 		return "data-connections"
+	case routes.AdminFeatureStats:
+		return "feature-stats"
+	case routes.AdminFeaturePIREP:
+		return "feature-pirep"
 	case routes.AdminLive:
 		return "live"
 	case routes.AdminMembersDeleted:
@@ -400,7 +404,7 @@ func adminTab(path string) string {
 
 func adminTabRequiresAdministrator(tab string) bool {
 	switch tab {
-	case "general", "webhooks", "data-connections":
+	case "general", "webhooks", "data-connections", "feature-stats", "feature-pirep":
 		return true
 	default:
 		return false

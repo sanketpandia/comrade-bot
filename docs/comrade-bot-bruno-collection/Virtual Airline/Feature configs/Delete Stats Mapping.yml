@@ -1,0 +1,21 @@
+info:
+  name: Delete Stats Mapping
+  type: http
+  seq: 7
+
+http:
+  method: DELETE
+  url: "{{politburo-base-url}}/api/v1/va/feature-configs/stats"
+  auth: inherit
+  headers:
+    - name: If-Match
+      value: "{{map-stats-if-match}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`deleteVAFeatureConfig` — remove MAP_STATS row."

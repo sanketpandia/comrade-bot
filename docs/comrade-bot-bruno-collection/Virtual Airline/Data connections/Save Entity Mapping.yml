@@ -1,0 +1,46 @@
+info:
+  name: Save Entity Mapping
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: "{{politburo-base-url}}/api/v1/va/data-connections/mappings/{{data-connection-entity}}"
+  auth: inherit
+  headers:
+    - name: If-Match
+      value: "{{data-connections-revision}}"
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "connectionId": "{{va-connection-id}}",
+        "baseSetupId": "{{va-base-setup-id}}",
+        "tableId": "<tbl_FROM_SCHEMA>",
+        "fields": {
+          "callsign": "<fld_CALLSIGN>",
+          "ifcUsername": "<fld_IFC_USERNAME>",
+          "displayName": "<fld_NAME>",
+          "flightTimeSeconds": "<fld_FLIGHT_TIME>",
+          "category": "<fld_CATEGORY>",
+          "region": "<fld_REGION>",
+          "rank": "<fld_RANK>"
+        },
+        "fieldUnits": {
+          "flightTimeSeconds": "hours"
+        }
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  `putVADataConnectionMapping` — entity path: `pilots`, `careerPilots`, `routes`, `pireps`.
+  Use catalog keys for `fields`. Omit keys you do not bind; drop `fieldUnits` when the column is Airtable duration (seconds).
+  Bump `data-connections-revision` from response ETag after each save.

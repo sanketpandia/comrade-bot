@@ -1,0 +1,47 @@
+info:
+  name: Save Stats Mapping
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{politburo-base-url}}/api/v1/va/feature-configs/stats"
+  auth: inherit
+  headers:
+    - name: If-Match
+      value: "{{map-stats-if-match}}"
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "version": 1,
+        "revision": {{map-stats-if-match}},
+        "enabled": true,
+        "connectionsRevision": {{connections-revision-for-features}},
+        "pilot": {
+          "matchBy": "ifcUsername",
+          "fields": ["displayName", "flightTimeSeconds", "category", "region", "rank"]
+        },
+        "career": {
+          "matchBy": "ifcUsername",
+          "fields": [
+            "flightTimeSeconds",
+            "timeToNextAircraftSeconds",
+            "lastActivity",
+            "assignedRoutes",
+            "aircraft",
+            "airline"
+          ]
+        }
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`putVAFeatureConfig` — save MAP_STATS (revision 0 for first save)."

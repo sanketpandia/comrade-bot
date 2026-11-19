@@ -10,7 +10,7 @@ routes, career-mode assignments, and whatever else that VA invented.
 **Mapper plus named summaries.** Airtable adapter first; common RDBMS later.
 We do **not** warehouse the VA base. We do persist:
 
-- Mapping JSON and credentials (`va_data_provider_configs`)
+- Mapping JSON and credentials (`va_configs` → `DATA_CONNECTIONS`, `MAP_STATS`, `MAP_PIREP`)
 - Pilot **record ids** on memberships when pilots sync is on
 - A small **route summary** (id, origin, destination, duration, type,
   aircraft) when routes are enabled, filled by administrator **Refresh now**
@@ -32,7 +32,7 @@ Things that are ours, not the VA's:
 | Identity | `users` (Discord ↔ IF community / IF API id) |
 | Membership | `virtual_airlines`, `va_user_roles` (callsign, role, Airtable record id as a *pointer*) |
 | Auth | `api_keys` |
-| Connections | `va_data_provider_configs`, validation history, `va_configs`, `va_webhooks` |
+| Connections | `va_configs` (`DATA_CONNECTIONS`, `MAP_STATS`, `MAP_PIREP`), `va_webhooks` |
 | Our features | `events`, `event_legs` (group events / tours we coordinate) |
 | Mappings we own | `livery_airtable_mappings` (IF name → VA label) |
 | Optional summaries | Search indexes or rollups **we** define, not a dump of Airtable rows |

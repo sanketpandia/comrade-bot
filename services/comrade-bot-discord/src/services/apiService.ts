@@ -418,7 +418,21 @@ export class ApiService {
      * Returns available flight modes with validation status and field definitions
      */
     static async getPirepConfig(meta: MetaInfo): Promise<PirepConfigResponse> {
-        return ApiService.rejectStub("GET /api/v1/pireps/config");
+        try {
+            const res = await fetch(`${getPolitburoApiUrl()}/api/v1/pireps/config`, {
+                headers: generateMetaHeaders(meta),
+            });
+            if (res.status === 401) throw new UnauthorizedError();
+            if (!res.ok) {
+                const err = await ApiService.parsePolitburoError(res);
+                throw new PolitburoApiError(res.status, err.code || "LOAD_FAILED", err.message || "Failed to load PIREP config");
+            }
+            return (await res.json()) as PirepConfigResponse;
+        } catch (err) {
+            if (err instanceof UnauthorizedError || err instanceof PolitburoApiError) throw err;
+            logger.error("getPirepConfig failed", errorFields(err));
+            throw err;
+        }
     }
 
     /**
@@ -426,7 +440,24 @@ export class ApiService {
      * Handles all flight modes with mode-specific validation
      */
     static async submitPirep(meta: MetaInfo, pirepData: PirepSubmitRequest): Promise<PirepSubmitResponse> {
-        return ApiService.rejectStub("POST /api/v1/pireps/submit");
+        try {
+            const res = await fetch(`${getPolitburoApiUrl()}/api/v1/pireps/submit`, {
+                    method: "POST",
+                    headers: { ...generateMetaHeaders(meta), "Content-Type": "application/json" },
+                    body: JSON.stringify(pirepData),
+                },
+            );
+            if (res.status === 401) throw new UnauthorizedError();
+            if (!res.ok) {
+                const err = await ApiService.parsePolitburoError(res);
+                throw new PolitburoApiError(res.status, err.code || "SUBMIT_FAILED", err.message || "Failed to submit PIREP");
+            }
+            return (await res.json()) as PirepSubmitResponse;
+        } catch (err) {
+            if (err instanceof UnauthorizedError || err instanceof PolitburoApiError) throw err;
+            logger.error("submitPirep failed", errorFields(err));
+            throw err;
+        }
     }
 
     /**

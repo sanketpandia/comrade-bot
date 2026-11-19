@@ -1,0 +1,28 @@
+post:
+  operationId: previewVAFeatureConfig
+  summary: Preview feature mapping results
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: feature
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [stats, pirep]
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: true
+  responses:
+    "200":
+      description: Preview
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VAFeatureConfigPreviewResponse.yaml"

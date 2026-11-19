@@ -52,6 +52,16 @@ colon-delimited, and begin with a bounded domain prefix such as `game:`. Callers
 must use the shared constants or key builders rather than repeating string
 literals.
 
+## VA config read-through cache
+
+`va_configs` rows for types such as `DATA_CONNECTIONS`, `MAP_STATS`, and
+`MAP_PIREP` may be cached in Redis under `va:config:{vaId}:{configType}`.
+Population is read-through and write-through from Postgres, not from scheduled
+jobs. After a successful revision-checked write, the cache stores the new row;
+reads never replace a newer cached `updated_at` with an older snapshot. Cached
+JSON may include sealed credential envelopes (ciphertext only); do not treat
+Redis as a separate secrets store.
+
 ## Encrypted values in responses
 
 Ordinary REST responses and UI handlers do not return sealed ciphertext, envelopes, or decrypted secrets. A list, detail, or page response may say that a secret exists (`hasCredential` and similar). It does not include the stored blob or the opened value.

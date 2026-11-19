@@ -1,0 +1,47 @@
+info:
+  name: Preview Stats Mapping
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{politburo-base-url}}/api/v1/va/feature-configs/stats/preview"
+  auth: inherit
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "ifcUsername": "{{stats-test-ifc-username}}",
+        "callsign": "{{stats-test-callsign}}",
+        "stats": {
+          "version": 1,
+          "enabled": true,
+          "pilot": {
+            "matchBy": "ifcUsername",
+            "fields": ["displayName", "flightTimeSeconds", "category", "region", "rank"]
+          },
+          "career": {
+            "matchBy": "ifcUsername",
+            "fields": [
+              "flightTimeSeconds",
+              "timeToNextAircraftSeconds",
+              "lastActivity",
+              "assignedRoutes",
+              "aircraft",
+              "airline"
+            ]
+          }
+        }
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`previewVAFeatureConfig` — draft stats + test identity; empty body uses saved MAP_STATS. Session can fill IFC username / callsign when omitted."

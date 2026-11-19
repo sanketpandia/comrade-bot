@@ -1,0 +1,18 @@
+info:
+  name: Get Stats Mapping
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{politburo-base-url}}/api/v1/va/feature-configs/stats"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`getVAFeatureConfig` — MAP_STATS selection and catalog."

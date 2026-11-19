@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 )
 
 type cursorPayload struct {
@@ -65,9 +64,19 @@ func openCursor(key []byte, token string, vaID, entity string, revision int, fil
 }
 
 func filtersEqual(a, b map[string]any) bool {
-	ab, _ := json.Marshal(a)
-	bb, _ := json.Marshal(b)
+	if len(a) == 0 && len(b) == 0 {
+		return true
+	}
+	ab, _ := json.Marshal(normalizeFilterMap(a))
+	bb, _ := json.Marshal(normalizeFilterMap(b))
 	return string(ab) == string(bb)
+}
+
+func normalizeFilterMap(m map[string]any) map[string]any {
+	if m == nil {
+		return map[string]any{}
+	}
+	return m
 }
 
 func buildCursorKey(key []byte, vaID, entity string, revision int, filters map[string]any, offset string) (string, error) {
@@ -83,6 +92,3 @@ func buildCursorKey(key []byte, vaID, entity string, revision int, filters map[s
 	})
 }
 
-func cursorKeyHint(vaID, entity string, revision int) string {
-	return fmt.Sprintf("%s:%s:%d", vaID, entity, revision)
-}

@@ -1,0 +1,18 @@
+info:
+  name: Get PIREP Value Mappings
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{politburo-base-url}}/api/v1/va/pirep-value-mappings"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`getVAPIREPValueMappings` — aircraft/livery → filing value maps (v1 document)."

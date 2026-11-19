@@ -92,6 +92,24 @@ paths:
     $ref: "./paths/va/data-connections-mapping.yaml"
   /api/v1/va/data-connections/mappings/{entity}/preview:
     $ref: "./paths/va/data-connections-mapping-preview.yaml"
+  /api/v1/va/feature-configs/{feature}:
+    $ref: "./paths/va/feature-configs.yaml"
+  /api/v1/va/feature-configs/{feature}/preview:
+    $ref: "./paths/va/feature-configs-preview.yaml"
+  /api/v1/va/pirep-value-mappings:
+    $ref: "./paths/va/pirep-value-mappings.yaml"
+  /api/v1/va/pirep-value-mappings/export:
+    $ref: "./paths/va/pirep-value-mappings-export.yaml"
+  /api/v1/va/pirep-value-mappings/catalog:
+    $ref: "./paths/va/pirep-value-mappings-catalog.yaml"
+  /api/v1/va/pirep-value-mappings/catalog.csv:
+    $ref: "./paths/va/pirep-value-mappings-catalog-csv.yaml"
+  /api/v1/va/pirep-value-mappings/preview:
+    $ref: "./paths/va/pirep-value-mappings-preview.yaml"
+  /api/v1/pireps/config:
+    $ref: "./paths/pireps/config.yaml"
+  /api/v1/pireps/submit:
+    $ref: "./paths/pireps/submit.yaml"
   /api/v1/va/live/schedule-enums:
     $ref: "./paths/va/live-schedule-enums.yaml"
   /api/v1/va/live/schedule-bookings:
@@ -255,6 +273,24 @@ components:
       $ref: "./components/schemas/VAWebhookTriggerResponse.yaml"
     VADataConnectionsResponse:
       $ref: "./components/schemas/VADataConnectionsResponse.yaml"
+    VAFeatureConfigResponse:
+      $ref: "./components/schemas/VAFeatureConfigResponse.yaml"
+    VAFeatureConfigDeleteResponse:
+      $ref: "./components/schemas/VAFeatureConfigDeleteResponse.yaml"
+    VAFeatureConfigPreviewResponse:
+      $ref: "./components/schemas/VAFeatureConfigPreviewResponse.yaml"
+    VAStatsConfigDocument:
+      $ref: "./components/schemas/VAStatsConfigDocument.yaml"
+    VAStatsSection:
+      $ref: "./components/schemas/VAStatsSection.yaml"
+    VAPIREPConfigDocument:
+      $ref: "./components/schemas/VAPIREPConfigDocument.yaml"
+    VAPIREPValueMappingsDocument:
+      $ref: "./components/schemas/VAPIREPValueMappingsDocument.yaml"
+    VAPIREPValueMappingsView:
+      $ref: "./components/schemas/VAPIREPValueMappingsView.yaml"
+    VAPIREPValueMappingsPreview:
+      $ref: "./components/schemas/VAPIREPValueMappingsPreview.yaml"
     VAMember:
       $ref: "./components/schemas/VAMember.yaml"
     VAMembersResponse:

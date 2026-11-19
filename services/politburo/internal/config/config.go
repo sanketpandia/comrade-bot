@@ -23,7 +23,13 @@ type Config struct {
 	InfiniteFlight             InfiniteFlight
 	Auth                       Auth
 	AtRest                     AtRest
+	DataConnections            DataConnections
 	PlatformOperatorDiscordIDs []string
+}
+
+// DataConnections holds outbound provider settings for live VA reads.
+type DataConnections struct {
+	HTTPTimeout time.Duration
 }
 
 // AtRest holds the optional deployment root for secretstore.
@@ -163,6 +169,9 @@ func Load() (Config, error) {
 		Auth: Auth{
 			SignedLinkSecret: parsedSecret,
 			UIBaseURL:        uiBaseURL,
+		},
+		DataConnections: DataConnections{
+			HTTPTimeout: duration("DATA_CONNECTIONS_HTTP_TIMEOUT", 8*time.Second),
 		},
 		PlatformOperatorDiscordIDs: csv("PLATFORM_OPERATOR_DISCORD_IDS", nil),
 	}

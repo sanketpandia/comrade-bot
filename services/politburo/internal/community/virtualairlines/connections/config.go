@@ -38,12 +38,22 @@ type BaseSetup struct {
 	BaseID string `json:"baseId"`
 }
 
+// DurationUnit is the stored unit for plain numeric duration columns.
+type DurationUnit string
+
+const (
+	UnitSeconds DurationUnit = "seconds"
+	UnitMinutes DurationUnit = "minutes"
+	UnitHours   DurationUnit = "hours"
+)
+
 // Mapping binds one logical entity to a provider table.
 type Mapping struct {
-	ConnectionID string            `json:"connectionId"`
-	BaseSetupID  string            `json:"baseSetupId"`
-	TableID      string            `json:"tableId"`
-	Fields       map[string]string `json:"fields"`
+	ConnectionID string                       `json:"connectionId"`
+	BaseSetupID  string                       `json:"baseSetupId"`
+	TableID      string                       `json:"tableId"`
+	Fields       map[string]string            `json:"fields"`
+	FieldUnits   map[string]DurationUnit      `json:"fieldUnits,omitempty"`
 }
 
 // EmptyDocument returns revision-zero state with no connections.
@@ -62,7 +72,7 @@ func ParseDocument(raw json.RawMessage) (Document, error) {
 	}
 	var doc Document
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		return Document{}, fmt.Errorf("%w: decode document: %v", ErrInvalidMapping, err)
+		return Document{}, fmt.Errorf("%w: decode document: %v", ErrCorruptConfig, err)
 	}
 	if doc.Version != documentVersion {
 		return Document{}, fmt.Errorf("%w: unsupported document version %d", ErrInvalidMapping, doc.Version)

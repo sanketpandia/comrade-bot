@@ -1,0 +1,81 @@
+get:
+  operationId: getVAFeatureConfig
+  summary: Get feature mapping configuration
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: feature
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [stats, pirep]
+  responses:
+    "200":
+      description: Feature configuration
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VAFeatureConfigResponse.yaml"
+put:
+  operationId: putVAFeatureConfig
+  summary: Save feature mapping configuration
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: feature
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [stats, pirep]
+    - name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          oneOf:
+            - $ref: "../../components/schemas/VAStatsConfigDocument.yaml"
+            - $ref: "../../components/schemas/VAPIREPConfigDocument.yaml"
+  responses:
+    "200":
+      description: Saved
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VAFeatureConfigResponse.yaml"
+delete:
+  operationId: deleteVAFeatureConfig
+  summary: Remove feature mapping configuration
+  tags: [VirtualAirline]
+  security:
+    - ApiKeyAuth: []
+    - CookieAuth: []
+  parameters:
+    - name: feature
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [stats, pirep]
+    - name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: Deleted
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/VAFeatureConfigDeleteResponse.yaml"

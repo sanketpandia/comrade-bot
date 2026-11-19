@@ -1,0 +1,39 @@
+info:
+  name: Save PIREP Mapping
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: "{{politburo-base-url}}/api/v1/va/feature-configs/pirep"
+  auth: inherit
+  headers:
+    - name: If-Match
+      value: "{{map-pirep-if-match}}"
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "version": 1,
+        "revision": {{map-pirep-if-match}},
+        "enabled": true,
+        "connectionsRevision": {{connections-revision-for-features}},
+        "fields": [
+          "pilotRefs",
+          "routeRefs",
+          "flightTimeSeconds",
+          "remarks",
+          "flightMode"
+        ]
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "`putVAFeatureConfig` — save MAP_PIREP; requires `pireps` data-connection mapping and bound writable fields."

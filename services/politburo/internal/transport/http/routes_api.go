@@ -213,6 +213,30 @@ func (h apiHandler) PreviewVADataConnectionMapping(w stdhttp.ResponseWriter, r *
 	})).ServeHTTP(w, r)
 }
 
+func (h apiHandler) GetVAFeatureConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, feature politburoapi.GetVAFeatureConfigParamsFeature) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.GetVAFeatureConfig(w, r, string(feature))
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) PutVAFeatureConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, feature politburoapi.PutVAFeatureConfigParamsFeature, _ politburoapi.PutVAFeatureConfigParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.PutVAFeatureConfig(w, r, string(feature))
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) DeleteVAFeatureConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, feature politburoapi.DeleteVAFeatureConfigParamsFeature, _ politburoapi.DeleteVAFeatureConfigParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.DeleteVAFeatureConfig(w, r, string(feature))
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) PreviewVAFeatureConfig(w stdhttp.ResponseWriter, r *stdhttp.Request, feature politburoapi.PreviewVAFeatureConfigParamsFeature) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.PreviewVAFeatureConfig(w, r, string(feature))
+	})).ServeHTTP(w, r)
+}
+
 func (h apiHandler) GetCurrentUser(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	h.stacks.currentUser.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.handlers.user.GetMe(w, r)
@@ -353,6 +377,65 @@ func (h apiHandler) ListVALiveScheduleBookings(
 ) {
 	h.stacks.vaStaff.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.handlers.liveConn.ListVALiveScheduleBookings(w, r, params)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) GetVAPIREPValueMappings(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.GetVAPIREPValueMappings(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) PutVAPIREPValueMappings(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.PutVAPIREPValueMappingsParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.PutVAPIREPValueMappings(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) ExportVAPIREPValueMappings(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.ExportVAPIREPValueMappings(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) GetVAPIREPValueMappingsCatalog(w stdhttp.ResponseWriter, r *stdhttp.Request, params politburoapi.GetVAPIREPValueMappingsCatalogParams) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		limit, offset := 50, 0
+		if params.Limit != nil {
+			limit = *params.Limit
+		}
+		if params.Offset != nil {
+			offset = *params.Offset
+		}
+		search := ""
+		if params.Search != nil {
+			search = *params.Search
+		}
+		h.handlers.va.GetVAPIREPValueMappingsCatalog(w, r, string(params.Kind), search, limit, offset)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) GetVAPIREPValueMappingsCatalogCSV(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.GetVAPIREPValueMappingsCatalogCSV(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) PreviewVAPIREPValueMappings(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.vaAdmin.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.va.PreviewVAPIREPValueMappings(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) GetPirepConfig(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.bot.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.pireps.GetPirepConfig(w, r)
+	})).ServeHTTP(w, r)
+}
+
+func (h apiHandler) SubmitPirep(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.stacks.bot.apply(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		h.handlers.pireps.SubmitPirep(w, r)
 	})).ServeHTTP(w, r)
 }
 

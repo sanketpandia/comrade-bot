@@ -67,6 +67,13 @@ func (l *Lookup) Reload(ctx context.Context) error {
 	return nil
 }
 
+func (l *Lookup) RowByLiveryID(liveryID string) (AircraftLivery, bool) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	row, ok := l.byLiveryID[liveryID]
+	return row, ok
+}
+
 func (l *Lookup) Resolve(liveryID, aircraftID string) (ResolvedNames, MatchOutcome) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()

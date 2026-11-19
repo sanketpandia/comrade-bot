@@ -31,6 +31,7 @@ type configBlocksRepo interface {
 }
 
 type discordUserLookup interface {
+	GetByID(ctx context.Context, id string) (*users.User, error)
 	GetByDiscordID(ctx context.Context, discordID string) (*users.User, error)
 }
 

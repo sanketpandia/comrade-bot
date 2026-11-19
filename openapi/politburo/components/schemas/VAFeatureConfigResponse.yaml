@@ -1,0 +1,34 @@
+type: object
+required: [data]
+properties:
+  data:
+    type: object
+    properties:
+      feature:
+        type: string
+        enum: [stats, pirep]
+      revision:
+        type: integer
+      connectionsRevision:
+        type: integer
+      enabled:
+        type: boolean
+      configured:
+        type: boolean
+      catalog:
+        type: array
+        items:
+          type: object
+          additionalProperties: true
+      mappings:
+        type: object
+        additionalProperties: true
+      stats:
+        $ref: ./VAStatsConfigDocument.yaml
+      pirep:
+        $ref: ./VAPIREPConfigDocument.yaml
+      updatedAt:
+        type: string
+        format: date-time
+      updatedBy:
+        type: string

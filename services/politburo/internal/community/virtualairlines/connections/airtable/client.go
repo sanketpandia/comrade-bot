@@ -50,9 +50,10 @@ type Table struct {
 }
 
 type Field struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Type string `json:"type"`
+	ID      string          `json:"id"`
+	Name    string          `json:"name"`
+	Type    string          `json:"type"`
+	Options json.RawMessage `json:"options,omitempty"`
 }
 
 type SchemaResponse struct {
@@ -255,6 +256,7 @@ func parseRetryAfter(raw string) time.Duration {
 
 // EscapeFormulaLiteral escapes a string literal for filterByFormula.
 func EscapeFormulaLiteral(value string) string {
+	value = strings.ReplaceAll(value, `\`, `\\`)
 	return strings.ReplaceAll(value, "'", "\\'")
 }
 
